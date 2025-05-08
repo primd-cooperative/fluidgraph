@@ -1,0 +1,26 @@
+{
+    "name": "primd/fluidgraph",
+    "description": "A Doctrine-inspired OGM for Bolt/Cypher Graph Databases",
+    "license": "MIT",
+    "authors": [
+        {
+            "name":  "Matthew J. Sahagian",
+            "email": "msahagian@primd.app",
+            "role":  "Lead Architect / Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "stefanak-michal/bolt": "^7.2"
+    },
+    "autoload": {
+        "classmap": ["src/"]
+    },
+    "autoload-dev": {
+        "classmap": ["test/src"]
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.0",
+        "phpunit/phpunit": "^10.0"
+    }
+}

@@ -1,0 +1,386 @@
+<?php
+
+namespace FluidGraph;
+
+use Bolt\Bolt;
+use Bolt\protocol\IStructure;
+use Bolt\protocol\V5_2 as Protocol;
+use Bolt\protocol\v5\structures as Struct;
+
+use ArrayObject;
+use ReflectionProperty;
+use RuntimeException;
+use DateTimeZone;
+use DateTime;
+
+/**
+ *
+ */
+class Graph
+{
+	/**
+	 * The underlying Bolt protocol acccess
+	 */
+	public protected(set) Protocol $protocol;
+
+	/**
+	 * An instance of the base query implementation to clone
+	 */
+	public protected(set) Query $query {
+		get {
+			return clone $this->query;
+		}
+		set (Query $query) {
+			$this->query = $query;
+		}
+	}
+
+	/**
+	 * An instance of the base queue implementation to clone
+	 */
+	public protected(set) Queue $queue {
+		get {
+			return clone $this->queue;
+		}
+		set (Queue $queue) {
+			$this->queue = $queue;
+		}
+	}
+
+	/**
+	 * An instance of the base where clause builder to clone
+	 */
+	public protected(set) Where $where {
+		get {
+			return clone $this->where;
+		}
+		set (Where $where) {
+			$this->where = $where;
+		}
+	}
+
+	/**
+	 *
+	 */
+	protected ReflectionProperty $content;
+
+	/**
+	 * @var ArrayObject<Content\Edge>
+	 */
+	protected ArrayObject $edges;
+
+	/**
+	 * @var ArrayObject<Content\Node>
+	 */
+	protected ArrayObject $nodes;
+
+	/**
+	 *
+	 */
+	public function __construct(
+		array $login,
+		Bolt $bolt,
+		Query $query,
+		Queue $queue,
+		Where $where,
+	) {
+		$this->where    = $where;
+		$this->queue    = $queue->on($this);
+		$this->query    = $query->on($this);
+		$this->protocol = $bolt->setProtocolVersions(5.2)->build();
+		$this->content  = new ReflectionProperty(Element::class, '__content__');
+		$this->nodes    = new ArrayObject();
+		$this->edges    = new ArrayObject();
+
+		$response = $this->protocol->hello()->getResponse();
+		$response = $this->protocol->logon($login)->getResponse();
+	}
+
+
+	public function attach(Element ...$elements): static
+	{
+		foreach ($elements as $element) {
+			if (!$element->status()) {
+				$class    = get_class($element);
+				$identity = spl_object_hash($element);
+
+				if ($element instanceof Node) {
+					$target = &$this->nodes;
+
+					if (!isset($target[$identity])) {
+						$target[$identity] = new Content\Node();
+					}
+				}
+
+				if ($element instanceof Edge) {
+					$target = &$this->edges;
+
+					if (!isset($target[$identity])) {
+						$target[$identity] = new Content\Edge();
+					}
+				}
+
+				$content = $target[$identity];
+
+				$content->labels[$class] = Status::UNMERGED;
+
+				foreach (get_object_vars($element) as $property => $value) {
+					$content->operative->$property = $value;
+
+					if ($value instanceof Relationship) {
+						$value->on($this);
+					}
+				}
+
+				$this->map($content, $element);
+			}
+		}
+
+		return $this;
+	}
+
+
+	public function detach(Element ...$elements)
+	{
+		foreach ($elements as $element) {
+			$this->content->getValue($element)->status = Status::DETACHED;
+		}
+	}
+
+
+	/**
+	 * @template T of Element
+	 * @param class-string<T> $class
+	 * @return T
+	 */
+	public function make(Content\Base $content, string $class): Element
+	{
+		if ($content instanceof Content\Node && !is_subclass_of($class, Node::class, TRUE)) {
+			throw new RuntimeException(sprintf(
+				'Cannot make "%s" from non-Node result',
+				$class
+			));
+		}
+
+		if ($content instanceof Content\Edge && !is_subclass_of($class, Edge::class, TRUE)) {
+			throw new RuntimeException(sprintf(
+				'Cannot make "%s" from non-Edge result',
+				$class
+			));
+		}
+
+		$element = new $class(...array_reduce(
+			array_keys(get_class_vars($class)),
+			function ($properties, $property) use ($content) {
+				if (property_exists($content->original, $property)) {
+					$properties[$property] = $content->original->$property;
+				}
+
+				return $properties;
+			},
+			[]
+		));
+
+		return $this->map($content, $element);
+	}
+
+
+	/**
+	 *
+	 */
+	public function map(Content\Base $content, Element $element): Element
+	{
+		foreach (get_object_vars($element) as $property => $value) {
+			if (!property_exists($content->operative, $property)) {
+				$content->operative->$property = $element->$property;
+			}
+
+			$element->$property = &$content->operative->$property;
+		}
+
+		$this->content->setValue($element, $content);
+
+		return $element;
+	}
+
+
+	/**
+	 * @template T of Element
+	 * @param class-string<T> $class
+	 * @return ArrayObject<T>
+	 */
+	public function match(string $class, callable|array|int $terms = [], ?array $order = NULL, int $limit = -1, int $skip = 0): ArrayObject
+	{
+		if (is_int($terms)) {
+			return $this->match(
+				$class,
+				function($where) use ($terms) {
+					return $where->id($terms);
+				},
+				$order,
+				$limit,
+				$skip
+			);
+
+		} elseif (is_array($terms)) {
+			return $this->match(
+				$class,
+				function($where) use ($terms) {
+					return $where->all(...$where->eq($terms));
+				},
+				$order,
+				$limit,
+				$skip
+			);
+
+		} else {
+			$query = $this->run('MATCH (n:%s)', $class);
+			$apply = $terms($this->where->use('n', $query))();
+
+			if ($apply) {
+				$query->run('WHERE %s', $apply);
+			}
+
+			$query->run('RETURN n');
+
+			if ($order) {
+				$query->run('ORDER BY');
+			}
+
+			if ($limit >= 0) {
+				$query->run('LIMIT %s', $limit);
+			}
+
+			if ($skip > 0) {
+				$query->run('SKIP %s', $skip);
+			}
+
+			return $query->get()->as($class);
+		}
+	}
+
+
+	/**
+	 * @template T of Element
+	 * @param class-string<T> $class
+	 * @return ?T
+	 */
+	public function matchOne(string $class, callable|array|int $query): ?Node
+	{
+		$results = $this->match($class, $query, [], 2, 0);
+
+		if (count($results) > 1) {
+			throw new RuntimeException(sprintf(
+				'Match returned more than one result'
+			));
+		}
+
+		return $results[0];
+	}
+
+
+	/**
+	 *
+	 */
+	public function merge(): Queue
+	{
+		return $this->queue->merge(
+			$this->nodes,
+			$this->edges
+		);
+	}
+
+
+	/**
+	 *
+	 */
+	public function resolve(IStructure $record): mixed
+	{
+		switch(get_class($record)) {
+			case Struct\DateTimeZoneId::class:
+				$zone  = new DateTimeZone($record->tz_id);
+				$value = DateTime::createFromFormat(
+					'U.u',
+					sprintf(
+						'%d.%s',
+						$record->seconds,
+						substr(sprintf('%09d', $record->nanoseconds), 0, 6)
+					),
+					new DateTimeZone($record->tz_id)
+				);
+
+				$value->setTimeZone($zone);
+
+				return $value;
+
+			case Struct\Node::class:
+				$identity = $record->element_id;
+				$storage  = &$this->nodes;
+
+				if (!isset($storage[$identity])) {
+					$storage[$identity] = new Content\Node($identity);
+				}
+
+				break;
+
+			case Struct\Relationship::class:
+				$identity = $record->element_id;
+				$storage  = &$this->edges;
+
+				if (!isset($storage[$identity])) {
+					$storage[$identity] = new Content\Edge($identity);
+				}
+				break;
+
+			default:
+				throw new RuntimeException(sprintf(
+					'Cannot resolve property of type "%s"',
+					get_class($record)
+				));
+		}
+
+		$content = $storage[$identity];
+
+		$content->identity = $identity;
+
+		if ($content->status != Status::DETACHED) {
+			$content->status = Status::ATTACHED;
+		}
+
+		foreach ($record->labels as $label) {
+			// TODO: Update Labels
+		}
+
+		foreach ($record->properties as $property => $value) {
+			if ($value instanceof IStructure) {
+				$value = $this->resolve($value);
+			}
+
+			if (!property_exists($content->operative, $property)) {
+				$content->operative->$property = $value;
+			}
+
+			if (property_exists($content->original, $property)) {
+				if ($content->operative->$property == $content->original->$property) {
+					$content->operative->$property = $value;
+				}
+			}
+
+			$content->original->$property = is_object($value)
+				? clone $value
+				: $value
+			;
+		}
+
+		return $content;
+	}
+
+
+	/**
+	 *
+	 */
+	public function run(string $statement, mixed ...$args): Query
+	{
+		return $this->query->run($statement, ...$args);
+	}
+}
