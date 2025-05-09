@@ -97,7 +97,7 @@ class Result implements ArrayAccess
 	 */
 	public function offsetGet(mixed $offset): mixed
 	{
-		return $this->offsetExists($offset) ? $this->element->original->$offset : NULL;
+		return $this->offsetExists($offset) ? $this->element->original[$offset] : NULL;
 	}
 
 
