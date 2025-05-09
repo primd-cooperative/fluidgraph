@@ -88,7 +88,7 @@ class Result implements ArrayAccess
 	 */
 	public function offsetExists(mixed $offset): bool
 	{
-		return array_key_exists($offset, $this->element->original, $offset);
+		return array_key_exists($offset, $this->element->original);
 	}
 
 
