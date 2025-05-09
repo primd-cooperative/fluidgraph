@@ -122,7 +122,7 @@ class Graph
 
 				$content = $target[$identity];
 
-				$content->labels[$class] = Status::UNMERGED;
+				$content->labels[$class] = Status::INDUCTED;
 
 				foreach (get_object_vars($element) as $property => $value) {
 					$content->operative->$property = $value;
@@ -132,7 +132,7 @@ class Graph
 					}
 				}
 
-				$this->map($content, $element);
+				$this->fasten($content, $element);
 			}
 		}
 
@@ -143,52 +143,19 @@ class Graph
 	public function detach(Element ...$elements)
 	{
 		foreach ($elements as $element) {
-			$this->content->getValue($element)->status = Status::DETACHED;
+			$this->content->getValue($element)->status = Status::RELEASED;
 		}
 	}
 
 
 	/**
-	 * @template T of Element
-	 * @param class-string<T> $class
-	 * @return T
-	 */
-	public function make(Content\Base $content, string $class): Element
-	{
-		if ($content instanceof Content\Node && !is_subclass_of($class, Node::class, TRUE)) {
-			throw new RuntimeException(sprintf(
-				'Cannot make "%s" from non-Node result',
-				$class
-			));
-		}
-
-		if ($content instanceof Content\Edge && !is_subclass_of($class, Edge::class, TRUE)) {
-			throw new RuntimeException(sprintf(
-				'Cannot make "%s" from non-Edge result',
-				$class
-			));
-		}
-
-		$element = new $class(...array_reduce(
-			array_keys(get_class_vars($class)),
-			function ($properties, $property) use ($content) {
-				if (property_exists($content->original, $property)) {
-					$properties[$property] = $content->original->$property;
-				}
-
-				return $properties;
-			},
-			[]
-		));
-
-		return $this->map($content, $element);
-	}
-
-
-	/**
+	 * Fasten an element to its content.
 	 *
+	 * This converts entity properties to references and sets the content on the element.  If the
+	 * content doesn't contain a corresponding property, it is created with the value on the
+	 * entity at present.
 	 */
-	public function map(Content\Base $content, Element $element): Element
+	public function fasten(Content\Base $content, Element $element): static
 	{
 		foreach (get_object_vars($element) as $property => $value) {
 			if (!property_exists($content->operative, $property)) {
@@ -200,11 +167,15 @@ class Graph
 
 		$this->content->setValue($element, $content);
 
-		return $element;
+		return $this;
 	}
 
 
 	/**
+	 * Match multiple nodes or edges and have them returned as an instance of a given class.
+	 *
+	 * The type of elements (node or edge) being matched is determined by the class.
+	 *
 	 * @template T of Element
 	 * @param class-string<T> $class
 	 * @return ArrayObject<T>
@@ -261,11 +232,15 @@ class Graph
 
 
 	/**
+	 * Match a single node or edge and have it returned as an instance of a given class.
+	 *
+	 * The type of element (node or edge) being matched is determined by the class.
+	 *
 	 * @template T of Element
 	 * @param class-string<T> $class
 	 * @return ?T
 	 */
-	public function matchOne(string $class, callable|array|int $query): ?Node
+	public function matchOne(string $class, callable|array|int $query): ?Element
 	{
 		$results = $this->match($class, $query, [], 2, 0);
 
@@ -280,7 +255,7 @@ class Graph
 
 
 	/**
-	 *
+	 * Initiate a merge by constructing a new queue and setting the nodes/edges to be merged.
 	 */
 	public function merge(): Queue
 	{
@@ -292,21 +267,26 @@ class Graph
 
 
 	/**
+	 * Resolve structures returned from bolt protocol into usable forms.
 	 *
+	 * TODO: replace property resolution with a plugin system where resolvers can be registered
+	 *
+	 * The core functionality of this is designed to convert record structures such as nodes
+	 * and relationships (edges) into their content representations.
 	 */
-	public function resolve(IStructure $record): mixed
+	public function resolve(IStructure $structure): mixed
 	{
-		switch(get_class($record)) {
+		switch(get_class($structure)) {
 			case Struct\DateTimeZoneId::class:
-				$zone  = new DateTimeZone($record->tz_id);
+				$zone  = new DateTimeZone($structure->tz_id);
 				$value = DateTime::createFromFormat(
 					'U.u',
 					sprintf(
 						'%d.%s',
-						$record->seconds,
-						substr(sprintf('%09d', $record->nanoseconds), 0, 6)
+						$structure->seconds,
+						substr(sprintf('%09d', $structure->nanoseconds), 0, 6)
 					),
-					new DateTimeZone($record->tz_id)
+					new DateTimeZone($structure->tz_id)
 				);
 
 				$value->setTimeZone($zone);
@@ -314,7 +294,7 @@ class Graph
 				return $value;
 
 			case Struct\Node::class:
-				$identity = $record->element_id;
+				$identity = $structure->element_id;
 				$storage  = &$this->nodes;
 
 				if (!isset($storage[$identity])) {
@@ -324,7 +304,7 @@ class Graph
 				break;
 
 			case Struct\Relationship::class:
-				$identity = $record->element_id;
+				$identity = $structure->element_id;
 				$storage  = &$this->edges;
 
 				if (!isset($storage[$identity])) {
@@ -335,7 +315,7 @@ class Graph
 			default:
 				throw new RuntimeException(sprintf(
 					'Cannot resolve property of type "%s"',
-					get_class($record)
+					get_class($structure)
 				));
 		}
 
@@ -343,15 +323,15 @@ class Graph
 
 		$content->identity = $identity;
 
-		if ($content->status != Status::DETACHED) {
+		if ($content->status != Status::RELEASED) {
 			$content->status = Status::ATTACHED;
 		}
 
-		foreach ($record->labels as $label) {
+		foreach ($structure->labels as $label) {
 			// TODO: Update Labels
 		}
 
-		foreach ($record->properties as $property => $value) {
+		foreach ($structure->properties as $property => $value) {
 			if ($value instanceof IStructure) {
 				$value = $this->resolve($value);
 			}
@@ -377,7 +357,11 @@ class Graph
 
 
 	/**
+	 * Initiate a new query with a statement and arguments.
 	 *
+	 * Query statements operate via `sprintf` underneath the hood.  The arguments passed here are
+	 * for placeholder replacement.  For actual query parameters, use the `with()` call on the
+	 * returned query.
 	 */
 	public function run(string $statement, mixed ...$args): Query
 	{

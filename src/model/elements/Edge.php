@@ -4,35 +4,26 @@ namespace FluidGraph;
 
 abstract class Edge extends Element
 {
-	protected Node $__target__;
-
 	/**
-	 * Attach one or more labels to the edge
+	 *
 	 */
-	public function is(string $label): static
+	public function target(): ?Content\Node
 	{
-		return $this;
+		return $this->__content__
+			? $this->__content__->target
+			: NULL
+		;
 	}
 
 
 	/**
 	 *
 	 */
-	public function isA(string $label): bool
+	public function source(): ?Content\Node
 	{
-		return FALSE;
-	}
-
-
-	/**
-	 *
-	 */
-	public function target(?Node $node = NULL): Node
-	{
-		if ($node) {
-			$this->__target__ = $node;
-		}
-
-		return $this->__target__;
+		return $this->__content__
+			? $this->__content__->source
+			: NULL
+		;
 	}
 }

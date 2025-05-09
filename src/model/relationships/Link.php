@@ -2,18 +2,14 @@
 
 namespace FluidGraph;
 
+/**
+ * A link is a relationship to a single node independent of the source node.
+ *
+ * When the source node is attached, so is the target node.
+ * When the source node is detached, the target node lives on.
+ */
 class Link extends Relationship
 {
-	protected ?Edge $edge = NULL;
-
-
-	public function onMerge(Operation $operation, Graph $graph)
-	{
-		if ($operation == Operation::DELETE) {
-			$graph->detach(...$this->edges);
-		} else {
-			$graph->attach(...$this->edges);
-		}
-	}
-
+	use Relationship\HasOne;
+	use Relationship\AttachRelated;
 }

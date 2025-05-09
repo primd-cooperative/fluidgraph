@@ -104,16 +104,23 @@ abstract class Relationship
 	 *
 	 * Called from Queue on merge()
 	 */
-	final public function merge(Operation $operation): static
+	final public function merge(Content\Node $source): static
 	{
-		foreach (class_uses($this) as $trait) {
-			if (!in_array(Relationship\MergeHook::class, class_uses($trait))) {
-				continue;
+		//
+		// TODO: update the source for all edges that need it.
+		//
+
+		for($class = get_class($this); $class != Relationship::class; $class = get_parent_class($class)) {
+			foreach (class_uses($class) as $trait) {
+				if (!in_array(Relationship\MergeHook::class, class_uses($trait))) {
+					continue;
+				}
+
+				$parts  = explode('\\', $trait);
+				$method = lcfirst(end($parts));
+
+				$this->$method();
 			}
-
-			$method = lcfirst(end(explode('\\', $trait)));
-
-			$this->$method($this->graph, $operation);
 		}
 
 		return $this;

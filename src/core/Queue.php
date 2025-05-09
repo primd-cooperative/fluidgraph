@@ -35,34 +35,52 @@ class Queue
 	 */
 	public function merge(ArrayObject $nodes, ArrayObject $edges): static
 	{
-		$visited     = [];
 		$this->nodes = $nodes;
 		$this->edges = $edges;
 
-		do {
-			$start_node_count = count($this->nodes);
+		foreach ($this->nodes as $identity => $node) {
+			$visit_nodes[$identity] = $node->status;
+		}
 
-			foreach ($this->nodes as $identity => $node) {
-				if (isset($visited[$identity])) {
-					continue;
+		while($visit_nodes) {
+			foreach ($visit_nodes as $identity => $status) {
+				$node = $this->nodes[$identity];
+
+				foreach ($this->getRelationships($node, $status) as $relationship) {
+					$relationship->merge($node);
 				}
-
-				$operation = match ($node->status) {
-					Status::ATTACHED => Operation::UPDATE,
-					Status::DETACHED => Operation::DELETE,
-					Status::UNMERGED => Operation::CREATE,
-				};
-
-				$this->nodeOperations[$operation->value][] = $identity;
-
-				foreach ($this->getRelationships($node) as $relationship) {
-					$relationship->merge($operation);
-				}
-
-				$visited[$identity] = TRUE;
 			}
 
-		} while ($start_node_count != count($this->nodes));
+			foreach ($this->nodes as $identity => $node) {
+				if (!isset($visit_nodes[$identity]) || $visit_nodes[$identity] !== $node->status) {
+					$visit_nodes[$identity] = $node->status;
+				} else {
+					unset($visit_nodes[$identity]);
+				}
+			}
+		}
+
+		foreach ($this->nodes as $node) {
+			$operation = match ($node->status) {
+				Status::INDUCTED => Operation::CREATE,
+				Status::ATTACHED => Operation::UPDATE,
+				Status::RELEASED => Operation::DELETE,
+			};
+
+			$this->nodeOperations[$operation->value][] = $identity;
+		}
+
+		foreach ($this->edges as $edge) {
+			$operation = match ($edge->status) {
+				Status::INDUCTED => Operation::CREATE,
+				Status::ATTACHED => Operation::UPDATE,
+				Status::RELEASED => Operation::DELETE,
+			};
+
+			$this->edgeOperations[$operation->value][] = $identity;
+		}
+
+		$this->spent = FALSE;
 
 		return $this;
 	}
@@ -75,7 +93,7 @@ class Queue
 	{
 		if ($this->spent) {
 			throw new RuntimeException(sprintf(
-				'Cannot re-run queue, if you are sure you want to do this, pass TRUE to run()'
+				'Must re-merge before re-running the queue.'
 			));
 		}
 
@@ -170,7 +188,7 @@ class Queue
 		$query      = $this->graph->query;
 		$identities = $this->nodeOperations[Operation::CREATE->value];
 
-		$i = 0;foreach ($identities as $identity) {
+		$i = 0; foreach ($identities as $identity) {
 			$node = $this->nodes[$identity];
 			$key  = $this->getKey($node);
 
@@ -280,6 +298,9 @@ class Queue
 	 */
 	protected function getKey(Content\Base $content): array
 	{
+		$key        = [];
+		$properties = [];
+
 		foreach ($this->getLabels($content) as $label) {
 			if (!class_exists($label)) {
 				continue;
@@ -289,15 +310,16 @@ class Queue
 				continue;
 			}
 
-			if ($key = $label::key()) {
-				return array_combine(
-					$key,
-					array_map(fn($property) => $content->operative->$property, $key)
-				);
+			$properties = array_merge($properties, $label::key());
+		}
+
+		foreach (array_unique($properties) as $property) {
+			if (property_exists($content->operative, $property)) {
+				$key[$property] = $content->operative->$property;
 			}
 		}
 
-		return [];
+		return $key;
 	}
 
 
@@ -310,14 +332,14 @@ class Queue
 			return array_keys(array_filter(
 				$content->labels,
 				function (Status $status) {
-					return in_array($status, [Status::DETACHED]);
+					return in_array($status, [Status::RELEASED]);
 				}
 			));
 		} else {
 			return array_keys(array_filter(
 				$content->labels,
 				function (Status $status) {
-					return in_array($status, [Status::ATTACHED, Status::UNMERGED]);
+					return in_array($status, [Status::ATTACHED, Status::INDUCTED]);
 				}
 			));
 		}

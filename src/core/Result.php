@@ -21,6 +21,11 @@ class Result implements ArrayAccess
 
 	/**
 	 * Get the result as an instance of a given class
+	 *
+	 * @template T of Element
+	 * @param class-string<T> $class
+	 * @return T
+	 *
 	 */
 	public function as(string $class): ?Node
 	{
@@ -28,7 +33,35 @@ class Result implements ArrayAccess
 			return NULL;
 		}
 
-		return $this->graph->make($this->element, $class);
+		if ($this->element instanceof Content\Node && !is_subclass_of($class, Node::class, TRUE)) {
+			throw new RuntimeException(sprintf(
+				'Cannot make "%s" from non-Node result',
+				$class
+			));
+		}
+
+		if ($this->element instanceof Content\Edge && !is_subclass_of($class, Edge::class, TRUE)) {
+			throw new RuntimeException(sprintf(
+				'Cannot make "%s" from non-Edge result',
+				$class
+			));
+		}
+
+		$element = new $class(...array_reduce(
+			array_keys(get_class_vars($class)),
+			function ($properties, $property) {
+				if (property_exists($this->element->original, $property)) {
+					$properties[$property] = $this->element->original->$property;
+				}
+
+				return $properties;
+			},
+			[]
+		));
+
+		$this->graph->fasten($this->element, $element);
+
+		return $element;
 	}
 
 
