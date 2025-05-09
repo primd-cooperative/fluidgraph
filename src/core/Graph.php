@@ -178,9 +178,9 @@ class Graph
 	 *
 	 * @template T of Element
 	 * @param class-string<T> $class
-	 * @return ArrayObject<T>
+	 * @return array<T>
 	 */
-	public function match(string $class, callable|array|int $terms = [], ?array $order = NULL, int $limit = -1, int $skip = 0): ArrayObject
+	public function match(string $class, callable|array|int $terms = [], ?array $order = NULL, int $limit = -1, int $skip = 0): array
 	{
 		if (is_int($terms)) {
 			return $this->match(
@@ -206,10 +206,14 @@ class Graph
 
 		} else {
 			$query = $this->run('MATCH (n:%s)', $class);
-			$apply = $terms($this->where->use('n', $query))();
+			$where = $terms($this->where->use('n', $query));
 
-			if ($apply) {
-				$query->run('WHERE %s', $apply);
+			if ($where) {
+				$apply = $where();
+
+				if ($apply) {
+					$query->run('WHERE %s', $apply);
+				}
 			}
 
 			$query->run('RETURN n');
@@ -328,7 +332,7 @@ class Graph
 		}
 
 		foreach ($structure->labels as $label) {
-			// TODO: Update Labels
+			$content->labels[$label] = Status::ATTACHED;
 		}
 
 		foreach ($structure->properties as $property => $value) {

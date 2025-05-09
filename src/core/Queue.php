@@ -3,8 +3,8 @@
 namespace FluidGraph;
 
 use ArrayObject;
-use Bolt\enum\Signature;
 use RuntimeException;
+use Bolt\enum\Signature;
 
 class Queue
 {
@@ -226,7 +226,22 @@ class Queue
 
 	protected function doNodeDeletes(): void
 	{
+		$matchers   = [];
+		$query      = $this->graph->query;
+		$identities = $this->nodeOperations[Operation::DELETE->value];
+		$where      = $this->graph->where->use('n', $query);
 
+		$i = 0; foreach ($identities as $identity) {
+			$node       = $this->nodes[$identity];
+			$matchers[] = $where->id($identity);
+		}
+
+		$result = $query
+			->run('MATCH (n) WHERE %s DETACH DELETE n', $where->any(...$matchers)())
+			->pull(Signature::SUCCESS)
+		;
+
+		var_dump($result);
 	}
 
 

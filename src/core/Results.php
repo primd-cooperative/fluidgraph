@@ -14,26 +14,26 @@ class Results extends ArrayObject
 	/**
 	 *
 	 */
-	public function as(string $class): ArrayObject
+	public function as(string $class): array
 	{
-		return new ArrayObject(array_map(
+		return array_map(
 			function($result) use ($class) {
 				return $result->as($class);
 			},
 			$this->getArrayCopy()
-		));
+		);
 	}
 
 	/**
 	 *
 	 */
-	public function raw(): ArrayObject
+	public function raw(): array
 	{
-		return new ArrayObject(array_map(
+		return array_map(
 			function($result) {
 				return $result->raw();
 			},
 			$this->getArrayCopy()
-		));
+		);
 	}
 }
