@@ -35,6 +35,7 @@ class Queue
 	 */
 	public function merge(ArrayObject $nodes, ArrayObject $edges): static
 	{
+		$visit_nodes = [];
 		$this->nodes = $nodes;
 		$this->edges = $edges;
 
@@ -60,7 +61,7 @@ class Queue
 			}
 		}
 
-		foreach ($this->nodes as $node) {
+		foreach ($this->nodes as $identity => $node) {
 			$operation = match ($node->status) {
 				Status::INDUCTED => Operation::CREATE,
 				Status::ATTACHED => Operation::UPDATE,
@@ -70,7 +71,7 @@ class Queue
 			$this->nodeOperations[$operation->value][] = $identity;
 		}
 
-		foreach ($this->edges as $edge) {
+		foreach ($this->edges as $identity => $edge) {
 			$operation = match ($edge->status) {
 				Status::INDUCTED => Operation::CREATE,
 				Status::ATTACHED => Operation::UPDATE,
@@ -241,7 +242,10 @@ class Queue
 			->pull(Signature::SUCCESS)
 		;
 
-		var_dump($result);
+		foreach ($identities as $identity) {
+			$this->nodes[$identity]->status = Status::DETACHED;
+			unset($this->nodes[$identity]);
+		}
 	}
 
 
@@ -252,31 +256,35 @@ class Queue
 		$identities = $this->nodeOperations[Operation::UPDATE->value];
 
 		$i = 0; foreach ($identities as $identity) {
-			$node             = $this->nodes[$identity];
-			$diffs[$identity] = $this->getChanges($node);
+			$node      = $this->nodes[$identity];
+			$diffs[$i] = $this->getChanges($node);
 
-			if (count($diffs[$identity])) {
-				$query
-					->run('MATCH (%s) WHERE id(%s) = $%s', "i$i", "i$i", "n$i")
-					->with("n$i", $identity)
-				;
+			if (!count($diffs[$i])) {
+				continue;
 			}
 
-			$i++;
-		}
-
-		$i = 0; foreach ($diffs as $identities => $changes) {
 			$query
-				->run('SET @%s(%s)', "d$i", "i$i")
-				->with("d$i", $changes)
+				->run('MATCH (%s) WHERE id(%s) = $%s', "i$i", "i$i", "n$i")
+				->with("n$i", $identity)
 			;
 
 			$i++;
 		}
 
+		foreach ($diffs as $i => $changes) {
+			if (!count($changes)) {
+				continue;
+			}
+
+			$query
+				->run('SET @%s(%s)', "d$i", "i$i")
+				->with("d$i", $changes)
+			;
+		}
+
 		$query->run(
 			'RETURN %s',
-			implode(',', array_map(fn($i) => "i$i", range(0, $i - 1)))
+			implode(',', array_map(fn($i) => "i$i", array_keys($diffs)))
 		);
 
 		foreach ($query->pull(Signature::RECORD) as $record) {
@@ -354,7 +362,7 @@ class Queue
 			return array_keys(array_filter(
 				$content->labels,
 				function (Status $status) {
-					return in_array($status, [Status::ATTACHED, Status::INDUCTED]);
+					return in_array($status, [Status::INDUCTED, Status::ATTACHED]);
 				}
 			));
 		}

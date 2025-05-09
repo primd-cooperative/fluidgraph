@@ -105,7 +105,7 @@ class Graph
 				$identity = spl_object_hash($element);
 
 				if ($element instanceof Node) {
-					$target = &$this->nodes;
+					$target = $this->nodes;
 
 					if (!isset($target[$identity])) {
 						$target[$identity] = new Content\Node();
@@ -113,7 +113,7 @@ class Graph
 				}
 
 				if ($element instanceof Edge) {
-					$target = &$this->edges;
+					$target = $this->edges;
 
 					if (!isset($target[$identity])) {
 						$target[$identity] = new Content\Edge();
