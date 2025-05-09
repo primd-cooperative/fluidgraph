@@ -3,7 +3,6 @@
 namespace FluidGraph;
 
 use Bolt\enum\Signature;
-use Bolt\protocol\Response;
 use Bolt\protocol\v5\structures\DateTimeZoneId;
 use InvalidArgumentException;
 use DateTime;

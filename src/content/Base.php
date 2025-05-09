@@ -2,7 +2,6 @@
 
 namespace FluidGraph\Content;
 
-use stdClass;
 use FluidGraph\Status;
 
 /**
@@ -26,22 +25,15 @@ abstract class Base
 	/**
 	 * The operative properties of the element (as managed by/on its models)
 	 */
-	public stdClass $operative;
+	public array $operative = [];
 
 	/**
 	 * The original properties of the element (as retreived from the graph)
 	 */
-	public stdClass $original;
+	public array $original = [];
 
 	/**
 	 * The status of the element.
 	 */
 	public Status $status = Status::INDUCTED;
-
-
-	public function __construct()
-	{
-		$this->operative = new stdClass();
-		$this->original  = new stdClass();
-	}
 }

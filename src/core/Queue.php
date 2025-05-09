@@ -301,11 +301,11 @@ class Queue
 		$changes = $this->getProperties($content);
 
 		foreach ($changes as $property => $value) {
-			if (!property_exists($content->original, $property)) {
+			if (!array_key_exists($property, $content->original)) {
 				continue;
 			}
 
-			if ($value != $content->original->$property) {
+			if ($value != $content->original[$property]) {
 				continue;
 			}
 
@@ -337,8 +337,8 @@ class Queue
 		}
 
 		foreach (array_unique($properties) as $property) {
-			if (property_exists($content->operative, $property)) {
-				$key[$property] = $content->operative->$property;
+			if (array_key_exists($property, $content->operative)) {
+				$key[$property] = $content->operative[$property];
 			}
 		}
 
@@ -375,7 +375,7 @@ class Queue
 	protected function getProperties(Content\Base $content): array
 	{
 		return array_filter(
-			get_object_vars($content->operative),
+			$content->operative,
 			function($value) {
 				return !$value instanceof Relationship;
 			}
@@ -389,7 +389,7 @@ class Queue
 	protected function getRelationships(Content\Base $content): array
 	{
 		return array_filter(
-			get_object_vars($content->operative),
+			$content->operative,
 			function($value) {
 				return $value instanceof Relationship;
 			}

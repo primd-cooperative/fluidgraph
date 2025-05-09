@@ -125,7 +125,7 @@ class Graph
 				$content->labels[$class] = Status::INDUCTED;
 
 				foreach (get_object_vars($element) as $property => $value) {
-					$content->operative->$property = $value;
+					$content->operative[$property] = $value;
 
 					if ($value instanceof Relationship) {
 						$value->on($this);
@@ -158,11 +158,11 @@ class Graph
 	public function fasten(Content\Base $content, Element $element): static
 	{
 		foreach (get_object_vars($element) as $property => $value) {
-			if (!property_exists($content->operative, $property)) {
-				$content->operative->$property = $element->$property;
+			if (!array_key_exists($property, $content->operative)) {
+				$content->operative[$property] = $element->$property;
 			}
 
-			$element->$property = &$content->operative->$property;
+			$element->$property = &$content->operative[$property];
 		}
 
 		$this->content->setValue($element, $content);
@@ -340,17 +340,17 @@ class Graph
 				$value = $this->resolve($value);
 			}
 
-			if (!property_exists($content->operative, $property)) {
-				$content->operative->$property = $value;
+			if (!array_key_exists($property, $content->operative)) {
+				$content->operative[$property] = $value;
 			}
 
-			if (property_exists($content->original, $property)) {
-				if ($content->operative->$property == $content->original->$property) {
-					$content->operative->$property = $value;
+			if (array_key_exists($property, $content->original)) {
+				if ($content->operative[$property] == $content->original[$property]) {
+					$content->operative[$property] = $value;
 				}
 			}
 
-			$content->original->$property = is_object($value)
+			$content->original[$property] = is_object($value)
 				? clone $value
 				: $value
 			;

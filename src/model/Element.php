@@ -36,13 +36,13 @@ abstract class Element
 		$protected = ['__content__', ...static::key()];
 
 		foreach (get_object_vars($this) as $property => $value) {
-			unset($this->$property);
+			unset($this[$property]);
 
 			if (in_array($property, $protected)) {
 				continue;
 			}
 
-			$this->$property = is_object($value)
+			$this[$property] = is_object($value)
 				? clone $value
 				: $value;
 		}
@@ -118,7 +118,7 @@ abstract class Element
 		}
 
 		foreach ($keys as $property) {
-			$this->$property = $data[$property];
+			$this[$property] = $data[$property];
 		}
 
 		return $this;

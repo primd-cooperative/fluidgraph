@@ -50,8 +50,8 @@ class Result implements ArrayAccess
 		$element = new $class(...array_reduce(
 			array_keys(get_class_vars($class)),
 			function ($properties, $property) {
-				if (property_exists($this->element->original, $property)) {
-					$properties[$property] = $this->element->original->$property;
+				if (array_key_exists($property, $this->element->original)) {
+					$properties[$property] = $this->element->original[$property];
 				}
 
 				return $properties;
@@ -88,7 +88,7 @@ class Result implements ArrayAccess
 	 */
 	public function offsetExists(mixed $offset): bool
 	{
-		return property_exists($this->element->original, $offset);
+		return array_key_exists($offset, $this->element->original, $offset);
 	}
 
 
