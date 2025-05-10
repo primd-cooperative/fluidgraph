@@ -10,7 +10,6 @@ use RuntimeException;
  */
 abstract class Relationship
 {
-	use HasGraph;
 	use Relationship\AbstractRelationship;
 
 	/**

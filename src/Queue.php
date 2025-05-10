@@ -9,6 +9,7 @@ use Bolt\enum\Signature;
 class Queue
 {
 	use HasGraph;
+	use DoesWith;
 
 	/**
 	 * @var ArrayObject<Content\Edge>

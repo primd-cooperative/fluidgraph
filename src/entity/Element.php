@@ -9,6 +9,8 @@ use InvalidArgumentException;
  */
 abstract class Element
 {
+	use DoesWith;
+
 	/**
 	 *
 	 */

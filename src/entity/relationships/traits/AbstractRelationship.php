@@ -10,6 +10,9 @@ use ArrayObject;
  */
 trait AbstractRelationship
 {
+	use FluidGraph\HasGraph;
+	use FluidGraph\DoesWith;
+
 	/**
 	 * @var array<FluidGraph\Edge>
 	 */

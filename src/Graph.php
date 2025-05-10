@@ -19,6 +19,8 @@ use DateTime;
  */
 class Graph
 {
+	use DoesWith;
+
 	/**
 	 * The underlying Bolt protocol acccess
 	 */
@@ -39,16 +41,7 @@ class Graph
 	/**
 	 * An instance of the base queue implementation to clone
 	 */
-	public protected(set) Queue $queue {
-		get {
-			return clone $this->queue;
-		}
-		set (Queue $queue) {
-			$this->queue = $queue;
-		}
-	}
-
-
+	public protected(set) Queue $queue;
 
 	/**
 	 *
@@ -209,6 +202,20 @@ class Graph
 		$this->fasten($element);
 
 		return $element;
+	}
+
+
+	/**
+	 *
+	 */
+	public function load(Element ...$elements): static
+	{
+		foreach ($elements as $element) {
+			$this->init($element);
+			$this->attach($element);
+		}
+
+		return $this;
 	}
 
 

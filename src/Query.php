@@ -5,12 +5,13 @@ namespace FluidGraph;
 use Bolt\enum\Signature;
 use Bolt\protocol\v5\structures\DateTimeZoneId;
 use InvalidArgumentException;
-use DateTime;
 use RuntimeException;
+use DateTime;
 
 class Query
 {
 	use HasGraph;
+	use DoesWith;
 
 	const REGEX_EXPANSION = '#@([a-zA-Z][a-zA-Z0-9]*)(?:\(([a-zA-Z][a-zA-Z0-9]*)\))?#';
 
