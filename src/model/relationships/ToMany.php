@@ -1,6 +1,8 @@
 <?php
 
-namespace FluidGraph;
+namespace FluidGraph\Relationship;
+
+use FluidGraph;
 
 /**
  * A cluster is a relationship to many nodes independent of the source node.
@@ -8,8 +10,8 @@ namespace FluidGraph;
  * When the source node is attached, so are the target nodes.
  * When the source node is detached, the target nodes live on.
  */
-class Cluster extends Relationship
+class ToMany extends FluidGraph\Relationship
 {
-	use Relationship\HasMany;
-	use Relationship\AttachRelated;
+	use HasMany;
+	use AttachRelated;
 }

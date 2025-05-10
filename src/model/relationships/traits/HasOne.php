@@ -2,17 +2,18 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph\Node;
+use FluidGraph;
 
 trait HasOne
 {
-	public function set(Node $node)
+	use AbstractRelationship;
+
+	public function set(FluidGraph\Node $node, array $data = []): static
 	{
-		if ($this->contains($node)) {
-
+		if (!$this->contains($node)) {
+			$this->for($node)[0]->assign($data);
 		}
-		$content = $this->graph->fasten($node)->content->getValue($node);
 
-		$this->include()
+		return $this;
 	}
 }

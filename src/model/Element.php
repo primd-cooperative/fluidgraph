@@ -50,6 +50,30 @@ abstract class Element
 
 
 	/**
+	 * Assign data to the entity/element in a safe/bulk manner
+	 */
+	public function assign(array $data): static
+	{
+		$keys         = array_keys($data);
+		$properties   = array_keys((array) $this);
+		$inaccessible = array_diff($keys, $properties);
+
+		if (count($inaccessible)) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot update inaccessible properties: %s',
+				implode(', ', $inaccessible)
+			));
+		}
+
+		foreach ($keys as $property) {
+			$this[$property] = $data[$property];
+		}
+
+		return $this;
+	}
+
+
+	/**
 	 * Get the identity of the element.
 	 *
 	 * A null identity implies the element is not attached to or persisted in the graph yet.
@@ -102,25 +126,14 @@ abstract class Element
 
 
 	/**
-	 * Update the data on an element in a safe/bulk manner
+	 *
 	 */
-	public function update(array $data): static
+	protected function contentOr(string $class, $message): Content\Edge|Content\Node
 	{
-		$keys         = array_keys($data);
-		$properties   = array_keys((array) $this);
-		$inaccessible = array_diff($keys, $properties);
-
-		if (count($inaccessible)) {
-			throw new InvalidArgumentException(sprintf(
-				'Cannot update inaccessible properties: %s',
-				implode(', ', $inaccessible)
-			));
+		if (is_null($this->__content__)) {
+			throw new $class($message);
 		}
 
-		foreach ($keys as $property) {
-			$this[$property] = $data[$property];
-		}
-
-		return $this;
+		return $this->__content__;
 	}
 }
