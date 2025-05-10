@@ -2,38 +2,73 @@
 
 namespace FluidGraph;
 
+use ArrayObject;
 use RuntimeException;
 
 /**
- *
+ * Relationships represent a collection of edges
  */
 abstract class Relationship
 {
 	use HasGraph;
 
-	public protected(set) string $type;
+	/**
+	 * Construct a new Relationship
+	 */
+	public function __construct(
+		/**
+		 * The edge type that defines the relationship
+		 */
+		public protected(set) string $type,
 
-	public protected(set) array $kind;
+		/**
+		 *
+		 */
+		public protected(set) Mode $mode = Mode::EAGER,
 
-	public protected(set) Mode $mode;
+		/**
+		 *
+		 */
+		public protected(set) string|array $kind = [],
 
-	protected array $included = [];
+		/**
+		 *
+		 */
+		protected $included = new ArrayObject(),
 
-	protected array $excluded = [];
+		/**
+		 *
+		 */
+		protected $excluded = new ArrayObject()
+	) {}
 
 
 	/**
-	 *
+	 * Check if there are any edges pointing to one or more nodes or kinds
 	 */
-	public function __construct(
-		string $type,
-		Mode $mode = Mode::EAGER,
-		string|array $kind = []
-	) {
-		$this->type  = $type;
-		$this->mode  = $mode;
-		$this->kind  = $kind;
+	public function contains(Node|string ...$nodes): bool
+	{
+		return FALSE;
 	}
+
+	/**
+	 * Get an array of all the edges pointing to a one or more nodes or kinds
+	 */
+	public function for(Node|string $node): array
+	{
+		return [];
+	}
+
+
+
+
+
+
+
+
+
+
+
 
 
 	/**
@@ -42,12 +77,14 @@ abstract class Relationship
 	public function exclude(Edge ...$edges)
 	{
 		foreach ($edges as $i => $edge) {
+			$content = $this->graph->content->getValue($edge);
+
 			if (get_class($edge) != $this->type) {
 				unset($edges[$i]);
 				continue;
 			}
 
-			if (!in_array(get_class($edge->target()), $this->kind)) {
+			if (!in_array(get_class($content->target), $this->kind)) {
 				unset($edge[$i]);
 				continue;
 			}
@@ -100,11 +137,14 @@ abstract class Relationship
 
 
 	/**
-	 * Iterate through all merge hook traits and run them.
+	 * Merge the relationship into the graph object.
 	 *
-	 * Called from Queue on merge()
+	 * This allows for relationships to control the the behavior and status of their edges and
+	 * nodes.  It works by iterating through all MergeHook traits and running them.
+	 *
+	 * Called from Queue on merge().
 	 */
-	final public function merge(Content\Node $source): static
+	public function merge(Content\Node $source): static
 	{
 		//
 		// TODO: update the source for all edges that need it.

@@ -2,6 +2,8 @@
 namespace FluidGraph;
 
 use ArrayAccess;
+use InvalidArgumentException;
+use ReflectionClass;
 use RuntimeException;
 
 /**
@@ -15,7 +17,7 @@ class Result implements ArrayAccess
 	 *
 	 */
 	public function __construct(
-		protected Content\Base $element
+		protected Content\Base $content
 	) {}
 
 
@@ -29,37 +31,72 @@ class Result implements ArrayAccess
 	 */
 	public function as(string $class): ?Node
 	{
-		if (!$this->element) {
+		if (!$this->content) {
 			return NULL;
 		}
 
-		if ($this->element instanceof Content\Node && !is_subclass_of($class, Node::class, TRUE)) {
-			throw new RuntimeException(sprintf(
+		if (!class_exists($class)) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot make "%s," no such class exists',
+				$class
+			));
+		}
+
+		if ($this->isNode() && !is_subclass_of($class, Node::class, TRUE)) {
+			throw new InvalidArgumentException(sprintf(
 				'Cannot make "%s" from non-Node result',
 				$class
 			));
 		}
 
-		if ($this->element instanceof Content\Edge && !is_subclass_of($class, Edge::class, TRUE)) {
-			throw new RuntimeException(sprintf(
+		if ($this->isEdge() && !is_subclass_of($class, Edge::class, TRUE)) {
+			throw new InvalidArgumentException(sprintf(
 				'Cannot make "%s" from non-Edge result',
 				$class
 			));
 		}
 
-		$element = new $class(...array_reduce(
-			array_keys(get_class_vars($class)),
-			function ($properties, $property) {
-				if (array_key_exists($property, $this->element->original)) {
-					$properties[$property] = $this->element->original[$property];
-				}
+		if (!in_array($class, array_keys($this->content->labels))) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot make "%s," invalid kind for element with labels: %s',
+				$class,
+				implode(', ', array_keys($this->content->labels))
+			));
+		}
 
-				return $properties;
-			},
-			[]
-		));
+		$parameters = new ReflectionClass($class)->getConstructor()->getParameters();
+		$required   = [];
+		$missing    = [];
 
-		$this->graph->fasten($this->element, $element);
+		foreach ($parameters as $parameter) {
+			$name = $parameter->getName();
+
+			if (!$parameter->isPromoted()) {
+				continue;
+			}
+
+			if ($parameter->isOptional()) {
+				continue;
+			}
+
+			if (!array_key_exists($name, $this->content->original)) {
+				$missing[] = $name;
+			}
+
+			$required[$name] = $this->content->original[$name];
+		}
+
+		if (count($missing)) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot make "%s" from result, missing required values for: %s',
+				$class,
+				implode(', ', $missing)
+			));
+		}
+
+		$element = new $class(...$required);
+
+		$this->graph->fasten($element, $this->content);
 
 		return $element;
 	}
@@ -70,7 +107,7 @@ class Result implements ArrayAccess
 	 */
 	public function isEdge(): bool
 	{
-		return $this->element instanceof Content\Edge;
+		return $this->content instanceof Content\Edge;
 	}
 
 
@@ -79,7 +116,7 @@ class Result implements ArrayAccess
 	 */
 	public function isNode(): bool
 	{
-		return $this->element instanceof Content\Node;
+		return $this->content instanceof Content\Node;
 	}
 
 
@@ -88,7 +125,7 @@ class Result implements ArrayAccess
 	 */
 	public function offsetExists(mixed $offset): bool
 	{
-		return array_key_exists($offset, $this->element->original);
+		return array_key_exists($offset, $this->content->original);
 	}
 
 
@@ -97,7 +134,7 @@ class Result implements ArrayAccess
 	 */
 	public function offsetGet(mixed $offset): mixed
 	{
-		return $this->offsetExists($offset) ? $this->element->original[$offset] : NULL;
+		return $this->offsetExists($offset) ? $this->content->original[$offset] : NULL;
 	}
 
 
@@ -130,6 +167,6 @@ class Result implements ArrayAccess
 	 */
 	public function raw(): Content\Base
 	{
-		return $this->element;
+		return $this->content;
 	}
 }

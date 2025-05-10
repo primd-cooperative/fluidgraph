@@ -12,7 +12,7 @@ abstract class Element
 	/**
 	 *
 	 */
-	protected Content\Edge|Content\Node|null $__content__ = NULL;
+	protected private(set) Content\Edge|Content\Node|null $__content__ = NULL;
 
 
 	/**

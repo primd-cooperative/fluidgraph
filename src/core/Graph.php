@@ -8,8 +8,9 @@ use Bolt\protocol\V5_2 as Protocol;
 use Bolt\protocol\v5\structures as Struct;
 
 use ArrayObject;
-use ReflectionProperty;
 use RuntimeException;
+use InvalidArgumentException;
+use ReflectionProperty;
 use DateTimeZone;
 use DateTime;
 
@@ -62,7 +63,7 @@ class Graph
 	/**
 	 *
 	 */
-	protected ReflectionProperty $content;
+	public protected(set) ReflectionProperty $content;
 
 	/**
 	 * @var ArrayObject<Content\Edge>
@@ -101,38 +102,34 @@ class Graph
 	{
 		foreach ($elements as $element) {
 			if (!$element->status()) {
-				$class    = get_class($element);
-				$identity = spl_object_hash($element);
+				$this->fasten($element);
+			}
 
-				if ($element instanceof Node) {
-					$target = $this->nodes;
+			$class   = get_class($element);
+			$content = $this->content->getValue($element);
 
-					if (!isset($target[$identity])) {
-						$target[$identity] = new Content\Node();
-					}
-				}
+			switch ($element->status()) {
+				case Status::FASTENED:
+					$identity = spl_object_hash($element);
+					$target   = match(TRUE) {
+						$element instanceof Node => $this->nodes,
+						$element instanceof Edge => $this->edges,
+					};
 
-				if ($element instanceof Edge) {
-					$target = $this->edges;
+					$content->labels[$class] = $content->status = Status::INDUCTED;
+					$target[$identity]       = $content;
 
-					if (!isset($target[$identity])) {
-						$target[$identity] = new Content\Edge();
-					}
-				}
+					break;
 
-				$content = $target[$identity];
+				case Status::RELEASED:
+					$content->status = Status::ATTACHED;
 
-				$content->labels[$class] = Status::INDUCTED;
-
-				foreach (get_object_vars($element) as $property => $value) {
-					$content->operative[$property] = $value;
-
-					if ($value instanceof Relationship) {
-						$value->on($this);
-					}
-				}
-
-				$this->fasten($content, $element);
+				case Status::DETACHED:
+					throw new InvalidArgumentException(sprintf(
+						'Cannot attached already detached element: %s (%s)',
+						$content->identity,
+						$class
+					));
 			}
 		}
 
@@ -143,7 +140,26 @@ class Graph
 	public function detach(Element ...$elements)
 	{
 		foreach ($elements as $element) {
-			$this->content->getValue($element)->status = Status::RELEASED;
+			$class   = get_class($element);
+			$content = $this->content->getValue($element);
+
+			switch ($element->status()) {
+				case Status::INDUCTED:
+					$identity = spl_object_hash($element);
+					$target   = match(TRUE) {
+						$element instanceof Node => $this->nodes,
+						$element instanceof Edge => $this->edges,
+					};
+
+					$content->labels[$class] = $content->status = Status::FASTENED;
+
+					unset($target[$identity]);
+
+					break;
+
+				case Status::ATTACHED:
+					$this->content->getValue($element)->status = Status::RELEASED;
+			}
 		}
 	}
 
@@ -153,21 +169,58 @@ class Graph
 	 *
 	 * This converts entity properties to references and sets the content on the element.  If the
 	 * content doesn't contain a corresponding property, it is created with the value on the
-	 * entity at present.
+	 * entity at present.  If no content is provided, new content will be created depending on the
+	 * element type.
 	 */
-	public function fasten(Content\Base $content, Element $element): static
+	public function fasten(Element $element, ?Content\Base $content = NULL): static
 	{
-		foreach (get_object_vars($element) as $property => $value) {
-			if (!array_key_exists($property, $content->operative)) {
-				$content->operative[$property] = $element->$property;
+		if (!$this->content->getValue($element)) {
+			if (!$content) {
+				$class   = get_class($element);
+				$content = match(TRUE) {
+					$element instanceof Node => new Content\Node(),
+					$element instanceof Edge => new Content\Edge(),
+				};
+
+				$content->labels[$class] = Status::FASTENED;
 			}
 
-			$element->$property = &$content->operative[$property];
+			$this->content->setValue($element, $content);
+
+			foreach (get_object_vars($element) as $property => $value) {
+				if (!array_key_exists($property, $content->operative)) {
+					$content->operative[$property] = $value;
+				}
+
+				if ($value instanceof Relationship) {
+					$value->on($this);
+				}
+
+				$element->$property = &$content->operative[$property];
+			}
+
+		} else {
+			if ($content) {
+				throw new InvalidArgumentException(sprintf(
+					'Cannot fasten element to content, already fastened'
+				));
+			}
 		}
 
-		$this->content->setValue($element, $content);
-
 		return $this;
+	}
+
+
+	/**
+	 * @template T of Element
+	 * @param T $element
+	 * @return T
+	 */
+	public function init(Element $element): Element
+	{
+		$this->fasten($element);
+
+		return $element;
 	}
 
 
@@ -333,6 +386,12 @@ class Graph
 
 		foreach ($structure->labels as $label) {
 			$content->labels[$label] = Status::ATTACHED;
+		}
+
+		foreach (array_keys($content->labels) as $label) {
+			if (!in_array($label, $structure->labels)) {
+				$content->labels[$label] = Status::DETACHED;
+			}
 		}
 
 		foreach ($structure->properties as $property => $value) {

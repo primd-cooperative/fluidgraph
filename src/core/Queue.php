@@ -28,7 +28,6 @@ class Queue
 
 	protected bool $spent = FALSE;
 
-
 	/**
 	 * @param ArrayObject<Content\Node> &$nodes
 	 * @param ArrayObject<Content\Edge> &$edges
@@ -271,20 +270,30 @@ class Queue
 			$i++;
 		}
 
-		foreach ($diffs as $i => $changes) {
-			if (!count($changes)) {
+		$i = 0; foreach ($identities as $identity) {
+			$node = $this->nodes[$identity];
+
+			if (!count($diffs[$i])) {
 				continue;
 			}
 
 			$query
 				->run('SET @%s(%s)', "d$i", "i$i")
-				->with("d$i", $changes)
+				->with("d$i", $diffs[$i])
 			;
+
+			if ($plus_signature = $this->getSignature($node, Status::INDUCTED)) {
+				$query->run('SET %s:%s', "i$i", $plus_signature);
+			}
+
+			if ($less_signature = $this->getSignature($node, Status::RELEASED)) {
+				$query->run('REMOVE %s:%s', "i$i", $less_signature);
+			}
 		}
 
 		$query->run(
 			'RETURN %s',
-			implode(',', array_map(fn($i) => "i$i", array_keys($diffs)))
+			implode(',', array_map(fn($i) => "i$i", array_keys(array_filter($diffs))))
 		);
 
 		foreach ($query->pull(Signature::RECORD) as $record) {
@@ -349,23 +358,18 @@ class Queue
 	/**
 	 *
 	 */
-	protected function getLabels(Content\Base $content, bool $detached = FALSE): array
+	protected function getLabels(Content\Base $content, Status ...$statuses): array
 	{
-		if ($detached) {
-			return array_keys(array_filter(
-				$content->labels,
-				function (Status $status) {
-					return in_array($status, [Status::RELEASED]);
-				}
-			));
-		} else {
-			return array_keys(array_filter(
-				$content->labels,
-				function (Status $status) {
-					return in_array($status, [Status::INDUCTED, Status::ATTACHED]);
-				}
-			));
+		if (!count($statuses)) {
+			$statuses = [Status::INDUCTED, Status::ATTACHED];
 		}
+
+		return array_keys(array_filter(
+			$content->labels,
+			function (Status $status) use ($statuses) {
+				return in_array($status, $statuses, TRUE);
+			}
+		));
 	}
 
 
@@ -397,9 +401,9 @@ class Queue
 	}
 
 
-	protected function getSignature(Content\Base $content): string
+	protected function getSignature(Content\Base $content, Status ...$statuses): string
 	{
-		return implode(':', $this->getLabels($content));
+		return implode(':', $this->getLabels($content, ...$statuses));
 	}
 }
 

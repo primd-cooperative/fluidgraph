@@ -35,5 +35,5 @@ abstract class Base
 	/**
 	 * The status of the element.
 	 */
-	public Status $status = Status::INDUCTED;
+	public Status $status = Status::FASTENED;
 }
