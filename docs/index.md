@@ -9,7 +9,8 @@ composer require primd/fluidgraph
 
 ## Basic Usage
 
-Create a new Entity class by defining its properties and relationships:
+Create a new Entity class by defining its properties and relationships.  All properties on your
+entities MUST be public.  These are effectivey DTOs and Proxies:
 
 ```php
 use FluidGraph\Node;
@@ -24,11 +25,6 @@ class Person extends Node
 	public function __construct(
 		public ?string $firstName = NULL,
 		public ?string $lastName = NULL,
-		public OwnedCluster $suggestions = new OwnedCluster(
-			Suggested::class,
-			Mode::LAZY,
-			[Claim::class]
-		)
 	) {
 		$this->id = Uuid::uuid7();
 		$this->dateCreated = new DateTime();
@@ -41,5 +37,5 @@ back.  The fastened instance is backed by a `Content\Node` or `Content\Edge` dep
 and its relationships are linked to the graph instance.
 
 ```php
-$person = $graph->init(new Person(firstName = 'Bob'));
+$person = $graph->init(new Person(firstName: 'Bob'));
 ```

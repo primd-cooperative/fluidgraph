@@ -48,17 +48,7 @@ class Graph
 		}
 	}
 
-	/**
-	 * An instance of the base where clause builder to clone
-	 */
-	public protected(set) Where $where {
-		get {
-			return clone $this->where;
-		}
-		set (Where $where) {
-			$this->where = $where;
-		}
-	}
+
 
 	/**
 	 *
@@ -82,16 +72,14 @@ class Graph
 		array $login,
 		Bolt $bolt,
 		Query $query,
-		Queue $queue,
-		Where $where,
+		Queue $queue
 	) {
-		$this->where    = $where;
-		$this->queue    = $queue->on($this);
-		$this->query    = $query->on($this);
-		$this->protocol = $bolt->setProtocolVersions(5.2)->build();
-		$this->content  = new ReflectionProperty(Element::class, '__content__');
 		$this->nodes    = new ArrayObject();
 		$this->edges    = new ArrayObject();
+		$this->content  = new ReflectionProperty(Element::class, '__content__');
+		$this->protocol = $bolt->setProtocolVersions(5.2)->build();
+		$this->queue    = $queue->on($this)->manage($this->nodes, $this->edges);
+		$this->query    = $query->on($this);
 
 		$response = $this->protocol->hello()->getResponse();
 		$response = $this->protocol->logon($login)->getResponse();
@@ -221,93 +209,6 @@ class Graph
 		$this->fasten($element);
 
 		return $element;
-	}
-
-
-	/**
-	 * Match multiple nodes or edges and have them returned as an instance of a given class.
-	 *
-	 * The type of elements (node or edge) being matched is determined by the class.
-	 *
-	 * @template T of Element
-	 * @param class-string<T> $class
-	 * @return array<T>
-	 */
-	public function match(string $class, callable|array|int $terms = [], ?array $order = NULL, int $limit = -1, int $skip = 0): array
-	{
-		if (is_int($terms)) {
-			return $this->match(
-				$class,
-				function($where) use ($terms) {
-					return $where->id($terms);
-				},
-				$order,
-				$limit,
-				$skip
-			);
-
-		} elseif (is_array($terms)) {
-			return $this->match(
-				$class,
-				function($where) use ($terms) {
-					return $where->all(...$where->eq($terms));
-				},
-				$order,
-				$limit,
-				$skip
-			);
-
-		} else {
-			$query = $this->run('MATCH (n:%s)', $class);
-			$where = $terms($this->where->use('n', $query));
-
-			if ($where) {
-				$apply = $where();
-
-				if ($apply) {
-					$query->run('WHERE %s', $apply);
-				}
-			}
-
-			$query->run('RETURN n');
-
-			if ($order) {
-				$query->run('ORDER BY');
-			}
-
-			if ($limit >= 0) {
-				$query->run('LIMIT %s', $limit);
-			}
-
-			if ($skip > 0) {
-				$query->run('SKIP %s', $skip);
-			}
-
-			return $query->get()->as($class);
-		}
-	}
-
-
-	/**
-	 * Match a single node or edge and have it returned as an instance of a given class.
-	 *
-	 * The type of element (node or edge) being matched is determined by the class.
-	 *
-	 * @template T of Element
-	 * @param class-string<T> $class
-	 * @return ?T
-	 */
-	public function matchOne(string $class, callable|array|int $query): ?Element
-	{
-		$results = $this->match($class, $query, [], 2, 0);
-
-		if (count($results) > 1) {
-			throw new RuntimeException(sprintf(
-				'Match returned more than one result'
-			));
-		}
-
-		return $results[0];
 	}
 
 

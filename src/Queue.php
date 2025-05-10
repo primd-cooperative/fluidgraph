@@ -10,8 +10,14 @@ class Queue
 {
 	use HasGraph;
 
+	/**
+	 * @var ArrayObject<Content\Edge>
+	 */
 	protected ArrayObject $edges;
 
+	/**
+	 * @var ArrayObject<Content\Node>
+	 */
 	protected ArrayObject $nodes;
 
 	protected array $nodeOperations = [
@@ -28,15 +34,25 @@ class Queue
 
 	protected bool $spent = FALSE;
 
+
 	/**
-	 * @param ArrayObject<Content\Node> &$nodes
-	 * @param ArrayObject<Content\Edge> &$edges
+	 *
 	 */
-	public function merge(ArrayObject $nodes, ArrayObject $edges): static
+	public function manage(ArrayObject $nodes, ArrayObject $edges): static
 	{
-		$visit_nodes = [];
 		$this->nodes = $nodes;
 		$this->edges = $edges;
+
+		return $this;
+	}
+
+	/**
+	 * @param ArrayObject<Content\Node> $nodes
+	 * @param ArrayObject<Content\Edge> $edges
+	 */
+	public function merge(): static
+	{
+		$visit_nodes = [];
 
 		foreach ($this->nodes as $identity => $node) {
 			$visit_nodes[$identity] = $node->status;
@@ -229,7 +245,7 @@ class Queue
 		$matchers   = [];
 		$query      = $this->graph->query;
 		$identities = $this->nodeOperations[Operation::DELETE->value];
-		$where      = $this->graph->where->use('n', $query);
+		$where      = $query->where->var('n');
 
 		$i = 0; foreach ($identities as $identity) {
 			$node       = $this->nodes[$identity];

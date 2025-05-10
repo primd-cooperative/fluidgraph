@@ -6,6 +6,7 @@ use Bolt\enum\Signature;
 use Bolt\protocol\v5\structures\DateTimeZoneId;
 use InvalidArgumentException;
 use DateTime;
+use RuntimeException;
 
 class Query
 {
@@ -26,12 +27,26 @@ class Query
 
 
 	/**
+	 * An instance of the base where clause builder to clone
+	 */
+	public protected(set) Where $where {
+		get {
+			return clone $this->where;
+		}
+		set (Where $where) {
+			$this->where = $where;
+		}
+	}
+
+	/**
 	 *
 	 */
 	public function __construct(
 		protected array $statements = [],
 		protected array $parameters = [],
-	) {}
+	) {
+		$this->where = new Where()->uses($this);
+	}
 
 
 	/**
@@ -95,6 +110,93 @@ class Query
 				)
 			))->on($this->graph);
 		}
+	}
+
+	/**
+	 * Match multiple nodes or edges and have them returned as an instance of a given class.
+	 *
+	 * The type of elements (node or edge) being matched is determined by the class.
+	 *
+	 * @template T of Element
+	 * @param class-string<T> $class
+	 * @return array<T>
+	 */
+	public function match(string $class, callable|array|int $terms = [], ?array $order = NULL, int $limit = -1, int $skip = 0): array
+	{
+		if (is_int($terms)) {
+			return $this->match(
+				$class,
+				function($where) use ($terms) {
+					return $where->id($terms);
+				},
+				$order,
+				$limit,
+				$skip
+			);
+
+		} elseif (is_array($terms)) {
+			return $this->match(
+				$class,
+				function($where) use ($terms) {
+					return $where->all(...$where->eq($terms));
+				},
+				$order,
+				$limit,
+				$skip
+			);
+
+		} else {
+			$apply = $terms($this->where->var('n'));
+
+			$this->run('MATCH (n:%s)', $class);
+
+			if ($apply) {
+				$conditions = $apply();
+
+				if ($conditions) {
+					$this->run('WHERE %s', $conditions);
+				}
+			}
+
+			$this->run('RETURN n');
+
+			if ($order) {
+				$this->run('ORDER BY');
+			}
+
+			if ($limit >= 0) {
+				$this->run('LIMIT %s', $limit);
+			}
+
+			if ($skip > 0) {
+				$this->run('SKIP %s', $skip);
+			}
+
+			return $this->get()->as($class);
+		}
+	}
+
+
+	/**
+	 * Match a single node or edge and have it returned as an instance of a given class.
+	 *
+	 * The type of element (node or edge) being matched is determined by the class.
+	 *
+	 * @template T of Element
+	 * @param class-string<T> $class
+	 * @return ?T
+	 */
+	public function matchOne(string $class, callable|array|int $query): ?Element
+	{
+		$results = $this->match($class, $query, [], 2, 0);
+
+		if (count($results) > 1) {
+			throw new RuntimeException(sprintf(
+				'Match returned more than one result'
+			));
+		}
+
+		return $results[0];
 	}
 
 

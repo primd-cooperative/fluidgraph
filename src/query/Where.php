@@ -10,7 +10,6 @@ class Where
 
 	protected Query $query;
 
-
 	public function all(callable ...$parts): callable|null
 	{
 		if (!count($parts)) {
@@ -48,7 +47,7 @@ class Where
 
 		} else {
 			return function() use ($condition, $value) {
-				return sprintf('%s.%s = %s', $this->alias, $condition, $this->var($value));
+				return sprintf('%s.%s = %s', $this->alias, $condition, $this->param($value));
 			};
 		}
 	}
@@ -56,20 +55,28 @@ class Where
 	public function id(int $term): callable
 	{
 		return function() use ($term) {
-			return sprintf('id(%s) = %s', $this->alias, $this->var($term));
+			return sprintf('id(%s) = %s', $this->alias, $this->param($term));
 		};
 	}
 
 
-	public function use(string $alias, Query $query): static
+	public function uses(Query $query): static
 	{
-		$this->alias = $alias;
 		$this->query = $query;
 
 		return $this;
 	}
 
-	protected function var(mixed $value = NULL): string
+
+	public function var(string $alias): static
+	{
+		$this->alias = $alias;
+
+		return $this;
+	}
+
+
+	protected function param(mixed $value = NULL): string
 	{
 		if (!func_num_args()) {
 			return '$p' . $this->index;
