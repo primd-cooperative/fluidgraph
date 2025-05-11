@@ -19,12 +19,27 @@ use DateTime;
  */
 class Graph
 {
+	use DoesMake;
 	use DoesWith;
 
 	/**
 	 * The underlying Bolt protocol acccess
 	 */
-	public protected(set) Protocol $protocol;
+	public protected(set) Protocol $protocol {
+		get {
+			if (!isset($this->protocol)) {
+				$this->protocol = $this->bolt->setProtocolVersions(5.2)->build();
+
+				$this->protocol->hello()->getResponse();
+				$this->protocol->logon($this->login)->getResponse();
+			}
+
+			return $this->protocol;
+		}
+		set(Protocol $protocol) {
+			$this->protocol = $protocol;
+		}
+	}
 
 	/**
 	 * An instance of the base query implementation to clone
@@ -61,6 +76,16 @@ class Graph
 	/**
 	 *
 	 */
+	private Bolt $bolt;
+
+	/**
+	 * @var array
+	 */
+	private array $login;
+
+	/**
+	 *
+	 */
 	public function __construct(
 		array $login,
 		Bolt $bolt,
@@ -70,15 +95,16 @@ class Graph
 		$this->nodes    = new ArrayObject();
 		$this->edges    = new ArrayObject();
 		$this->content  = new ReflectionProperty(Element::class, '__content__');
-		$this->protocol = $bolt->setProtocolVersions(5.2)->build();
 		$this->queue    = $queue->on($this)->manage($this->nodes, $this->edges);
 		$this->query    = $query->on($this);
-
-		$response = $this->protocol->hello()->getResponse();
-		$response = $this->protocol->logon($login)->getResponse();
+		$this->login    = $login;
+		$this->bolt     = $bolt;
 	}
 
 
+	/**
+	 *
+	 */
 	public function attach(Element ...$elements): static
 	{
 		foreach ($elements as $element) {
@@ -87,7 +113,7 @@ class Graph
 			}
 
 			$class   = get_class($element);
-			$content = $this->content->getValue($element);
+			$content = $element->__content__;
 
 			switch ($element->status()) {
 				case Status::FASTENED:
@@ -97,7 +123,7 @@ class Graph
 						$element instanceof Edge => $this->edges,
 					};
 
-					$content->labels[$class] = $content->status = Status::INDUCTED;
+					$content->labels[$element::class] = $content->status = Status::INDUCTED;
 					$target[$identity]       = $content;
 
 					break;
@@ -118,7 +144,10 @@ class Graph
 	}
 
 
-	public function detach(Element ...$elements)
+	/**
+	 *
+	 */
+	public function detach(Element ...$elements): static
 	{
 		foreach ($elements as $element) {
 			$class   = get_class($element);
@@ -142,6 +171,8 @@ class Graph
 					$this->content->getValue($element)->status = Status::RELEASED;
 			}
 		}
+
+		return $this;
 	}
 
 
@@ -155,64 +186,28 @@ class Graph
 	 */
 	public function fasten(Element $element, ?Content\Base $content = NULL): static
 	{
-		if (!$this->content->getValue($element)) {
-			if (!$content) {
-				$class   = get_class($element);
-				$content = match(TRUE) {
-					$element instanceof Node => new Content\Node(),
-					$element instanceof Edge => new Content\Edge(),
-				};
-
-				$content->labels[$class] = Status::FASTENED;
-			}
-
-			$this->content->setValue($element, $content);
-
-			foreach (get_object_vars($element) as $property => $value) {
-				if (!array_key_exists($property, $content->operative)) {
-					$content->operative[$property] = $value;
-				}
-
-				if ($value instanceof Relationship) {
-					$value->on($this);
-				}
-
-				$element->$property = &$content->operative[$property];
-			}
-
+		if (!$content) {
+			$content = $element->__content__;
 		} else {
-			if ($content) {
-				throw new InvalidArgumentException(sprintf(
-					'Cannot fasten element to content, already fastened'
-				));
-			}
+			$this->content->setRawValue($element, $content);
 		}
 
-		return $this;
-	}
+		foreach ($element->values() as $property => $value) {
+			if (!array_key_exists($property, $content->operative)) {
+				$content->operative[$property] = $value;
+			}
 
+			if ($value instanceof Relationship) {
+				$value->on($this);
+			}
 
-	/**
-	 * @template T of Element
-	 * @param T $element
-	 * @return T
-	 */
-	public function init(Element $element): Element
-	{
-		$this->fasten($element);
+			unset($element->$property);
 
-		return $element;
-	}
+			$element->$property = &$content->operative[$property];
+		}
 
-
-	/**
-	 *
-	 */
-	public function load(Element ...$elements): static
-	{
-		foreach ($elements as $element) {
-			$this->init($element);
-			$this->attach($element);
+		if (!$content->status) {
+			$content->status = Status::FASTENED;
 		}
 
 		return $this;
@@ -263,7 +258,7 @@ class Graph
 				$storage  = &$this->nodes;
 
 				if (!isset($storage[$identity])) {
-					$storage[$identity] = new Content\Node($identity);
+					$storage[$identity] = new Content\Node();
 				}
 
 				break;
@@ -273,7 +268,7 @@ class Graph
 				$storage  = &$this->edges;
 
 				if (!isset($storage[$identity])) {
-					$storage[$identity] = new Content\Edge($identity);
+					$storage[$identity] = new Content\Edge();
 				}
 				break;
 
@@ -286,7 +281,9 @@ class Graph
 
 		$content = $storage[$identity];
 
-		$content->identity = $identity;
+		if (!isset($content->identity)) {
+			$content->identify($identity);
+		}
 
 		if ($content->status != Status::RELEASED) {
 			$content->status = Status::ATTACHED;

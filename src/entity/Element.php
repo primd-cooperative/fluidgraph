@@ -11,11 +11,10 @@ abstract class Element
 {
 	use DoesWith;
 
-	/**
-	 *
-	 */
-	protected private(set) Content\Edge|Content\Node|null $__content__ = NULL;
-
+	abstract public protected(set) ?Content\Base $__content__ {
+		get;
+		set;
+	}
 
 	/**
 	 *
@@ -35,19 +34,31 @@ abstract class Element
 	 */
 	public function __clone(): void
 	{
-		$protected = ['__content__', ...static::key()];
+		$keys  = static::key();
+		$clone = array_diff(
+			array_keys(get_object_vars($this)),
+			[
+				'__content__',
+				...$keys
+			]
+			);
 
-		foreach (get_object_vars($this) as $property => $value) {
-			unset($this[$property]);
-
-			if (in_array($property, $protected)) {
-				continue;
-			}
-
-			$this[$property] = is_object($value)
-				? clone $value
-				: $value;
+		foreach ($keys as $property) {
+			unset($this->$property);
 		}
+
+		foreach ($clone as $property) {
+			$value = $this->$property;
+
+			unset($this->$property);
+
+			$this->$property = is_object($value)
+				? clone $value
+				: $value
+			;
+		}
+
+		$this->__content__ = NULL;
 	}
 
 
@@ -82,10 +93,11 @@ abstract class Element
 	 */
 	public function identity(): int|null
 	{
-		return !is_null($this->__content__)
-			? $this->__content__->identity
-			: NULL
-		;
+		if (!isset($this->__content__->identity)) {
+			return NULL;
+		}
+
+		return $this->__content__->identity;
 	}
 
 
@@ -99,12 +111,12 @@ abstract class Element
 				return TRUE;
 			}
 
-			if ($this->__content__ && $this->__content__ === $element->__content__) {
+			if ($this->__content__ === $element->__content__) {
 				return TRUE;
 			}
 
 		} else {
-			if ($this->__content__ && $this->__content__ === $element) {
+			if ($this->__content__ === $element) {
 				return TRUE;
 			}
 		}
@@ -114,28 +126,33 @@ abstract class Element
 
 
 	/**
-	 * Get the status of the element.
+	 * Get the status of the element or check if status is one of...
 	 *
-	 * A null status implies that the element has not been attached to the graph yet.
+	 * A null implies that the element has not been attached to the graph yet.
 	 */
-	public function status(): Status|null
+	public function status(Status ...$statuses): Status|bool|null
 	{
-		return !is_null($this->__content__)
-			? $this->__content__->status
-			: NULL
-		;
+		if (count($statuses)) {
+			return in_array($this->__content__->status, $statuses);
+		}
+
+		return $this->__content__->status;
 	}
 
 
 	/**
 	 *
 	 */
-	protected function contentOr(string $class, $message): Content\Edge|Content\Node
+	public function values(): array
 	{
-		if (is_null($this->__content__)) {
-			throw new $class($message);
-		}
-
-		return $this->__content__;
+		return array_filter(
+			get_object_vars($this),
+			function($key) {
+				return !in_array($key, [
+					'__content__'
+				]);
+			},
+			ARRAY_FILTER_USE_KEY
+		);
 	}
 }

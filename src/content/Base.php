@@ -3,6 +3,7 @@
 namespace FluidGraph\Content;
 
 use FluidGraph\Status;
+use FluidGraph\Element;
 
 /**
  * The content base provides the common properties for edge and node contents.
@@ -13,9 +14,14 @@ use FluidGraph\Status;
 abstract class Base
 {
 	/**
+	 * The entity from which this content originated
+	 */
+	readonly public ?Element $entity;
+
+	/**
 	 * The identity of the element as it is or was in the graph.
 	 */
-	public ?int $identity = NULL;
+	readonly public int $identity;
 
 	/**
 	 * The labels of the element
@@ -35,5 +41,50 @@ abstract class Base
 	/**
 	 * The status of the element.
 	 */
-	public Status $status = Status::FASTENED;
+	public ?Status $status = NULL;
+
+
+	/**
+	 *
+	 */
+	public function __construct(?Element $element = NULL)
+	{
+		if ($element) {
+			$this->entity = $element;
+			$this->labels[$element::class] = Status::FASTENED;
+		}
+
+	}
+
+
+	/**
+	 *
+	 */
+	public function __debugInfo()
+	{
+		return array_filter(
+			get_object_vars($this),
+			function($key) {
+				return !in_array(
+					$key,
+					[
+						'graph',
+						'entity'
+					]
+				);
+			},
+			ARRAY_FILTER_USE_KEY
+		);
+	}
+
+
+	/**
+	 *
+	 */
+	public function identify(int $identity): static
+	{
+		$this->identity = $identity;
+
+		return $this;
+	}
 }

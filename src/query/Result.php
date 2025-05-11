@@ -64,39 +64,14 @@ class Result implements ArrayAccess
 			));
 		}
 
-		$parameters = new ReflectionClass($class)->getConstructor()->getParameters();
-		$required   = [];
-		$missing    = [];
-
-		foreach ($parameters as $parameter) {
-			$name = $parameter->getName();
-
-			if (!$parameter->isPromoted()) {
-				continue;
-			}
-
-			if ($parameter->isOptional()) {
-				continue;
-			}
-
-			if (!array_key_exists($name, $this->content->original)) {
-				$missing[] = $name;
-			}
-
-			$required[$name] = $this->content->original[$name];
-		}
-
-		if (count($missing)) {
-			throw new InvalidArgumentException(sprintf(
-				'Cannot make "%s" from result, missing required values for: %s',
+		$this->graph->fasten(
+			$element = $this->graph->make(
 				$class,
-				implode(', ', $missing)
-			));
-		}
-
-		$element = new $class(...$required);
-
-		$this->graph->fasten($element, $this->content);
+				$this->content->original,
+				Maker::SKIP_CHECKS | Maker::SKIP_ASSIGN
+			),
+			$this->content
+		);
 
 		return $element;
 	}

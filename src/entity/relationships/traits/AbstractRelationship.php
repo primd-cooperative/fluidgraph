@@ -11,6 +11,7 @@ use ArrayObject;
 trait AbstractRelationship
 {
 	use FluidGraph\HasGraph;
+	use FluidGraph\DoesMake;
 	use FluidGraph\DoesWith;
 
 	/**
@@ -52,6 +53,15 @@ trait AbstractRelationship
 	 */
 	abstract public function for(FluidGraph\Content\Node|FluidGraph\Node|string ...$nodes): array;
 
+	/**
+	 * ...
+	 */
+	abstract protected function includes(FluidGraph\Content\Node|FluidGraph\Node|string $node): int|false;
+
+	/**
+	 * {@inheritDoc}
+	 */
+	abstract protected function excludes(FluidGraph\Content\Node|FluidGraph\Node|string $node): int|false;
 
 	/**
 	 * Construct a new Relationship

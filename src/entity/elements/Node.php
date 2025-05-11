@@ -7,27 +7,37 @@ use RuntimeException;
 abstract class Node extends Element
 {
 	/**
+	 * @var Content\Node
+	 */
+	public protected(set) ?Content\Base $__content__ {
+		get {
+			if (!isset($this->__content__)) {
+				$this->__content__ = new Content\Node($this);
+			}
+
+			return $this->__content__;
+		}
+	}
+
+
+	/**
 	 * Attach one or more labels to the node
 	 */
 	public function label(string ...$labels): static
 	{
-		$content = $this->contentOr(RuntimeException::class, sprintf(
-			'Cannot label element prior to it being fastened'
-		));
-
 		foreach ($labels as $label) {
-			if (!isset($content->labels[$label])) {
-				$content->labels[$label] = Status::INDUCTED;
+			if (!isset($this->__content__->labels[$label])) {
+				$this->__content__->labels[$label] = Status::INDUCTED;
 				continue;
 			}
 
-			if ($content->labels[$label] == Status::RELEASED) {
-				$content->labels[$label] = Status::ATTACHED;
+			if ($this->__content__->labels[$label] == Status::RELEASED) {
+				$this->__content__->labels[$label] = Status::ATTACHED;
 				continue;
 			}
 
-			if ($content->labels[$label] == Status::DETACHED) {
-				$content->labels[$label] = Status::INDUCTED;
+			if ($this->__content__->labels[$label] == Status::DETACHED) {
+				$this->__content__->labels[$label] = Status::INDUCTED;
 				continue;
 			}
 		}
@@ -41,11 +51,7 @@ abstract class Node extends Element
 	 */
 	public function like(string ...$labels): bool
 	{
-		$content = $this->contentOr(RuntimeException::class, sprintf(
-			'Cannot compare labels on element prior to it being fastened'
-		));
-
-		$intersection = array_intersect($labels, array_keys($content->labels));
+		$intersection = array_intersect($labels, array_keys($this->__content__->labels));
 
 		if (count($intersection) == count($labels)) {
 			return TRUE;
@@ -60,11 +66,7 @@ abstract class Node extends Element
 	 */
 	public function likeAny(string ...$labels): bool
 	{
-		$content = $this->contentOr(RuntimeException::class, sprintf(
-			'Cannot compare labels on element prior to it being fastened'
-		));
-
-		$intersection = array_intersect($labels, array_keys($content->labels));
+		$intersection = array_intersect($labels, array_keys($this->__content__->labels));
 
 		if (count($intersection)) {
 			return TRUE;
@@ -79,22 +81,18 @@ abstract class Node extends Element
 	 */
 	public function unlabel(string ...$labels): static
 	{
-		$content = $this->contentOr(RuntimeException::class, sprintf(
-			'Cannot unlabel element prior to it being fastened'
-		));
-
 		foreach ($labels as $labels) {
-			if (!isset($content->labels[$labels])) {
+			if (!isset($this->__content__->labels[$labels])) {
 				continue;
 			}
 
-			if ($content->labels[$labels] == Status::ATTACHED) {
-				$content->labels[$labels] = Status::RELEASED;
+			if ($this->__content__->labels[$labels] == Status::ATTACHED) {
+				$this->__content__->labels[$labels] = Status::RELEASED;
 				continue;
 			}
 
-			if (in_array($content->labels[$labels], [Status::FASTENED, Status::INDUCTED])) {
-				unset($content->labels[$labels]);
+			if (in_array($this->__content__->labels[$labels], [Status::FASTENED, Status::INDUCTED])) {
+				unset($this->__content__->labels[$labels]);
 				continue;
 			}
 		}

@@ -8,25 +8,33 @@ use Twig\Error\RuntimeError;
 abstract class Edge extends Element
 {
 	/**
+	 * @var Content\Edge
+	 */
+	public protected(set) ?Content\Base $__content__ {
+		get {
+			if (!isset($this->__content__)) {
+				$this->__content__ = new Content\Edge($this);
+			}
+
+			return $this->__content__;
+		}
+	}
+
+	/**
 	 *
 	 */
 	public function for(Content\Node|Node|string $node): bool
 	{
-		$content = $this->contentOr(
-			RuntimeException::class,
-			'Cannot determine edge target prior to being fastened'
-		);
-
-		if (is_null($content->target)) {
+		if (!isset($this->__content__->target)) {
 			return FALSE;
 		}
 
 		if (is_string($node)) {
-			if (!isset($content->target->labels[$node])) {
+			if (!isset($this->__content__->target->labels[$node])) {
 				return FALSE;
 			}
 
-			return in_array($content->target->labels[$node], [
+			return in_array($this->__content__->target->labels[$node], [
 				Status::FASTENED,
 				Status::INDUCTED,
 				Status::ATTACHED
@@ -34,12 +42,9 @@ abstract class Edge extends Element
 		}
 
 		if ($node instanceof Node) {
-			$node = $node->contentOr(
-				RuntimeError::class,
-				'Cannot determine edge target on node, not fastened'
-			);
+			$node = $node->__content__;
 		}
 
-		return $node === $content->target;
+		return $node === $this->__content__->target;
 	}
 }

@@ -21,19 +21,20 @@ class Queue
 	 */
 	protected ArrayObject $nodes;
 
-	protected array $nodeOperations = [
-		Operation::CREATE->value => [],
-		Operation::UPDATE->value => [],
-		Operation::DELETE->value => [],
-	];
+	protected array $nodeOperations;
 
-	protected array $edgeOperations = [
-		Operation::CREATE->value => [],
-		Operation::UPDATE->value => [],
-		Operation::DELETE->value => [],
-	];
+	protected array $edgeOperations;
 
 	protected bool $spent = FALSE;
+
+
+	/**
+	 *
+	 */
+	public function __construct()
+	{
+		$this->reset();
+	}
 
 
 	/**
@@ -102,11 +103,31 @@ class Queue
 		return $this;
 	}
 
+	/**
+	 *
+	 */
+	public function reset(): static
+	{
+		$this->nodeOperations = [
+			Operation::CREATE->value => [],
+			Operation::UPDATE->value => [],
+			Operation::DELETE->value => [],
+		];
+
+		$this->edgeOperations = [
+			Operation::CREATE->value => [],
+			Operation::UPDATE->value => [],
+			Operation::DELETE->value => [],
+		];
+
+		return $this;
+	}
+
 
 	/**
 	 *
 	 */
-	public function run(bool $force = FALSE)
+	public function run(bool $force = FALSE): static
 	{
 		if ($this->spent) {
 			throw new RuntimeException(sprintf(
@@ -139,6 +160,8 @@ class Queue
 		}
 
 		$this->spent = TRUE;
+
+		return $this->reset();
 	}
 
 
@@ -233,7 +256,21 @@ class Queue
 		);
 
 		foreach ($query->pull(Signature::RECORD) as $i => $record) {
-			$this->nodes[$record->element_id]      = $this->nodes[$identities[$i]];
+			if (isset($this->nodes[$record->element_id])) {
+
+				//
+				// Duplicate merge, re-fasten the entity
+				//
+
+				$this->graph->fasten(
+					$this->nodes[$identities[$i]]->entity,
+					$this->nodes[$record->element_id]
+				);
+
+			} else {
+				$this->nodes[$record->element_id] = $this->nodes[$identities[$i]];
+			}
+
 			$this->graph->resolve($record)->status = Status::ATTACHED;
 
 			unset($this->nodes[$identities[$i]]);
@@ -244,8 +281,8 @@ class Queue
 	protected function doNodeDeletes(): void
 	{
 		$matchers   = [];
-		$query      = $this->graph->query;
 		$identities = $this->nodeOperations[Operation::DELETE->value];
+		$query      = $this->graph->query;
 		$where      = $query->where->var('n');
 
 		$i = 0; foreach ($identities as $identity) {

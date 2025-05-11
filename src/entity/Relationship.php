@@ -13,6 +13,26 @@ abstract class Relationship
 	use Relationship\AbstractRelationship;
 
 	/**
+	 *
+	 */
+	public function __debugInfo()
+	{
+		return array_filter(
+			get_object_vars($this),
+			function($key) {
+				return !in_array(
+					$key,
+					[
+						'graph'
+					]
+				);
+			},
+			ARRAY_FILTER_USE_KEY
+		);
+	}
+
+
+	/**
 	 * Assign data to the edges whose targets are one of any such node or label
 	 */
 	public function assign(array $data, Content\Node|Node|string ...$nodes): static
@@ -35,10 +55,23 @@ abstract class Relationship
 	public function contains(Content\Node|Node|string ...$nodes): bool
 	{
 		foreach ($nodes as $node) {
-			foreach ($this->included as $edge) {
-				if ($edge->for($node)) {
-					return TRUE;
-				}
+			if ($this->includes($node) === FALSE) {
+				return FALSE;
+			}
+		}
+
+		return TRUE;
+	}
+
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function containsAny(Content\Node|Node|string ...$nodes): bool
+	{
+		foreach ($nodes as $node) {
+			if ($this->includes($node) !== FALSE) {
+				return TRUE;
 			}
 		}
 
@@ -93,5 +126,48 @@ abstract class Relationship
 		}
 
 		return $this;
+	}
+
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function includes(Content\Node|Node|string $node): int|false
+	{
+		foreach ($this->included as $i => $edge) {
+			if ($edge->for($node)) {
+				return $i;
+			}
+		}
+
+		return FALSE;
+	}
+
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function excludes(Content\Node|Node|string $node): int|false
+	{
+		foreach ($this->excluded as $i => $edge) {
+			if ($edge->for($node)) {
+				return $i;
+			}
+		}
+
+		return FALSE;
+	}
+
+
+	/**
+	 *
+	 */
+	protected function graphOr(string $class, $message): Graph
+	{
+		if (!isset($this->graph)) {
+			throw new $class($message);
+		}
+
+		return $this->graph;
 	}
 }

@@ -45,8 +45,34 @@ class Query
 	public function __construct(
 		protected array $statements = [],
 		protected array $parameters = [],
-	) {
+	) {}
+
+	/**
+	 *
+	 */
+	public function __clone() {
 		$this->where = new Where()->uses($this);
+	}
+
+
+	/**
+	 *
+	 */
+	public function __debugInfo()
+	{
+		return array_filter(
+			get_object_vars($this),
+			function($key) {
+				return !in_array(
+					$key,
+					[
+						'graph',
+						'where'
+					]
+				);
+			},
+			ARRAY_FILTER_USE_KEY
+		);
 	}
 
 

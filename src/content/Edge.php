@@ -10,11 +10,33 @@ class Edge extends Base
 	/**
 	 * The source node from which this edge originates
 	 */
-	public ?Node $source = NULL;
+	readonly public Node $source;
 
 	/**
 	 * The target node to which this edge points
 	 */
-	public ?Node $target = NULL;
+	readonly public Node $target;
+
+
+	/**
+	 *
+	 */
+	public function bindTarget(Node &$node): static
+	{
+		$this->target = &$node;
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function bindSource(Node &$node): static
+	{
+		$this->source = &$node;
+
+		return $this;
+	}
 
 }
