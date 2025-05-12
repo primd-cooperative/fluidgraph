@@ -17,7 +17,7 @@ class Result implements ArrayAccess
 	 *
 	 */
 	public function __construct(
-		protected Content\Base $content
+		protected Content\Element $content
 	) {}
 
 
@@ -140,7 +140,7 @@ class Result implements ArrayAccess
 	/**
 	 * Get the raw result (as returned by the Graph)
 	 */
-	public function raw(): Content\Base
+	public function raw(): Content\Element
 	{
 		return $this->content;
 	}

@@ -2,9 +2,6 @@
 
 namespace FluidGraph;
 
-use ArrayObject;
-use RuntimeException;
-
 /**
  * Relationships represent a collection of edges
  */
@@ -108,6 +105,11 @@ abstract class Relationship
 	 */
 	public function merge(Content\Node $source): static
 	{
+		foreach ($this->included as $edge) {
+			if (!isset($edge->__content__->source)) {
+
+			}
+		}
 		//
 		// TODO: update the source for all edges that need it.
 		//
@@ -156,18 +158,5 @@ abstract class Relationship
 		}
 
 		return FALSE;
-	}
-
-
-	/**
-	 *
-	 */
-	protected function graphOr(string $class, $message): Graph
-	{
-		if (!isset($this->graph)) {
-			throw new $class($message);
-		}
-
-		return $this->graph;
 	}
 }

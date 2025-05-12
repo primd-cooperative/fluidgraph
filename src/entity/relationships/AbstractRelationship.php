@@ -77,13 +77,14 @@ trait AbstractRelationship
 	public function __construct(
 		FluidGraph\Node $source,
 		string $type,
+		array $targets = [],
 		FluidGraph\Mode $mode = FluidGraph\Mode::EAGER,
-		array $targets = []
 	) {
-		$this->type     = $type;
-		$this->mode     = $mode;
 		$this->source   = $source;
+		$this->type     = $type;
 		$this->targets  = $targets;
+		$this->mode     = $mode;
+
 		$this->included = new ArrayObject();
 		$this->excluded = new ArrayObject();
 	}

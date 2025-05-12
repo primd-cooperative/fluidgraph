@@ -4,7 +4,10 @@ namespace FluidGraph\Relationship;
 
 use FluidGraph;
 
-trait HasOne
+/**
+ * A type of relationship that links to one node with one edge.
+ */
+trait LinkOne
 {
 	use AbstractRelationship;
 

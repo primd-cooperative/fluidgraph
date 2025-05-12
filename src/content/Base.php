@@ -2,8 +2,7 @@
 
 namespace FluidGraph\Content;
 
-use FluidGraph\Status;
-use FluidGraph\Element;
+use FluidGraph;
 
 /**
  * The content base provides the common properties for edge and node contents.
@@ -11,12 +10,12 @@ use FluidGraph\Element;
  * Content can be thought of as the ontological "being" of an element.  The model edges / nodes
  * are simply expressions of this content, and map their properties to the content.
  */
-abstract class Base
+abstract class Element
 {
 	/**
-	 * The entity from which this content originated
+	 * The latest entity instance of the content
 	 */
-	readonly public ?Element $entity;
+	public ?FluidGraph\Element $entity;
 
 	/**
 	 * The identity of the element as it is or was in the graph.
@@ -42,17 +41,17 @@ abstract class Base
 	/**
 	 * The status of the element.
 	 */
-	public ?Status $status = NULL;
+	public ?FluidGraph\Status $status = NULL;
 
 
 	/**
 	 *
 	 */
-	public function __construct(?Element $element = NULL)
+	public function __construct(?FluidGraph\Element $element = NULL)
 	{
 		if ($element) {
 			$this->entity = $element;
-			$this->labels[$element::class] = Status::FASTENED;
+			$this->labels[$element::class] = FluidGraph\Status::FASTENED;
 		}
 
 	}

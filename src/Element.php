@@ -2,9 +2,6 @@
 
 namespace FluidGraph;
 
-use FluidGraph\Entity;
-use InvalidArgumentException;
-
 /**
  *
  */
@@ -12,10 +9,64 @@ abstract class Element
 {
 	use DoesWith;
 
-	abstract public protected(set) ?Content\Base $__content__ {
+	/**
+	 *
+	 */
+	abstract public protected(set) ?Content\Element $__content__ {
 		get;
 		set;
 	}
+
+	/**
+	 *
+	 */
+	static public function key(): array
+	{
+		return [];
+	}
+
+
+	/**
+	 *
+	 */
+	static public function onCreate(Content\Element $content): void
+	{
+		for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
+			self::doHooks($class, Element\CreateHook::class, $content);
+		}
+	}
+
+
+	/**
+	 *
+	 */
+	static public function onUpdate(Content\Element $content): void
+	{
+		for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
+			self::doHooks($class, Element\UpdateHook::class, $content);
+		}
+	}
+
+
+	/**
+	 *
+	 */
+	static protected function doHooks(string $class, string $hook, Content\Element $content): void
+	{
+		foreach (class_uses($class) as $trait) {
+			self::doHooks($trait, $hook, $content);
+
+			if (!in_array($hook, class_uses($trait))) {
+				continue;
+			}
+
+			$parts  = explode('\\', $trait);
+			$method = lcfirst(end($parts));
+
+			static::$method($content);
+		}
+	}
+
 
 	/**
 	 * Clone an element
@@ -26,11 +77,7 @@ abstract class Element
 	 */
 	public function __clone(): void
 	{
-		if ($this instanceof Entity\WithKey) {
-			$keys = static::key();
-		} else {
-			$keys = [];
-		}
+		$keys = static::key();
 
 		$clone = array_diff(
 			array_keys(get_object_vars($this)),
@@ -103,7 +150,7 @@ abstract class Element
 	/**
 	 * Determine whether or not this element is an expression of another element or element content
 	 */
-	public function is(Element|Content\Base $element): bool
+	public function is(Element|Content\Element $element): bool
 	{
 		if ($element instanceof Element) {
 			if ($this === $element) {

@@ -2,7 +2,7 @@
 
 namespace FluidGraph\Content;
 
-class Node extends Base
+class Node extends Element
 {
 
 }

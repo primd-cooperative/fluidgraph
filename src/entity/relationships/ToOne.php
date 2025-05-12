@@ -12,6 +12,6 @@ use FluidGraph;
  */
 class ToOne extends FluidGraph\Relationship
 {
-	use HasOne;
 	use AttachRelated;
+	use LinkOne;
 }

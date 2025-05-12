@@ -14,5 +14,5 @@ class OwnedMany extends FluidGraph\Relationship
 {
 	use AttachRelated;
 	use DetachRelated;
-	use HasMany;
+	use LinkMany;
 }

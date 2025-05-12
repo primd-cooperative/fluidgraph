@@ -185,7 +185,7 @@ class Graph
 	 * entity at present.  If no content is provided, new content will be created depending on the
 	 * element type.
 	 */
-	public function fasten(Element $element, ?Content\Base $content = NULL): static
+	public function fasten(Element $element, ?Content\Element $content = NULL): static
 	{
 		if (!$content) {
 			$content = $element->__content__;

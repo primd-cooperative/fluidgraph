@@ -2,15 +2,15 @@
 
 namespace FluidGraph;
 
-use RuntimeException;
-use Twig\Error\RuntimeError;
-
+/**
+ *
+ */
 abstract class Edge extends Element
 {
 	/**
 	 * @var Content\Edge
 	 */
-	public protected(set) ?Content\Base $__content__ {
+	public protected(set) ?Content\Element $__content__ {
 		get {
 			if (!isset($this->__content__)) {
 				$this->__content__ = new Content\Edge($this);

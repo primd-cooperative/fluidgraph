@@ -14,5 +14,5 @@ class OwnedOne extends FluidGraph\Relationship
 {
 	use AttachRelated;
 	use DetachRelated;
-	use HasOne;
+	use LinkOne;
 }

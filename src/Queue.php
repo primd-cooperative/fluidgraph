@@ -232,8 +232,9 @@ class Queue
 			$node = $this->nodes[$identity];
 			$key  = $this->getKey($node);
 
-			if (isset($node->entity) && $node->entity instanceof Entity\OnCreate) {
-				$node->entity::onCreate($node);
+			foreach ($this->getClasses($node) as $class) {
+				$class::onCreate($node);
+
 				$key = $this->getKey($node);
 			}
 
@@ -316,23 +317,14 @@ class Queue
 		$i = 0; foreach ($identities as $identity) {
 			$node      = $this->nodes[$identity];
 			$diffs[$i] = $this->getChanges($node);
-			$rediff    = FALSE;
 
 			if (!count($diffs[$i])) {
 				continue;
 			}
 
 			foreach ($this->getClasses($node) as $class) {
-				if (!is_a($class, Entity\OnUpdate::class, TRUE)) {
-					continue;
-				}
+				$class::onUpdate($node);
 
-				$node->entity::onUpdate($node);
-
-				$rediff = TRUE;
-			}
-
-			if ($rediff) {
 				$diffs[$i] = $this->getChanges($node);
 			}
 
@@ -379,7 +371,7 @@ class Queue
 	/**
 	 *
 	 */
-	protected function getChanges(Content\Base $content): array
+	protected function getChanges(Content\Element $content): array
 	{
 		$changes = $this->getProperties($content);
 
@@ -402,7 +394,7 @@ class Queue
 	/**
 	 *
 	 */
-	protected function getClasses(Content\Base $content): array
+	protected function getClasses(Content\Element $content): array
 	{
 		$classes = [];
 
@@ -425,16 +417,12 @@ class Queue
 	/**
 	 *
 	 */
-	protected function getKey(Content\Base $content): array
+	protected function getKey(Content\Element $content): array
 	{
 		$key        = [];
 		$properties = [];
 
 		foreach ($this->getClasses($content) as $class) {
-			if (!is_a($class, Entity\WithKey::class, TRUE)) {
-				continue;
-			}
-
 			$properties = array_merge($properties, $class::key());
 		}
 
@@ -451,7 +439,7 @@ class Queue
 	/**
 	 *
 	 */
-	protected function getLabels(Content\Base $content, Status ...$statuses): array
+	protected function getLabels(Content\Element $content, Status ...$statuses): array
 	{
 		if (!count($statuses)) {
 			$statuses = [Status::INDUCTED, Status::ATTACHED];
@@ -469,7 +457,7 @@ class Queue
 	/**
 	 * @return array<mixed>
 	 */
-	protected function getProperties(Content\Base $content): array
+	protected function getProperties(Content\Element $content): array
 	{
 		return array_filter(
 			$content->active,
@@ -483,7 +471,7 @@ class Queue
 	/**
 	 * @return array<Relationship>
 	 */
-	protected function getRelationships(Content\Base $content): array
+	protected function getRelationships(Content\Element $content): array
 	{
 		return array_filter(
 			$content->active,
@@ -494,7 +482,7 @@ class Queue
 	}
 
 
-	protected function getSignature(Content\Base $content, Status ...$statuses): string
+	protected function getSignature(Content\Element $content, Status ...$statuses): string
 	{
 		return implode(':', $this->getLabels($content, ...$statuses));
 	}

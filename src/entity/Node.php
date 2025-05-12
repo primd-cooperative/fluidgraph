@@ -2,14 +2,15 @@
 
 namespace FluidGraph;
 
-use RuntimeException;
-
+/**
+ *
+ */
 abstract class Node extends Element
 {
 	/**
 	 * @var Content\Node
 	 */
-	public protected(set) ?Content\Base $__content__ {
+	public protected(set) ?Content\Element $__content__ {
 		get {
 			if (!isset($this->__content__)) {
 				$this->__content__ = new Content\Node($this);

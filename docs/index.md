@@ -10,27 +10,42 @@ composer require primd/fluidgraph
 ## Basic Usage
 
 Create a new Entity class by defining its properties and relationships.  All properties on your
-entities MUST be public.  These are effectivey DTOs and Proxies:
+entities MUST be publicly redadable.  They can be protected/private for setting, however, note
+that you MUST NOT use property hooks.
 
 ```php
+<?php
+
 use FluidGraph\Node;
-use Ramsey\Uuid\Uuid;
+use FluidGraph\Element;
+use FluidGraph\Relationship;
+use FluidGraph\Mode;
 
-class Person extends Node
+class Person extends FluidGraph\Node
 {
-	public DateTime $dateCreated;
+	use Element\DateCreated;
+	use Element\DateModified;
+	use Element\Id\Uuid7;
 
-	public string $id;
+	public private(set) Relationship\ToMany $suggestions;
 
 	public function __construct(
 		public ?string $firstName = NULL,
 		public ?string $lastName = NULL,
 	) {
-		$this->id = Uuid::uuid7();
-		$this->dateCreated = new DateTime();
+		$this->suggestions = new Relationship\ToMany(
+			$this,
+			Suggested::class,
+			[
+				Claim::class
+			],
+			Mode::LAZY
+		);
 	}
 }
 ```
+
+In the above example, we create a new node class which
 
 You can initialize an entity using its native class constructor and received the fastened instance
 back.  The fastened instance is backed by a `Content\Node` or `Content\Edge` depending on its type
