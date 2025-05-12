@@ -11,7 +11,8 @@
     ],
     "require": {
         "php": "^8.4",
-        "stefanak-michal/bolt": "^7.2"
+        "stefanak-michal/bolt": "^7.2",
+        "ramsey/uuid": "^4.7"
     },
     "autoload": {
         "classmap": ["src/"]
