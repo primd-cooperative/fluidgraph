@@ -8,6 +8,7 @@ use Bolt\protocol\V5_2 as Protocol;
 use Bolt\protocol\v5\structures as Struct;
 
 use ArrayObject;
+use Closure;
 use RuntimeException;
 use InvalidArgumentException;
 use ReflectionProperty;
@@ -193,17 +194,23 @@ class Graph
 		}
 
 		foreach ($element->values() as $property => $value) {
-			if (!array_key_exists($property, $content->operative)) {
-				$content->operative[$property] = $value;
+			if (!array_key_exists($property, $content->active)) {
+				$content->active[$property] = $value;
 			}
 
 			if ($value instanceof Relationship) {
 				$value->on($this);
 			}
 
-			unset($element->$property);
+			Closure::bind(
+				function () use ($content, $property) {
+					unset($this->$property);
 
-			$element->$property = &$content->operative[$property];
+					$this->$property = &$content->active[$property];
+				},
+				$element,
+				$element
+			)();
 		}
 
 		if (!$content->status) {
@@ -304,17 +311,17 @@ class Graph
 				$value = $this->resolve($value);
 			}
 
-			if (!array_key_exists($property, $content->operative)) {
-				$content->operative[$property] = $value;
+			if (!array_key_exists($property, $content->active)) {
+				$content->active[$property] = $value;
 			}
 
-			if (array_key_exists($property, $content->original)) {
-				if ($content->operative[$property] == $content->original[$property]) {
-					$content->operative[$property] = $value;
+			if (array_key_exists($property, $content->loaded)) {
+				if ($content->active[$property] == $content->loaded[$property]) {
+					$content->active[$property] = $value;
 				}
 			}
 
-			$content->original[$property] = is_object($value)
+			$content->loaded[$property] = is_object($value)
 				? clone $value
 				: $value
 			;

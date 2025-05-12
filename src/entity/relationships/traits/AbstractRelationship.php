@@ -30,6 +30,11 @@ trait AbstractRelationship
 	public protected(set) FluidGraph\Mode $mode;
 
 	/**
+	 * THe source node for this relationship
+	 */
+	public protected(set) FluidGraph\Node $source;
+
+	/**
 	 * The types of targets this relationship allows, if empty, any target
 	 */
 	public protected(set) array $targets = [];
@@ -69,10 +74,15 @@ trait AbstractRelationship
 	 * @param class-string<FluidGraph\Edge> $type
 	 * @param array<class-string<FluidGraph\Node>> $targets
 	 */
-	public function __construct(string $type, FluidGraph\Mode $mode = FluidGraph\Mode::EAGER, array $targets = [])
-	{
+	public function __construct(
+		FluidGraph\Node $source,
+		string $type,
+		FluidGraph\Mode $mode = FluidGraph\Mode::EAGER,
+		array $targets = []
+	) {
 		$this->type     = $type;
 		$this->mode     = $mode;
+		$this->source   = $source;
 		$this->targets  = $targets;
 		$this->included = new ArrayObject();
 		$this->excluded = new ArrayObject();

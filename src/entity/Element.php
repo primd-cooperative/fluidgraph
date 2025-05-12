@@ -2,6 +2,7 @@
 
 namespace FluidGraph;
 
+use FluidGraph\Entity;
 use InvalidArgumentException;
 
 /**
@@ -17,15 +18,6 @@ abstract class Element
 	}
 
 	/**
-	 *
-	 */
-	static public function key(): array
-	{
-		return [];
-	}
-
-
-	/**
 	 * Clone an element
 	 *
 	 * This will create a copy of an element, removing its content and key properties.  If the
@@ -34,31 +26,38 @@ abstract class Element
 	 */
 	public function __clone(): void
 	{
-		$keys  = static::key();
+		if ($this instanceof Entity\WithKey) {
+			$keys = static::key();
+		} else {
+			$keys = [];
+		}
+
 		$clone = array_diff(
 			array_keys(get_object_vars($this)),
 			[
 				'__content__',
 				...$keys
 			]
-			);
+		);
 
-		foreach ($keys as $property) {
-			unset($this->$property);
-		}
+		$this->with(function() use ($keys, $clone) {
+			foreach ($keys as $property) {
+				unset($this->$property);
+			}
 
-		foreach ($clone as $property) {
-			$value = $this->$property;
+			foreach ($clone as $property) {
+				$value = $this->$property;
 
-			unset($this->$property);
+				unset($this->$property);
 
-			$this->$property = is_object($value)
-				? clone $value
-				: $value
-			;
-		}
+				$this->$property = is_object($value)
+					? clone $value
+					: $value
+				;
+			}
 
-		$this->__content__ = NULL;
+			$this->__content__ = NULL;
+		});
 	}
 
 
@@ -146,7 +145,7 @@ abstract class Element
 	public function values(): array
 	{
 		return array_filter(
-			get_object_vars($this),
+			get_object_vars($this) + get_class_vars($this::class),
 			function($key) {
 				return !in_array($key, [
 					'__content__'

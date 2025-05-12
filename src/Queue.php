@@ -232,6 +232,11 @@ class Queue
 			$node = $this->nodes[$identity];
 			$key  = $this->getKey($node);
 
+			if (isset($node->entity) && $node->entity instanceof Entity\OnCreate) {
+				$node->entity::onCreate($node);
+				$key = $this->getKey($node);
+			}
+
 			if ($key) {
 				$query
 					->run('MERGE (%s:%s {@%s})', "i$i", $this->getSignature($node), "k$i")
@@ -311,9 +316,24 @@ class Queue
 		$i = 0; foreach ($identities as $identity) {
 			$node      = $this->nodes[$identity];
 			$diffs[$i] = $this->getChanges($node);
+			$rediff    = FALSE;
 
 			if (!count($diffs[$i])) {
 				continue;
+			}
+
+			foreach ($this->getClasses($node) as $class) {
+				if (!is_a($class, Entity\OnUpdate::class, TRUE)) {
+					continue;
+				}
+
+				$node->entity::onUpdate($node);
+
+				$rediff = TRUE;
+			}
+
+			if ($rediff) {
+				$diffs[$i] = $this->getChanges($node);
 			}
 
 			$query
@@ -364,11 +384,11 @@ class Queue
 		$changes = $this->getProperties($content);
 
 		foreach ($changes as $property => $value) {
-			if (!array_key_exists($property, $content->original)) {
+			if (!array_key_exists($property, $content->loaded)) {
 				continue;
 			}
 
-			if ($value != $content->original[$property]) {
+			if ($value != $content->loaded[$property]) {
 				continue;
 			}
 
@@ -382,10 +402,9 @@ class Queue
 	/**
 	 *
 	 */
-	protected function getKey(Content\Base $content): array
+	protected function getClasses(Content\Base $content): array
 	{
-		$key        = [];
-		$properties = [];
+		$classes = [];
 
 		foreach ($this->getLabels($content) as $label) {
 			if (!class_exists($label)) {
@@ -396,12 +415,32 @@ class Queue
 				continue;
 			}
 
-			$properties = array_merge($properties, $label::key());
+			$classes[] = $label;
+		}
+
+		return $classes;
+	}
+
+
+	/**
+	 *
+	 */
+	protected function getKey(Content\Base $content): array
+	{
+		$key        = [];
+		$properties = [];
+
+		foreach ($this->getClasses($content) as $class) {
+			if (!is_a($class, Entity\WithKey::class, TRUE)) {
+				continue;
+			}
+
+			$properties = array_merge($properties, $class::key());
 		}
 
 		foreach (array_unique($properties) as $property) {
-			if (array_key_exists($property, $content->operative)) {
-				$key[$property] = $content->operative[$property];
+			if (array_key_exists($property, $content->active)) {
+				$key[$property] = $content->active[$property];
 			}
 		}
 
@@ -433,7 +472,7 @@ class Queue
 	protected function getProperties(Content\Base $content): array
 	{
 		return array_filter(
-			$content->operative,
+			$content->active,
 			function($value) {
 				return !$value instanceof Relationship;
 			}
@@ -447,7 +486,7 @@ class Queue
 	protected function getRelationships(Content\Base $content): array
 	{
 		return array_filter(
-			$content->operative,
+			$content->active,
 			function($value) {
 				return $value instanceof Relationship;
 			}

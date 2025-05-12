@@ -67,7 +67,7 @@ class Result implements ArrayAccess
 		$this->graph->fasten(
 			$element = $this->graph->make(
 				$class,
-				$this->content->original,
+				$this->content->loaded,
 				Maker::SKIP_CHECKS | Maker::SKIP_ASSIGN
 			),
 			$this->content
@@ -100,7 +100,7 @@ class Result implements ArrayAccess
 	 */
 	public function offsetExists(mixed $offset): bool
 	{
-		return array_key_exists($offset, $this->content->original);
+		return array_key_exists($offset, $this->content->loaded);
 	}
 
 
@@ -109,7 +109,7 @@ class Result implements ArrayAccess
 	 */
 	public function offsetGet(mixed $offset): mixed
 	{
-		return $this->offsetExists($offset) ? $this->content->original[$offset] : NULL;
+		return $this->offsetExists($offset) ? $this->content->loaded[$offset] : NULL;
 	}
 
 

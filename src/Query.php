@@ -30,14 +30,7 @@ class Query
 	/**
 	 * An instance of the base where clause builder to clone
 	 */
-	public protected(set) Where $where {
-		get {
-			return clone $this->where;
-		}
-		set (Where $where) {
-			$this->where = $where;
-		}
-	}
+	public protected(set) Where $where;
 
 	/**
 	 *
@@ -46,6 +39,7 @@ class Query
 		protected array $statements = [],
 		protected array $parameters = [],
 	) {}
+
 
 	/**
 	 *
@@ -138,6 +132,7 @@ class Query
 			))->on($this->graph);
 		}
 	}
+
 
 	/**
 	 * Match multiple nodes or edges and have them returned as an instance of a given class.

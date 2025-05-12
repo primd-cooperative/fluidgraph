@@ -24,19 +24,20 @@ abstract class Base
 	readonly public int $identity;
 
 	/**
+	 * The active properties of the element (as managed by/on its models)
+	 */
+	public array $active = [];
+
+
+	/**
 	 * The labels of the element
 	 */
 	public array $labels = [];
 
 	/**
-	 * The operative properties of the element (as managed by/on its models)
+	 * The loaded properties of the element (as retreived from the graph)
 	 */
-	public array $operative = [];
-
-	/**
-	 * The original properties of the element (as retreived from the graph)
-	 */
-	public array $original = [];
+	public array $loaded = [];
 
 	/**
 	 * The status of the element.
