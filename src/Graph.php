@@ -7,8 +7,8 @@ use Bolt\protocol\IStructure;
 use Bolt\protocol\V5_2 as Protocol;
 use Bolt\protocol\v5\structures as Struct;
 
-use ArrayObject;
 use Closure;
+use ArrayObject;
 use RuntimeException;
 use InvalidArgumentException;
 use ReflectionProperty;
@@ -60,17 +60,12 @@ class Graph
 	public protected(set) Queue $queue;
 
 	/**
-	 *
-	 */
-	public protected(set) ReflectionProperty $content;
-
-	/**
-	 * @var ArrayObject<Content\Edge>
+	 * @var ArrayObject<Element\Edge>
 	 */
 	protected ArrayObject $edges;
 
 	/**
-	 * @var ArrayObject<Content\Node>
+	 * @var ArrayObject<Element\Node>
 	 */
 	protected ArrayObject $nodes;
 
@@ -87,70 +82,78 @@ class Graph
 	/**
 	 *
 	 */
+	private ReflectionProperty $union;
+
+	/**
+	 *
+	 */
 	public function __construct(
 		array $login,
 		Bolt $bolt,
 		Query $query,
 		Queue $queue
 	) {
-		$this->nodes    = new ArrayObject();
-		$this->edges    = new ArrayObject();
-		$this->content  = new ReflectionProperty(Element::class, '__content__');
-		$this->queue    = $queue->on($this)->manage($this->nodes, $this->edges);
-		$this->query    = $query->on($this);
-		$this->login    = $login;
-		$this->bolt     = $bolt;
+		$this->nodes = new ArrayObject();
+		$this->edges = new ArrayObject();
+		$this->union = new ReflectionProperty(Entity::class, '__element__');
+		$this->queue = $queue->on($this)->manage($this->nodes, $this->edges);
+		$this->query = $query->on($this);
+		$this->login = $login;
+		$this->bolt  = $bolt;
 	}
 
 
 	/**
 	 *
 	 */
-	public function attach(Element ...$elements): static
+	public function attach(Element|Entity ...$elements): static
 	{
 		foreach ($elements as $element) {
-			$content = $element->__content__;
+			if ($element instanceof Entity) {
+				$entity  = $element;
+				$element = $entity->__element__;
 
-			if (!$content->status) {
-				$this->fasten($element);
+				if (!$element->status) {
+					$this->fasten($entity);
+				}
 			}
 
-			switch ($content->status) {
+			switch ($element->status) {
 				case Status::FASTENED:
 					$identity = spl_object_hash($element);
 
-					if ($content instanceof Content\Node) {
+					if ($element instanceof Element\Node) {
 						$target = $this->nodes;
-					} elseif ($content instanceof Content\Edge) {
+					} elseif ($element instanceof Element\Edge) {
 						$target = $this->edges;
 
-						if (isset($content->target->entity)) {
-							$this->attach($content->target->entity);
+						if (isset($element->target->entity)) {
+							$this->attach($element->target->entity);
 						}
 
-						if (isset($content->source->entity)) {
-							$this->attach($content->source->entity);
+						if (isset($element->source->entity)) {
+							$this->attach($element->source->entity);
 						}
 
 					} else {
 						throw new InvalidArgumentException(sprintf(
 							'Unknown element type "%s" on attach()',
-							get_class($content)
+							get_class($element)
 						));
 					}
 
-					$target[$identity] = $content;
-					$content->status   = Status::INDUCTED;
+					$target[$identity] = $element;
+					$element->status   = Status::INDUCTED;
 					break;
 
 				case Status::RELEASED:
-					$content->status = Status::ATTACHED;
+					$element->status = Status::ATTACHED;
 					break;
 
 				case Status::DETACHED:
 					throw new InvalidArgumentException(sprintf(
 						'Cannot attached already detached element: %s',
-						$content->identity
+						$element->identity
 					));
 			}
 		}
@@ -162,31 +165,30 @@ class Graph
 	/**
 	 *
 	 */
-	public function detach(Element|Content\Element ...$elements): static
+	public function detach(Element|Entity ...$elements): static
 	{
 		foreach ($elements as $element) {
-			if ($element instanceof Content\Element) {
-				$content = $element;
-			} else {
-				$content = $element->__content__;
+			if ($element instanceof Entity) {
+				$entity  = $element;
+				$element = $entity->__element__;
 			}
 
-			switch ($element->status()) {
+			switch ($element->status) {
 				case Status::INDUCTED:
 					$identity = spl_object_hash($element);
 					$target   = match(TRUE) {
-						$element instanceof Node => $this->nodes,
-						$element instanceof Edge => $this->edges,
+						$element instanceof Element\Node => $this->nodes,
+						$element instanceof Element\Edge => $this->edges,
 					};
 
-					$content->status = Status::FASTENED;
+					$element->status = Status::FASTENED;
 
 					unset($target[$identity]);
 
 					break;
 
 				case Status::ATTACHED:
-					$content->status = Status::RELEASED;
+					$element->status = Status::RELEASED;
 			}
 		}
 
@@ -202,17 +204,17 @@ class Graph
 	 * entity at present.  If no content is provided, new content will be created depending on the
 	 * element type.
 	 */
-	public function fasten(Element $element, ?Content\Element $content = NULL): static
+	public function fasten(Entity $entity, ?Element $element = NULL): static
 	{
-		if (!$content) {
-			$content = $element->__content__;
+		if (!$element) {
+			$element = $entity->__element__;
 		} else {
-			$this->content->setRawValue($element, $content);
+			$this->union->setRawValue($entity, $element);
 		}
 
-		foreach ($element->values() as $property => $value) {
-			if (!array_key_exists($property, $content->active)) {
-				$content->active[$property] = $value;
+		foreach ($entity->values() as $property => $value) {
+			if (!array_key_exists($property, $element->active)) {
+				$element->active[$property] = $value;
 			}
 
 			if ($value instanceof Relationship) {
@@ -220,22 +222,22 @@ class Graph
 			}
 
 			Closure::bind(
-				function () use ($content, $property) {
+				function () use ($element, $property) {
 					unset($this->$property);
 
-					$this->$property = &$content->active[$property];
+					$this->$property = &$element->active[$property];
 				},
-				$element,
-				$element
+				$entity,
+				$entity
 			)();
 		}
 
-		if (!isset($content->labels[$element::class])) {
-			$content->labels[$element::class] = Status::FASTENED;
+		if (!isset($element->labels[$entity::class])) {
+			$element->labels[$entity::class] = Status::FASTENED;
 		}
 
-		if (!isset($content->status)) {
-			$content->status = Status::FASTENED;
+		if (!isset($element->status)) {
+			$element->status = Status::FASTENED;
 		}
 
 		return $this;
@@ -282,21 +284,23 @@ class Graph
 				return $value;
 
 			case Struct\Node::class:
+				$labels   = $structure->labels;
 				$identity = $structure->element_id;
 				$storage  = &$this->nodes;
 
 				if (!isset($storage[$identity])) {
-					$storage[$identity] = new Content\Node();
+					$storage[$identity] = new Element\Node();
 				}
 
 				break;
 
 			case Struct\Relationship::class:
+				$labels   = [$structure->type];
 				$identity = $structure->element_id;
 				$storage  = &$this->edges;
 
 				if (!isset($storage[$identity])) {
-					$storage[$identity] = new Content\Edge();
+					$storage[$identity] = new Element\Edge();
 				}
 				break;
 
@@ -307,18 +311,18 @@ class Graph
 				));
 		}
 
-		$content = $storage[$identity];
+		$element = $storage[$identity];
 
-		if (!isset($content->identity)) {
-			$content->identify($identity);
+		if (!isset($element->identity)) {
+			$element->identify($identity);
 		}
 
-		if ($content->status != Status::RELEASED) {
-			$content->status = Status::ATTACHED;
+		if ($element->status != Status::RELEASED) {
+			$element->status = Status::ATTACHED;
 		}
 
-		foreach ($structure->labels as $label) {
-			$content->labels[$label] = Status::ATTACHED;
+		foreach ($labels as $label) {
+			$element->labels[$label] = Status::ATTACHED;
 		}
 
 		foreach ($structure->properties as $property => $value) {
@@ -326,23 +330,23 @@ class Graph
 				$value = $this->resolve($value);
 			}
 
-			if (!array_key_exists($property, $content->active)) {
-				$content->active[$property] = $value;
+			if (!array_key_exists($property, $element->active)) {
+				$element->active[$property] = $value;
 			}
 
-			if (array_key_exists($property, $content->loaded)) {
-				if ($content->active[$property] == $content->loaded[$property]) {
-					$content->active[$property] = $value;
+			if (array_key_exists($property, $element->loaded)) {
+				if ($element->active[$property] == $element->loaded[$property]) {
+					$element->active[$property] = $value;
 				}
 			}
 
-			$content->loaded[$property] = is_object($value)
+			$element->loaded[$property] = is_object($value)
 				? clone $value
 				: $value
 			;
 		}
 
-		return $content;
+		return $element;
 	}
 
 

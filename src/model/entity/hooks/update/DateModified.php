@@ -1,9 +1,9 @@
 <?php
 
-namespace FluidGraph\Element;
+namespace FluidGraph\Entity;
 
 use DateTime;
-use FluidGraph\Content;
+use FluidGraph\Element;
 
 trait DateModified
 {
@@ -14,7 +14,7 @@ trait DateModified
 	/**
 	 *
 	 */
-	static public function dateModified(Content\Element $content): void
+	static public function dateModified(Element $content): void
 	{
 		$content->active['dateModified'] = new DateTime();
 	}

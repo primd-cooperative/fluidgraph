@@ -1,11 +1,13 @@
 <?php
 
-namespace FluidGraph\Content;
+namespace FluidGraph\Element;
+
+use FluidGraph;
 
 /**
  * Content which is particular to an edge.
  */
-class Edge extends Element
+class Edge extends FluidGraph\Element
 {
 	/**
 	 * The source node from which this edge originates

@@ -9,13 +9,13 @@ trait DoesMake
 {
 
 	/**
-	 * @template T of Element
+	 * @template T of Entity
 	 * @param class-string<T> $class
 	 * @return T
 	 */
-	public function make(string $class, array $data = [], int $flags = 0): Element
+	public function make(string $class, array $data = [], int $flags = 0): Entity
 	{
-		if (!$flags & Maker::SKIP_CHECKS) {
+		if (!$flags & Builder::SKIP_CHECKS) {
 			if (!class_exists($class)) {
 				throw new InvalidArgumentException(sprintf(
 					'Cannot make "%s," no such class exists',
@@ -66,7 +66,7 @@ trait DoesMake
 			}
 		}
 
-		if (!$flags & Maker::SKIP_ASSIGN) {
+		if (!$flags & Builder::SKIP_ASSIGN) {
 			return new $class(...$required)->assign(array_filter(
 				$data,
 				function ($key) use ($required) {

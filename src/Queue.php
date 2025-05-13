@@ -12,12 +12,12 @@ class Queue
 	use DoesWith;
 
 	/**
-	 * @var ArrayObject<Content\Edge>
+	 * @var ArrayObject<Element\Edge>
 	 */
 	protected ArrayObject $edges;
 
 	/**
-	 * @var ArrayObject<Content\Node>
+	 * @var ArrayObject<Element\Node>
 	 */
 	protected ArrayObject $nodes;
 
@@ -49,8 +49,8 @@ class Queue
 	}
 
 	/**
-	 * @param ArrayObject<Content\Node> $nodes
-	 * @param ArrayObject<Content\Edge> $edges
+	 * @param ArrayObject<Element\Node> $nodes
+	 * @param ArrayObject<Element\Edge> $edges
 	 */
 	public function merge(): static
 	{
@@ -67,7 +67,7 @@ class Queue
 			foreach ($visit_nodes['new'] as $identity => $status) {
 				$node = $this->nodes[$identity];
 
-				foreach ($this->getRelationships($node) as $relationship) {
+				foreach ($node->relationships() as $relationship) {
 					$relationship->merge($node);
 				}
 			}
@@ -207,28 +207,27 @@ class Queue
 
 		$i = 0; foreach ($identities as $identity) {
 			$edge = $this->edges[$identity];
-			$sign = $this->getSignature($edge, Status::FASTENED);
-			$key  = $this->getKey($edge);
+			$key  = $edge->key();
 
-			foreach ($this->getClasses($edge) as $class) {
+			foreach ($edge->classes() as $class) {
 				$class::onCreate($edge);
 
-				$key = $this->getKey($edge);
+				$key = $edge->key();
 			}
 
 			if ($key) {
 				$query
-					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $sign, "d$i", "t$i")
+					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $edge->signature(Status::FASTENED), "d$i", "t$i")
 					->with("k$i", $key)
 					->run('ON CREATE SET @%s(%s)', "d$i", "i$i")
 					->run('ON MATCH SET @%s(%s)', "d$i", "i$i")
-					->with("d$i", array_diff_key($this->getProperties($edge), $key))
+					->with("d$i", array_diff_key($edge->properties(), $key))
 				;
 
 			} else {
 				$query
-					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $sign, "d$i", "t$i")
-					->with("d$i", $this->getProperties($edge))
+					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $edge->signature(Status::FASTENED), "d$i", "t$i")
+					->with("d$i", $edge->properties())
 				;
 
 			}
@@ -287,27 +286,26 @@ class Queue
 
 		$i = 0; foreach ($identities as $identity) {
 			$node = $this->nodes[$identity];
-			$sign = $this->getSignature($node, Status::FASTENED);
-			$key  = $this->getKey($node);
+			$key  = $node->key();
 
-			foreach ($this->getClasses($node) as $class) {
+			foreach ($node->classes() as $class) {
 				$class::onCreate($node);
 
-				$key = $this->getKey($node);
+				$key = $node->key();
 			}
 
 			if ($key) {
 				$query
-					->run('MERGE (%s:%s {@%s})', "i$i", $sign, "k$i")
+					->run('MERGE (%s:%s {@%s})', "i$i", $node->signature(Status::FASTENED), "k$i")
 					->with("k$i", $key)
 					->run('ON CREATE SET @%s(%s)', "d$i", "i$i")
 					->run('ON MATCH SET @%s(%s)', "d$i", "i$i")
-					->with("d$i", array_diff_key($this->getProperties($node), $key))
+					->with("d$i", array_diff_key($node->properties(), $key))
 				;
 			} else {
 				$query
-					->run('CREATE (%s:%s {@%s})', "i$i", $sign, "d$i")
-					->with("d$i", $this->getProperties($node))
+					->run('CREATE (%s:%s {@%s})', "i$i", $node->signature(Status::FASTENED), "d$i")
+					->with("d$i", $node->properties())
 				;
 			}
 
@@ -374,16 +372,16 @@ class Queue
 
 		$i = 0; foreach ($identities as $identity) {
 			$node      = $this->nodes[$identity];
-			$diffs[$i] = $this->getChanges($node);
+			$diffs[$i] = $node->changes();
 
 			if (!count($diffs[$i])) {
 				continue;
 			}
 
-			foreach ($this->getClasses($node) as $class) {
+			foreach ($node->classes() as $class) {
 				$class::onUpdate($node);
 
-				$diffs[$i] = $this->getChanges($node);
+				$diffs[$i] = $node->changes();
 			}
 
 			$query
@@ -406,11 +404,11 @@ class Queue
 				->with("d$i", $diffs[$i])
 			;
 
-			if ($plus_signature = $this->getSignature($node, Status::FASTENED)) {
+			if ($plus_signature = $node->signature(Status::FASTENED)) {
 				$query->run('SET %s:%s', "i$i", $plus_signature);
 			}
 
-			if ($less_signature = $this->getSignature($node, Status::RELEASED)) {
+			if ($less_signature = $node->signature(Status::RELEASED)) {
 				$query->run('REMOVE %s:%s', "i$i", $less_signature);
 			}
 		}
@@ -429,130 +427,6 @@ class Queue
 				}
 			}
 		}
-	}
-
-
-	/**
-	 *
-	 */
-	protected function getChanges(Content\Element $content): array
-	{
-		$changes = $this->getProperties($content);
-
-		foreach ($changes as $property => $value) {
-			if (!array_key_exists($property, $content->loaded)) {
-				continue;
-			}
-
-			if ($value != $content->loaded[$property]) {
-				continue;
-			}
-
-			unset($changes[$property]);
-		}
-
-		return $changes;
-	}
-
-
-	/**
-	 *
-	 */
-	protected function getClasses(Content\Element $content): array
-	{
-		$classes = [];
-
-		foreach ($this->getLabels($content) as $label) {
-			if (!class_exists($label)) {
-				continue;
-			}
-
-			if (!is_subclass_of($label, Element::class, TRUE)) {
-				continue;
-			}
-
-			$classes[] = $label;
-		}
-
-		return $classes;
-	}
-
-
-	/**
-	 *
-	 */
-	protected function getKey(Content\Element $content): array
-	{
-		$key        = [];
-		$properties = [];
-
-		foreach ($this->getClasses($content) as $class) {
-			$properties = array_merge($properties, $class::key());
-		}
-
-		foreach (array_unique($properties) as $property) {
-			if (array_key_exists($property, $content->active)) {
-				$key[$property] = $content->active[$property];
-			}
-		}
-
-		return $key;
-	}
-
-
-	/**
-	 *
-	 */
-	protected function getLabels(Content\Element $content, Status ...$statuses): array
-	{
-		if (!count($statuses)) {
-			$statuses = [Status::FASTENED, Status::ATTACHED];
-		}
-
-		return array_keys(array_filter(
-			$content->labels,
-			function (Status $status) use ($statuses) {
-				return in_array($status, $statuses, TRUE);
-			}
-		));
-	}
-
-
-	/**
-	 * @return array<mixed>
-	 */
-	protected function getProperties(Content\Element $content): array
-	{
-		return array_filter(
-			$content->active,
-			function($value) {
-				return !$value instanceof Relationship;
-			}
-		);
-	}
-
-
-	/**
-	 * @return array<Relationship>
-	 */
-	protected function getRelationships(Content\Element $content): array
-	{
-		return array_filter(
-			$content->active,
-			function($value) {
-				return $value instanceof Relationship;
-			}
-		);
-	}
-
-
-	protected function getSignature(Content\Element $content, Status ...$statuses): string
-	{
-		if (!count($statuses)) {
-			$statuses = [Status::ATTACHED, Status::RELEASED];
-		}
-
-		return implode(':', $this->getLabels($content, ...$statuses));
 	}
 }
 

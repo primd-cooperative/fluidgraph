@@ -139,7 +139,7 @@ class Query
 	 *
 	 * The type of elements (node or edge) being matched is determined by the class.
 	 *
-	 * @template T of Element
+	 * @template T of Entity
 	 * @param class-string<T> $class
 	 * @return array<T>
 	 */
@@ -204,11 +204,11 @@ class Query
 	 *
 	 * The type of element (node or edge) being matched is determined by the class.
 	 *
-	 * @template T of Element
+	 * @template T of Entity
 	 * @param class-string<T> $class
 	 * @return ?T
 	 */
-	public function matchOne(string $class, callable|array|int $query): ?Element
+	public function matchOne(string $class, callable|array|int $query): ?Entity
 	{
 		$results = $this->match($class, $query, [], 2, 0);
 

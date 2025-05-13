@@ -8,6 +8,6 @@ trait DetachRelated
 
 	public function detachRelated()
 	{
-
+		$this->graph->detach(...$this->excluded);
 	}
 }

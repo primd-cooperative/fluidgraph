@@ -1,20 +1,20 @@
 <?php
 
-namespace FluidGraph\Element\Id;
+namespace FluidGraph\Entity\Id;
 
 use FluidGraph\Element;
-use FluidGraph\Content;
+use FluidGraph\Entity;
 use Ramsey\Uuid\Uuid;
 
 trait Uuid7
 {
-	use Element\Id;
-	use Element\CreateHook;
+	use Entity\Id;
+	use Entity\CreateHook;
 
 	/**
 	 *
 	 */
-	static public function uuid7(Content\Element $content): void
+	static public function uuid7(Element $content): void
 	{
 		if (!isset($content->active['id'])) {
 			$content->active['id'] = Uuid::uuid7();

@@ -2,14 +2,13 @@
 namespace FluidGraph;
 
 use ArrayAccess;
-use InvalidArgumentException;
-use ReflectionClass;
 use RuntimeException;
+use InvalidArgumentException;
 
 /**
  *
  */
-class Result implements ArrayAccess
+class Result
 {
 	use HasGraph;
 
@@ -17,7 +16,7 @@ class Result implements ArrayAccess
 	 *
 	 */
 	public function __construct(
-		protected Content\Element $content
+		private Element $element
 	) {}
 
 
@@ -31,7 +30,7 @@ class Result implements ArrayAccess
 	 */
 	public function as(string $class): ?Node
 	{
-		if (!$this->content) {
+		if (!$this->element) {
 			return NULL;
 		}
 
@@ -56,24 +55,23 @@ class Result implements ArrayAccess
 			));
 		}
 
-		if (!in_array($class, array_keys($this->content->labels))) {
+		if (!in_array($class, array_keys($this->element->labels))) {
 			throw new InvalidArgumentException(sprintf(
 				'Cannot make "%s," invalid kind for element with labels: %s',
 				$class,
-				implode(', ', array_keys($this->content->labels))
+				implode(', ', array_keys($this->element->labels))
 			));
 		}
 
-		$this->graph->fasten(
-			$element = $this->graph->make(
-				$class,
-				$this->content->loaded,
-				Maker::SKIP_CHECKS | Maker::SKIP_ASSIGN
-			),
-			$this->content
+		$entity = $this->graph->make(
+			$class,
+			$this->element->loaded,
+			Builder::SKIP_CHECKS | Builder::SKIP_ASSIGN
 		);
 
-		return $element;
+		$this->graph->fasten($entity, $this->element);
+
+		return $entity;
 	}
 
 
@@ -82,7 +80,7 @@ class Result implements ArrayAccess
 	 */
 	public function isEdge(): bool
 	{
-		return $this->content instanceof Content\Edge;
+		return $this->element instanceof Element\Edge;
 	}
 
 
@@ -91,57 +89,15 @@ class Result implements ArrayAccess
 	 */
 	public function isNode(): bool
 	{
-		return $this->content instanceof Content\Node;
-	}
-
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function offsetExists(mixed $offset): bool
-	{
-		return array_key_exists($offset, $this->content->loaded);
-	}
-
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function offsetGet(mixed $offset): mixed
-	{
-		return $this->offsetExists($offset) ? $this->content->loaded[$offset] : NULL;
-	}
-
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function offsetSet(mixed $offset, mixed $value): void
-	{
-		throw new RuntimeException(
-			'Cannot set offset "%s" on result, results are read-only',
-			$offset
-		);
-	}
-
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function offsetUnset(mixed $offset): void
-	{
-		throw new RuntimeException(
-			'Cannot unset offset "%s" on result, results are read-only',
-			$offset
-		);
+		return $this->element instanceof Element\Node;
 	}
 
 
 	/**
 	 * Get the raw result (as returned by the Graph)
 	 */
-	public function raw(): Content\Element
+	public function raw(): Element
 	{
-		return $this->content;
+		return $this->element;
 	}
 }

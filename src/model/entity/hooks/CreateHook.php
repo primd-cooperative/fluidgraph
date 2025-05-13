@@ -1,6 +1,6 @@
 <?php
 
-namespace FluidGraph\Element;
+namespace FluidGraph\Entity;
 
 trait CreateHook
 {

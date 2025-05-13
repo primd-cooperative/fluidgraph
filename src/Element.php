@@ -2,207 +2,213 @@
 
 namespace FluidGraph;
 
-use InvalidArgumentException;
-
 /**
+ * The content base provides the common properties for edge and node contents.
  *
+ * Content can be thought of as the ontological "being" of an element.  The model edges / nodes
+ * are simply expressions of this content, and map their properties to the content.
  */
 abstract class Element
 {
-	use DoesWith;
+	/**
+	 * The latest entity instance of the content
+	 */
+	readonly public Entity $entity;
+
+	/**
+	 * The identity of the element as it is or was in the graph.
+	 */
+	readonly public int $identity;
+
+	/**
+	 * The active properties of the element (as managed by/on its models)
+	 */
+	public array $active = [];
+
+
+	/**
+	 * The labels of the element
+	 */
+	public array $labels = [];
+
+	/**
+	 * The loaded properties of the element (as retreived from the graph)
+	 */
+	public array $loaded = [];
+
+	/**
+	 * The status of the element.
+	 */
+	public ?Status $status = NULL;
 
 	/**
 	 *
 	 */
-	abstract public protected(set) ?Content\Element $__content__ {
-		get;
-		set {
-			$this->__content__ = $value;
+	public function __construct(?Entity $element = NULL)
+	{
+		if ($element) {
+			$this->entity = $element;
 		}
 	}
 
+
 	/**
-	 *
+	 * {@inheritDoc}
 	 */
-	static public function key(): array
+	public function __debugInfo()
 	{
-		return [];
+		return array_filter(
+			get_object_vars($this),
+			function($key) {
+				return !in_array(
+					$key,
+					[
+						'graph',
+						'entity'
+					]
+				);
+			},
+			ARRAY_FILTER_USE_KEY
+		);
 	}
 
 
 	/**
-	 *
+	 * Get the changes to this element by comparing active to loaded values.
 	 */
-	static public function onCreate(Content\Element $content): void
+	public function changes(): array
 	{
-		for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
-			self::doHooks($class, Element\CreateHook::class, $content);
-		}
-	}
+		$changes = $this->properties();
 
-
-	/**
-	 *
-	 */
-	static public function onUpdate(Content\Element $content): void
-	{
-		for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
-			self::doHooks($class, Element\UpdateHook::class, $content);
-		}
-	}
-
-
-	/**
-	 *
-	 */
-	static protected function doHooks(string $class, string $hook, Content\Element $content): void
-	{
-		foreach (class_uses($class) as $trait) {
-			self::doHooks($trait, $hook, $content);
-
-			if (!in_array($hook, class_uses($trait))) {
+		foreach ($changes as $property => $value) {
+			if (!array_key_exists($property, $this->loaded)) {
 				continue;
 			}
 
-			$parts  = explode('\\', $trait);
-			$method = lcfirst(end($parts));
+			if ($value != $this->loaded[$property]) {
+				continue;
+			}
 
-			static::$method($content);
+			unset($changes[$property]);
 		}
+
+		return $changes;
 	}
 
 
 	/**
-	 * Clone an element
-	 *
-	 * This will create a copy of an element, removing its content and key properties.  If the
-	 * element is a node, it will clone the relationship, however, edges and nodes will be
-	 * dropped as edges do not contain information about connecting node expressions.
+	 * Get the element classes for this content based on labels.
 	 */
-	public function __clone(): void
+	public function classes(): array
 	{
-		$keys = static::key();
+		$classes = [];
 
-		$clone = array_diff(
-			array_keys(get_object_vars($this)),
-			[
-				'__content__',
-				...$keys
-			]
-		);
-
-		$this->with(function() use ($keys, $clone) {
-			foreach ($keys as $property) {
-				unset($this->$property);
+		foreach ($this->labels() as $label) {
+			if (!class_exists($label)) {
+				continue;
 			}
 
-			foreach ($clone as $property) {
-				$value = $this->$property;
-
-				unset($this->$property);
-
-				$this->$property = is_object($value)
-					? clone $value
-					: $value
-				;
+			if (!is_subclass_of($label, Element::class, TRUE)) {
+				continue;
 			}
 
-			$this->__content__ = NULL;
-		});
+			$classes[] = $label;
+		}
+
+		return $classes;
 	}
 
 
 	/**
-	 * Assign data to the entity/element in a safe/bulk manner
+	 * Get the key properties for this element based on element classes.
 	 */
-	public function assign(array $data): static
+	public function key(): array
 	{
-		$keys         = array_keys($data);
-		$properties   = array_keys((array) $this);
-		$inaccessible = array_diff($keys, $properties);
+		$key        = [];
+		$properties = [];
 
-		if (count($inaccessible)) {
-			throw new InvalidArgumentException(sprintf(
-				'Cannot update inaccessible properties: %s',
-				implode(', ', $inaccessible)
-			));
+		foreach ($this->classes() as $class) {
+			$properties = array_merge($properties, $class::key());
 		}
 
-		foreach ($keys as $property) {
-			$this[$property] = $data[$property];
+		foreach (array_unique($properties) as $property) {
+			if (array_key_exists($property, $this->active)) {
+				$key[$property] = $this->active[$property];
+			}
 		}
+
+		return $key;
+	}
+
+
+	/**
+	 * Get the identity of this element;
+	 */
+	public function identify(int $identity): static
+	{
+		$this->identity = $identity;
 
 		return $this;
 	}
 
 
 	/**
-	 * Get the identity of the element.
-	 *
-	 * A null identity implies the element is not attached to or persisted in the graph yet.
+	 * Get the labels (or labels matching specific statuses) for this element
 	 */
-	public function identity(): int|null
+	public function labels(Status ...$statuses): array
 	{
-		if (!isset($this->__content__->identity)) {
-			return NULL;
+		if (!count($statuses)) {
+			$statuses = [Status::FASTENED, Status::ATTACHED];
 		}
 
-		return $this->__content__->identity;
+		return array_keys(array_filter(
+			$this->labels,
+			function (Status $status) use ($statuses) {
+				return in_array($status, $statuses, TRUE);
+			}
+		));
 	}
 
 
 	/**
-	 * Determine whether or not this element is an expression of another element or element content
+	 * Get a mapping of properties to values for this element.
+	 *
+	 * @return array<string, mixed>
 	 */
-	public function is(Element|Content\Element $element): bool
+	public function properties(): array
 	{
-		if ($element instanceof Element) {
-			if ($this === $element) {
-				return TRUE;
+		return array_filter(
+			$this->active,
+			function($value) {
+				return !$value instanceof Relationship;
 			}
-
-			if ($this->__content__ === $element->__content__) {
-				return TRUE;
-			}
-
-		} else {
-			if ($this->__content__ === $element) {
-				return TRUE;
-			}
-		}
-
-		return FALSE;
+		);
 	}
 
 
 	/**
-	 * Get the status of the element or check if status is one of...
-	 *
-	 * A null implies that the element has not been attached to the graph yet.
+	 * Get the signature (colon separated list) for this element
+	 */
+	public function signature(Status ...$statuses): string
+	{
+		if (!count($statuses)) {
+			$statuses = [Status::ATTACHED, Status::RELEASED];
+		}
+
+		return implode(':', $this->labels(...$statuses));
+	}
+
+
+	/**
+	 * Get the status for, or whether or not a status matches, this element
 	 */
 	public function status(Status ...$statuses): Status|bool|null
 	{
-		if (count($statuses)) {
-			return in_array($this->__content__->status, $statuses);
+		if ($statuses) {
+			return in_array($this->status, $statuses);
 		}
 
-		return $this->__content__->status;
+		return $this->status;
 	}
 
-
-	/**
-	 *
-	 */
-	public function values(): array
-	{
-		return array_filter(
-			get_object_vars($this) + get_class_vars($this::class),
-			function($key) {
-				return !in_array($key, [
-					'__content__'
-				]);
-			},
-			ARRAY_FILTER_USE_KEY
-		);
-	}
 }

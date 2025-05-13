@@ -3,7 +3,6 @@
 namespace FluidGraph\Relationship;
 
 use FluidGraph;
-use InvalidArgumentException;
 
 /**
  * A type of relationship that links to one node with one edge.
@@ -17,13 +16,7 @@ trait LinkOne
 	 */
 	public function set(FluidGraph\Node $target, array $data = []): static
 	{
-		if ($target->status() == FluidGraph\Status::DETACHED) {
-			throw new InvalidArgumentException(sprintf(
-				'You cannot set a detached target "%s" on "%s"',
-				$target::class,
-				static::class
-			));
-		}
+		$this->validate($target);
 
 		if ($pos = $this->includes($target) !== FALSE) {
 
@@ -53,14 +46,14 @@ trait LinkOne
 
 				$source = $this->source;
 				$edge   = $this
-					->make($this->type, $data, FluidGraph\Maker::SKIP_CHECKS)
+					->make($this->type, $data, FluidGraph\Builder::SKIP_CHECKS)
 					->with(function() use (&$source, &$target) {
 						//
 						// If this lines shows error it's because tooling can tell the scope;
 						//
 
-						$this->__content__->source = &$source->__content__;
-						$this->__content__->target = &$target->__content__;
+						$this->__element__->source = &$source->__element__;
+						$this->__element__->target = &$target->__element__;
 					})
 				;
 			}
