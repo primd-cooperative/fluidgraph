@@ -33,10 +33,10 @@ abstract class Entity
 	/**
 	 *
 	 */
-	static public function onCreate(Element $content): void
+	static public function onCreate(Element $element): void
 	{
 		for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
-			self::doHooks($class, Entity\CreateHook::class, $content);
+			self::doHooks($class, Entity\CreateHook::class, $element);
 		}
 	}
 
@@ -44,10 +44,10 @@ abstract class Entity
 	/**
 	 *
 	 */
-	static public function onUpdate(Element $content): void
+	static public function onUpdate(Element $element): void
 	{
 		for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
-			self::doHooks($class, Entity\UpdateHook::class, $content);
+			self::doHooks($class, Entity\UpdateHook::class, $element);
 		}
 	}
 
@@ -55,10 +55,10 @@ abstract class Entity
 	/**
 	 *
 	 */
-	static protected function doHooks(string $class, string $hook, Element $content): void
+	static protected function doHooks(string $class, string $hook, Element $element): void
 	{
 		foreach (class_uses($class) as $trait) {
-			self::doHooks($trait, $hook, $content);
+			self::doHooks($trait, $hook, $element);
 
 			if (!in_array($hook, class_uses($trait))) {
 				continue;
@@ -67,7 +67,7 @@ abstract class Entity
 			$parts  = explode('\\', $trait);
 			$method = lcfirst(end($parts));
 
-			static::$method($content);
+			static::$method($element);
 		}
 	}
 

@@ -14,8 +14,8 @@ trait DateCreated
 	/**
 	 *
 	 */
-	static public function dateCreated(Element $content): void
+	static public function dateCreated(Element $element): void
 	{
-		$content->active['dateCreated'] = new DateTime();
+		$element->active['dateCreated'] = new DateTime();
 	}
 }

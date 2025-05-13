@@ -14,10 +14,10 @@ trait Uuid7
 	/**
 	 *
 	 */
-	static public function uuid7(Element $content): void
+	static public function uuid7(Element $element): void
 	{
-		if (!isset($content->active['id'])) {
-			$content->active['id'] = Uuid::uuid7();
+		if (!isset($element->active['id'])) {
+			$element->active['id'] = Uuid::uuid7();
 		}
 	}
 }

@@ -108,7 +108,7 @@ abstract class Element
 				continue;
 			}
 
-			if (!is_subclass_of($label, Element::class, TRUE)) {
+			if (!is_subclass_of($label, Entity::class, TRUE)) {
 				continue;
 			}
 

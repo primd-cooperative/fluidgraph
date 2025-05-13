@@ -333,7 +333,7 @@ class Queue
 				$this->nodes[$record->element_id] = $this->nodes[$identities[$i]];
 			}
 
-			$content = $this->graph->resolve($record);
+			$element = $this->graph->resolve($record);
 
 			unset($this->nodes[$identities[$i]]);
 		}
@@ -419,11 +419,11 @@ class Queue
 		);
 
 		foreach ($query->pull(Signature::RECORD) as $record) {
-			$content = $this->graph->resolve($record);
+			$element = $this->graph->resolve($record);
 
-			foreach ($content->labels as $label => $status) {
+			foreach ($element->labels as $label => $status) {
 				if ($status != Status::ATTACHED) {
-					unset($content->labels[$label]);
+					unset($element->labels[$label]);
 				}
 			}
 		}
