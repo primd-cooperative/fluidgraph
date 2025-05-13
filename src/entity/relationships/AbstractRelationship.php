@@ -17,12 +17,12 @@ trait AbstractRelationship
 	/**
 	 * @var array<FluidGraph\Edge>
 	 */
-	protected ArrayObject $included;
+	protected array $included = [];
 
 	/**
 	 * @var array<FluidGraph\Edge>
 	 */
-	protected ArrayObject $excluded;
+	protected array $excluded = [];
 
 	/**
 	 * How this relationship should be populated when loaded from the graph
@@ -84,8 +84,5 @@ trait AbstractRelationship
 		$this->type     = $type;
 		$this->targets  = $targets;
 		$this->mode     = $mode;
-
-		$this->included = new ArrayObject();
-		$this->excluded = new ArrayObject();
 	}
 }

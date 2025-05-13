@@ -31,34 +31,39 @@ trait DoesMake
 			}
 		}
 
-		$parameters = new ReflectionClass($class)->getConstructor()->getParameters();
-		$required   = [];
-		$missing    = [];
+		$reflection  = new ReflectionClass($class);
+		$constructor = $reflection->getConstructor();
+		$required    = [];
 
-		foreach ($parameters as $parameter) {
-			$name = $parameter->getName();
+		if ($constructor) {
+			$parameters  = $constructor->getParameters();
+			$missing    = [];
 
-			if (!$parameter->isPromoted()) {
-				continue;
+			foreach ($parameters as $parameter) {
+				$name = $parameter->getName();
+
+				if (!$parameter->isPromoted()) {
+					continue;
+				}
+
+				if ($parameter->isOptional()) {
+					continue;
+				}
+
+				if (!array_key_exists($name, $data)) {
+					$missing[] = $name;
+				}
+
+				$required[$name] = $data[$name];
 			}
 
-			if ($parameter->isOptional()) {
-				continue;
+			if (count($missing)) {
+				throw new InvalidArgumentException(sprintf(
+					'Cannot make "%s" from result, missing required values for: %s',
+					$class,
+					implode(', ', $missing)
+				));
 			}
-
-			if (!array_key_exists($name, $data)) {
-				$missing[] = $name;
-			}
-
-			$required[$name] = $data[$name];
-		}
-
-		if (count($missing)) {
-			throw new InvalidArgumentException(sprintf(
-				'Cannot make "%s" from result, missing required values for: %s',
-				$class,
-				implode(', ', $missing)
-			));
 		}
 
 		if (!$flags & Maker::SKIP_ASSIGN) {
@@ -69,8 +74,8 @@ trait DoesMake
 				},
 				ARRAY_FILTER_USE_KEY
 			));
+		} else {
+			return new $class(...$required);
 		}
-
-		return new $class(...$required);
 	}
 }

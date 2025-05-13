@@ -54,26 +54,41 @@ class Queue
 	 */
 	public function merge(): static
 	{
-		$visit_nodes = [];
+		$visit_nodes = [
+			'new' => [],
+			'old' => [],
+		];
 
 		foreach ($this->nodes as $identity => $node) {
-			$visit_nodes[$identity] = $node->status;
+			$visit_nodes['new'][$identity] = $node->status;
 		}
 
-		while($visit_nodes) {
-			foreach ($visit_nodes as $identity => $status) {
+		while($visit_nodes['new']) {
+			foreach ($visit_nodes['new'] as $identity => $status) {
 				$node = $this->nodes[$identity];
 
-				foreach ($this->getRelationships($node, $status) as $relationship) {
+				foreach ($this->getRelationships($node) as $relationship) {
 					$relationship->merge($node);
 				}
 			}
 
 			foreach ($this->nodes as $identity => $node) {
-				if (!isset($visit_nodes[$identity]) || $visit_nodes[$identity] !== $node->status) {
-					$visit_nodes[$identity] = $node->status;
+				$is_new = isset($visit_nodes['new'][$identity]);
+				$is_old = isset($visit_nodes['old'][$identity]);
+
+				if (!$is_new && !$is_old) {
+					$visit_nodes['new'][$identity] = $node->status;
+
+				} elseif ($is_old && $visit_nodes['old'][$identity] !== $node->status) {
+					$visit_nodes['new'][$identity] = $node->status;
+
+					unset($visit_nodes['old'][$identity]);
+
 				} else {
-					unset($visit_nodes[$identity]);
+					$visit_nodes['old'][$identity] = $node->status;
+
+					unset($visit_nodes['new'][$identity]);
+
 				}
 			}
 		}
@@ -170,11 +185,12 @@ class Queue
 	 */
 	protected function doEdgeCreates(): void
 	{
-		$i     = 0;
-		$query = $this->graph->query;
+		$query      = $this->graph->query;
+		$identities = $this->edgeOperations[Operation::CREATE->value];
 
-		foreach ($this->edgeOperations[Operation::CREATE->value] as $identity => $edge) {
-			$from = $this->edgeOperations[Operation::CREATE->value][$edge];
+
+		$i = 0; foreach ($identities as $identity) {
+			$edge = $this->edges[$identity];
 
 			$query
 				->run('MATCH (%s) WHERE id(%s) = $%s', "f$i", "f$i", "fd$i")
@@ -189,13 +205,33 @@ class Queue
 			$i++;
 		}
 
-		$i = 0;
+		$i = 0; foreach ($identities as $identity) {
+			$edge = $this->edges[$identity];
+			$sign = $this->getSignature($edge, Status::FASTENED);
+			$key  = $this->getKey($edge);
 
-		foreach ($this->edgeOperations[Operation::CREATE] as $identity => $edge) {
-			$query
-				->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $this->getSignature($edge), "d$i", "t$i")
-				->with("d$i", $this->getProperties($edge))
-			;
+			foreach ($this->getClasses($edge) as $class) {
+				$class::onCreate($edge);
+
+				$key = $this->getKey($edge);
+			}
+
+			if ($key) {
+				$query
+					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $sign, "d$i", "t$i")
+					->with("k$i", $key)
+					->run('ON CREATE SET @%s(%s)', "d$i", "i$i")
+					->run('ON MATCH SET @%s(%s)', "d$i", "i$i")
+					->with("d$i", array_diff_key($this->getProperties($edge), $key))
+				;
+
+			} else {
+				$query
+					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $sign, "d$i", "t$i")
+					->with("d$i", $this->getProperties($edge))
+				;
+
+			}
 
 			$i++;
 		}
@@ -204,6 +240,27 @@ class Queue
 			'RETURN %s',
 			implode(',', array_map(fn($i) => "i$i", range(0, $i - 1)))
 		);
+
+		foreach ($query->pull(Signature::RECORD) as $i => $record) {
+			if (isset($this->edges[$record->element_id])) {
+
+				//
+				// Duplicate merge, re-fasten the entity
+				//
+
+				$this->graph->fasten(
+					$this->edges[$identities[$i]]->entity,
+					$this->edges[$record->element_id]
+				);
+
+			} else {
+				$this->edges[$record->element_id] = $this->edges[$identities[$i]];
+			}
+
+			$this->graph->resolve($record)->status = Status::ATTACHED;
+
+			unset($this->edges[$identities[$i]]);
+		}
 	}
 
 
@@ -230,6 +287,7 @@ class Queue
 
 		$i = 0; foreach ($identities as $identity) {
 			$node = $this->nodes[$identity];
+			$sign = $this->getSignature($node, Status::FASTENED);
 			$key  = $this->getKey($node);
 
 			foreach ($this->getClasses($node) as $class) {
@@ -240,7 +298,7 @@ class Queue
 
 			if ($key) {
 				$query
-					->run('MERGE (%s:%s {@%s})', "i$i", $this->getSignature($node), "k$i")
+					->run('MERGE (%s:%s {@%s})', "i$i", $sign, "k$i")
 					->with("k$i", $key)
 					->run('ON CREATE SET @%s(%s)', "d$i", "i$i")
 					->run('ON MATCH SET @%s(%s)', "d$i", "i$i")
@@ -248,7 +306,7 @@ class Queue
 				;
 			} else {
 				$query
-					->run('CREATE (%s:%s {@%s})', "i$i", $this->getSignature($node), "d$i")
+					->run('CREATE (%s:%s {@%s})', "i$i", $sign, "d$i")
 					->with("d$i", $this->getProperties($node))
 				;
 			}
@@ -277,7 +335,7 @@ class Queue
 				$this->nodes[$record->element_id] = $this->nodes[$identities[$i]];
 			}
 
-			$this->graph->resolve($record)->status = Status::ATTACHED;
+			$content = $this->graph->resolve($record);
 
 			unset($this->nodes[$identities[$i]]);
 		}
@@ -291,8 +349,7 @@ class Queue
 		$query      = $this->graph->query;
 		$where      = $query->where->var('n');
 
-		$i = 0; foreach ($identities as $identity) {
-			$node       = $this->nodes[$identity];
+		foreach ($identities as $identity) {
 			$matchers[] = $where->id($identity);
 		}
 
@@ -303,6 +360,7 @@ class Queue
 
 		foreach ($identities as $identity) {
 			$this->nodes[$identity]->status = Status::DETACHED;
+
 			unset($this->nodes[$identity]);
 		}
 	}
@@ -348,7 +406,7 @@ class Queue
 				->with("d$i", $diffs[$i])
 			;
 
-			if ($plus_signature = $this->getSignature($node, Status::INDUCTED)) {
+			if ($plus_signature = $this->getSignature($node, Status::FASTENED)) {
 				$query->run('SET %s:%s', "i$i", $plus_signature);
 			}
 
@@ -363,7 +421,13 @@ class Queue
 		);
 
 		foreach ($query->pull(Signature::RECORD) as $record) {
-			$this->graph->resolve($record);
+			$content = $this->graph->resolve($record);
+
+			foreach ($content->labels as $label => $status) {
+				if ($status != Status::ATTACHED) {
+					unset($content->labels[$label]);
+				}
+			}
 		}
 	}
 
@@ -442,7 +506,7 @@ class Queue
 	protected function getLabels(Content\Element $content, Status ...$statuses): array
 	{
 		if (!count($statuses)) {
-			$statuses = [Status::INDUCTED, Status::ATTACHED];
+			$statuses = [Status::FASTENED, Status::ATTACHED];
 		}
 
 		return array_keys(array_filter(
@@ -484,6 +548,10 @@ class Queue
 
 	protected function getSignature(Content\Element $content, Status ...$statuses): string
 	{
+		if (!count($statuses)) {
+			$statuses = [Status::ATTACHED, Status::RELEASED];
+		}
+
 		return implode(':', $this->getLabels($content, ...$statuses));
 	}
 }

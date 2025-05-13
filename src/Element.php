@@ -16,7 +16,9 @@ abstract class Element
 	 */
 	abstract public protected(set) ?Content\Element $__content__ {
 		get;
-		set;
+		set {
+			$this->__content__ = $value;
+		}
 	}
 
 	/**

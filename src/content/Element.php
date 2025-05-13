@@ -15,7 +15,7 @@ abstract class Element
 	/**
 	 * The latest entity instance of the content
 	 */
-	public ?FluidGraph\Element $entity;
+	readonly public FluidGraph\Element $entity;
 
 	/**
 	 * The identity of the element as it is or was in the graph.
@@ -43,7 +43,6 @@ abstract class Element
 	 */
 	public ?FluidGraph\Status $status = NULL;
 
-
 	/**
 	 *
 	 */
@@ -51,9 +50,7 @@ abstract class Element
 	{
 		if ($element) {
 			$this->entity = $element;
-			$this->labels[$element::class] = FluidGraph\Status::FASTENED;
 		}
-
 	}
 
 

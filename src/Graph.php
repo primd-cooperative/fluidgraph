@@ -109,34 +109,48 @@ class Graph
 	public function attach(Element ...$elements): static
 	{
 		foreach ($elements as $element) {
-			if (!$element->status()) {
+			$content = $element->__content__;
+
+			if (!$content->status) {
 				$this->fasten($element);
 			}
 
-			$class   = get_class($element);
-			$content = $element->__content__;
-
-			switch ($element->status()) {
+			switch ($content->status) {
 				case Status::FASTENED:
 					$identity = spl_object_hash($element);
-					$target   = match(TRUE) {
-						$element instanceof Node => $this->nodes,
-						$element instanceof Edge => $this->edges,
-					};
 
-					$content->labels[$element::class] = $content->status = Status::INDUCTED;
-					$target[$identity]       = $content;
+					if ($content instanceof Content\Node) {
+						$target = $this->nodes;
+					} elseif ($content instanceof Content\Edge) {
+						$target = $this->edges;
 
+						if (isset($content->target->entity)) {
+							$this->attach($content->target->entity);
+						}
+
+						if (isset($content->source->entity)) {
+							$this->attach($content->source->entity);
+						}
+
+					} else {
+						throw new InvalidArgumentException(sprintf(
+							'Unknown element type "%s" on attach()',
+							get_class($content)
+						));
+					}
+
+					$target[$identity] = $content;
+					$content->status   = Status::INDUCTED;
 					break;
 
 				case Status::RELEASED:
 					$content->status = Status::ATTACHED;
+					break;
 
 				case Status::DETACHED:
 					throw new InvalidArgumentException(sprintf(
-						'Cannot attached already detached element: %s (%s)',
-						$content->identity,
-						$class
+						'Cannot attached already detached element: %s',
+						$content->identity
 					));
 			}
 		}
@@ -148,11 +162,14 @@ class Graph
 	/**
 	 *
 	 */
-	public function detach(Element ...$elements): static
+	public function detach(Element|Content\Element ...$elements): static
 	{
 		foreach ($elements as $element) {
-			$class   = get_class($element);
-			$content = $this->content->getValue($element);
+			if ($element instanceof Content\Element) {
+				$content = $element;
+			} else {
+				$content = $element->__content__;
+			}
 
 			switch ($element->status()) {
 				case Status::INDUCTED:
@@ -162,14 +179,14 @@ class Graph
 						$element instanceof Edge => $this->edges,
 					};
 
-					$content->labels[$class] = $content->status = Status::FASTENED;
+					$content->status = Status::FASTENED;
 
 					unset($target[$identity]);
 
 					break;
 
 				case Status::ATTACHED:
-					$this->content->getValue($element)->status = Status::RELEASED;
+					$content->status = Status::RELEASED;
 			}
 		}
 
@@ -213,7 +230,11 @@ class Graph
 			)();
 		}
 
-		if (!$content->status) {
+		if (!isset($content->labels[$element::class])) {
+			$content->labels[$element::class] = Status::FASTENED;
+		}
+
+		if (!isset($content->status)) {
 			$content->status = Status::FASTENED;
 		}
 
@@ -298,12 +319,6 @@ class Graph
 
 		foreach ($structure->labels as $label) {
 			$content->labels[$label] = Status::ATTACHED;
-		}
-
-		foreach (array_keys($content->labels) as $label) {
-			if (!in_array($label, $structure->labels)) {
-				$content->labels[$label] = Status::DETACHED;
-			}
 		}
 
 		foreach ($structure->properties as $property => $value) {

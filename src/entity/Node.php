@@ -28,17 +28,12 @@ abstract class Node extends Element
 	{
 		foreach ($labels as $label) {
 			if (!isset($this->__content__->labels[$label])) {
-				$this->__content__->labels[$label] = Status::INDUCTED;
+				$this->__content__->labels[$label] = Status::FASTENED;
 				continue;
 			}
 
 			if ($this->__content__->labels[$label] == Status::RELEASED) {
 				$this->__content__->labels[$label] = Status::ATTACHED;
-				continue;
-			}
-
-			if ($this->__content__->labels[$label] == Status::DETACHED) {
-				$this->__content__->labels[$label] = Status::INDUCTED;
 				continue;
 			}
 		}

@@ -105,15 +105,6 @@ abstract class Relationship
 	 */
 	public function merge(Content\Node $source): static
 	{
-		foreach ($this->included as $edge) {
-			if (!isset($edge->__content__->source)) {
-
-			}
-		}
-		//
-		// TODO: update the source for all edges that need it.
-		//
-
 		for($class = get_class($this); $class != Relationship::class; $class = get_parent_class($class)) {
 			foreach (class_uses($class) as $trait) {
 				if (!in_array(Relationship\MergeHook::class, class_uses($trait))) {
