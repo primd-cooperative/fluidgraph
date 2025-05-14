@@ -221,15 +221,17 @@ class Graph
 				$value->on($this);
 			}
 
-			Closure::bind(
+			//
+			// We use closure here in order to set protected/private properties.
+			//
+
+			$entity->with(
 				function () use ($element, $property) {
 					unset($this->$property);
 
 					$this->$property = &$element->active[$property];
-				},
-				$entity,
-				$entity
-			)();
+				}
+			);
 		}
 
 		if (!isset($element->labels[$entity::class])) {

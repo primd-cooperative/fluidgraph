@@ -12,6 +12,7 @@ use FluidGraph;
  */
 class ToMany extends FluidGraph\Relationship
 {
-	use AttachRelated;
+	use AttachIncluded;
+	use DetachExcluded;
 	use LinkMany;
 }

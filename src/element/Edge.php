@@ -12,10 +12,10 @@ class Edge extends FluidGraph\Element
 	/**
 	 * The source node from which this edge originates
 	 */
-	public Node $source;
+	public protected(set) Node $source;
 
 	/**
 	 * The target node to which this edge points
 	 */
-	public Node $target;
+	public protected(set) Node $target;
 }

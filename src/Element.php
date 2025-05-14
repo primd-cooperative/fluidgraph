@@ -10,6 +10,8 @@ namespace FluidGraph;
  */
 abstract class Element
 {
+	use DoesWith;
+
 	/**
 	 * The latest entity instance of the content
 	 */

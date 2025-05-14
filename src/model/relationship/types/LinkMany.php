@@ -47,17 +47,16 @@ trait LinkMany
 				//
 
 				$source = $this->source;
-				$edge   = $this
-					->make($this->type, $data, FluidGraph\Builder::SKIP_CHECKS)
-					->with(function() use (&$source, &$target) {
-						//
-						// If this lines shows error it's because tooling can tell the scope;
-						//
+				$edge   = $this->make($this->type, $data, FluidGraph\Builder::SKIP_CHECKS);
 
-						$this->__element__->source = &$source->__element__;
-						$this->__element__->target = &$target->__element__;
-					})
-				;
+				$edge->__element__->with(function() use (&$source, &$target) {
+					//
+					// If this lines shows error it's because tooling can tell the scope;
+					//
+
+					$this->source = &$source->__element__;
+					$this->target = &$target->__element__;
+				});
 			}
 
 			$this->included[] = $edge;

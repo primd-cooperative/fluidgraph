@@ -12,7 +12,8 @@ use FluidGraph;
  */
 class OwnedMany extends FluidGraph\Relationship
 {
-	use AttachRelated;
+	use AttachIncluded;
+	use DetachExcluded;
 	use DetachRelated;
 	use LinkMany;
 }

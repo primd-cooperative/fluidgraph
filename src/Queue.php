@@ -188,8 +188,7 @@ class Queue
 		$query      = $this->graph->query;
 		$identities = $this->edgeOperations[Operation::CREATE->value];
 
-
-		$i = 0; foreach ($identities as $identity) {
+		foreach ($identities as $i => $identity) {
 			$edge = $this->edges[$identity];
 
 			$query
@@ -201,8 +200,6 @@ class Queue
 				->run('MATCH (%s) WHERE id(%s) = $%s', "t$i", "t$i", "td$i")
 				->with("td$i", $edge->target->identity)
 			;
-
-			$i++;
 		}
 
 		$i = 0; foreach ($identities as $identity) {
@@ -265,14 +262,82 @@ class Queue
 
 	protected function doEdgeDeletes(): void
 	{
+		$matchers   = [];
+		$identities = $this->edgeOperations[Operation::DELETE->value];
+		$query      = $this->graph->query;
+		$where      = $query->where->var('e');
 
+		foreach ($identities as $identity) {
+			$matchers[] = $where->id($identity);
+		}
+
+		$result = $query
+			->run('MATCH (n1)-[e]->(n2) WHERE %s DELETE e', $where->any(...$matchers)())
+			->pull(Signature::SUCCESS)
+		;
+
+		foreach ($identities as $identity) {
+			$this->edges[$identity]->status = Status::DETACHED;
+
+			unset($this->edges[$identity]);
+		}
 	}
 
 
 
 	protected function doEdgeUpdates(): void
 	{
+		$diffs      = [];
+		$query      = $this->graph->query;
+		$identities = $this->edgeOperations[Operation::UPDATE->value];
 
+		$i = 0; foreach ($identities as $identity) {
+			$edge      = $this->edges[$identity];
+			$diffs[$i] = $edge->changes();
+
+			if (!count($diffs[$i])) {
+				continue;
+			}
+
+			foreach ($edge->classes() as $class) {
+				$class::onUpdate($edge);
+
+				$diffs[$i] = $edge->changes();
+			}
+
+			$query
+				->run('MATCH (%s)-[%s]->(%s) WHERE id(%s) = $%s', "f$i", "i$i", "t$i", "i$i", "e$i")
+				->with("e$i", $identity)
+			;
+
+			$i++;
+		}
+
+		$i = 0; foreach ($identities as $identity) {
+			$edge = $this->edges[$identity];
+
+			if (!count($diffs[$i])) {
+				continue;
+			}
+
+			$query
+				->run('SET @%s(%s)', "d$i", "i$i")
+				->with("d$i", $diffs[$i])
+			;
+
+			//
+			// TODO: Renamed edge?
+			//
+		}
+
+		$query->run(
+			'RETURN %s',
+			implode(',', array_map(fn($i) => "i$i", array_keys(array_filter($diffs))))
+		);
+
+		foreach ($query->pull(Signature::RECORD) as $record) {
+			$element = $this->graph->resolve($record);
+		}
 	}
 
 

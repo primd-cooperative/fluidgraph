@@ -2,14 +2,17 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph;
-use RuntimeException;
-
-trait AttachRelated
+/**
+ *
+ */
+trait AttachIncluded
 {
 	use MergeHook;
 
-	public function attachRelated()
+	/**
+	 *
+	 */
+	public function attachIncluded()
 	{
 		$this->graph->attach(...$this->included);
 	}

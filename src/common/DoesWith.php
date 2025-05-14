@@ -11,7 +11,7 @@ trait DoesWith
 	 */
 	public function with(Closure $callback): static
 	{
-		Closure::bind($callback, $this, static::class)();
+		$callback->bindTo($this, $this)();
 
 		return $this;
 	}
