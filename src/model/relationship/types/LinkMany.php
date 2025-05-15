@@ -23,18 +23,21 @@ trait LinkMany
 	 */
 	public function of(string $class, string ...$labels): array
 	{
-		return array_filter(
-			$this->active,
-			function($edge) use ($class, $labels) {
-				if (!in_array($class, $edge->__element__->target->classes())) {
-					return NULL;
-				}
+		$results = [];
 
-				if ($labels && !array_intersect($labels, $edge->__element__->target->labels())) {
-					return NULL;
-				}
+		foreach ($this->active as $edge) {
+			if (!in_array($class, $edge->__element__->target->classes())) {
+				continue;
 			}
-		);
+
+			if ($labels && !array_intersect($labels, $edge->__element__->target->labels())) {
+				continue;
+			}
+
+			$results[] = $edge->__element__->target->as($class);
+		}
+
+		return $results;
 	}
 
 	/**

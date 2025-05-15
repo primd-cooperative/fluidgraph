@@ -2,6 +2,7 @@
 
 namespace FluidGraph;
 
+use Closure;
 use InvalidArgumentException;
 
 /**
@@ -135,6 +136,16 @@ abstract class Entity
 
 			$this->__element__ = NULL;
 		});
+	}
+
+	/**
+	 *
+	 */
+	public function __invoke(Closure $callback): static
+	{
+		$callback->bindTo($this, $this)();
+
+		return $this;
 	}
 
 
