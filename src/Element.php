@@ -43,7 +43,7 @@ abstract class Element
 	 *
 	 * @var array<Entity>
 	 */
-	protected array $entities = [];
+	public array $entities = [];
 
 	/**
 	 * Instantiate a new element
@@ -158,6 +158,95 @@ abstract class Element
 
 
 	/**
+	 * Fasten the element to an entity.
+	 *
+	 * This converts entity properties to references on the element and sets the element on the
+	 * entity itself.  We use visible class properties from the element scope to determine which
+	 * properties to look for, but defer to the values currently set on the entity instance.
+	 *
+	 * NOTE: This will not gracefully handle static properties and all properties that map to the
+	 * graph must be publicly readable (although can be protected or privately set).  They,
+	 * however, cannot contain property hooks.
+	 *
+	 */
+	public function fasten(?Entity $entity = NULL): static
+	{
+		if (!$entity) {
+			foreach ($this->entities as $entity) {
+				$this->fasten($entity);
+			}
+
+			return $this;
+		}
+
+		$properties = array_filter(
+			get_class_vars($entity::class),
+			function($property) {
+				return !in_array($property, [
+					'__element__'
+				]);
+			},
+			ARRAY_FILTER_USE_KEY
+		);
+
+		if (!isset($this->status)) {
+			$this->status = Status::FASTENED;
+		}
+
+		if (!isset($this->labels[$entity::class])) {
+			$this->labels[$entity::class] = Status::FASTENED;
+		}
+
+		//
+		// The following executes the callback within the scope of the entity allowing us to
+		// set __element__ and assign references to protected/privately set properties.
+		//
+
+		$entity->with(
+			function(Element $element, $properties) {
+				/**
+				 * @var Entity $this
+				 */
+
+				$this->__element__ = $element;
+
+				foreach ($properties as $property => $value) {
+					if (!array_key_exists($property, $element->active)) {
+						$element->active[$property] = isset($this->$property)
+							? $this->$property
+							: $value;
+					}
+
+					unset($this->$property);
+
+					$this->$property = &$element->active[$property];
+				}
+			},
+			$this,
+			$properties
+		);
+
+		if (!isset($this->entities[$entity::class])) {
+			$this->entities[$entity::class] = $entity;
+		}
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function identity(): int|null
+	{
+		return isset($this->identity)
+			? $this->identity
+			: NULL
+		;
+	}
+
+
+	/**
 	 * Get the key properties for this element based on element classes.
 	 */
 	public function key(): array
@@ -176,18 +265,6 @@ abstract class Element
 		}
 
 		return $key;
-	}
-
-
-	/**
-	 *
-	 */
-	public function identity(): int|null
-	{
-		return isset($this->identity)
-			? $this->identity
-			: NULL
-		;
 	}
 
 
@@ -245,79 +322,14 @@ abstract class Element
 	 */
 	public function status(Status ...$statuses): Status|bool|null
 	{
+		if (count($statuses) == 1) {
+			return $this->status === $statuses[0];
+		}
+
 		if ($statuses) {
 			return in_array($this->status, $statuses);
 		}
 
 		return $this->status;
-	}
-
-
-	/**
-	 * Fasten the element to an entity.
-	 *
-	 * This converts entity properties to references on the element and sets the element on the
-	 * entity itself.  We use visible class properties from the element scope to determine which
-	 * properties to look for, but defer to the values currently set on the entity instance.
-	 *
-	 * NOTE: This will not gracefully handle static properties and all properties that map to the
-	 * graph must be publicly readable (although can be protected or privately set).  They,
-	 * however, cannot contain property hooks.
-	 *
-	 */
-	protected function fasten(Entity $entity): Entity
-	{
-		$properties = array_filter(
-			get_class_vars($entity::class),
-			function($property) {
-				return !in_array($property, [
-					'__element__'
-				]);
-			},
-			ARRAY_FILTER_USE_KEY
-		);
-
-		if (!isset($this->status)) {
-			$this->status = Status::FASTENED;
-		}
-
-		if (!isset($this->labels[$entity::class])) {
-			$this->labels[$entity::class] = Status::FASTENED;
-		}
-
-		//
-		// The following executes the callback within the scope of the entity allowing us to
-		// set __element__ and assign references to protected/privately set properties.
-		//
-
-		$entity->with(
-			function(Element $element, $properties) {
-				/**
-				 * @var Entity $this
-				 */
-
-				$this->__element__ = $element;
-
-				foreach ($properties as $property => $value) {
-					if (!array_key_exists($property, $element->active)) {
-						$element->active[$property] = isset($this->$property)
-							? $this->$property
-							: $value;
-					}
-
-					unset($this->$property);
-
-					$this->$property = &$element->active[$property];
-				}
-			},
-			$this,
-			$properties
-		);
-
-		if (!isset($this->entities[$entity::class])) {
-			$this->entities[$entity::class] = $entity;
-		}
-
-		return $entity;
 	}
 }

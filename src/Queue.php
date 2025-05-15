@@ -200,6 +200,9 @@ class Queue
 				->set("fd$i", $edge->source->identity)
 			;
 
+			if (!isset($edge->target->identity)) {
+				var_dump($this->nodeOperations, spl_object_hash($edge->target), $edge); exit();
+			}
 			$query
 				->run('MATCH (%s) WHERE id(%s) = $%s', "t$i", "t$i", "td$i")
 				->set("td$i", $edge->target->identity)
@@ -357,6 +360,8 @@ class Queue
 
 			foreach ($node->classes() as $class) {
 				$class::onCreate($node);
+
+				// TODO: Figure out a way to exclude create properties
 
 				$key = $node->key();
 			}

@@ -11,14 +11,14 @@ abstract class Relationship
 {
 	use Relationship\AbstractRelationship;
 
-	protected DateTime $loaded;
+	protected DateTime $loadTime;
 
 	/**
 	 * {@inheritDoc}
 	 */
 	public function load(Graph $graph): static
 	{
-		if (!isset($loaded)) {
+		if (!isset($this->loadTime)) {
 			$target = implode('|', $this->targets);
 			$source = $this->source::class;
 			$edges  = $graph
@@ -31,23 +31,15 @@ abstract class Relationship
 				->as($this->type)
 			;
 
-			array_push(
-				$this->included,
-				...array_filter(
-					$edges,
-					function($edge) {
-						foreach ($this->excluded as $excluded) {
-							if ($edge->is($excluded)) {
-								return FALSE;
-							}
-						}
+			$this->loaded   = [];
+			$this->loadTime = new DateTime();
 
-						return TRUE;
-					}
-				)
-			);
+			foreach ($edges as $edge) {
+				$hash = spl_object_hash($edge->__element__);
 
-			$this->loaded = new DateTime();
+				$this->loaded[$hash] = $edge;
+				$this->active[$hash] = $edge;
+			}
 		}
 
 		return $this;

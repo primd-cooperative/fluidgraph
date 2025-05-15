@@ -14,34 +14,49 @@ trait LinkOne
 	use AbstractRelationship;
 
 	/**
+	 * Get the related node entity when it is of the specified type and labels.
+	 *
+	 * If a related node exists but does not match the class/labels, null will be returned.
+	 *
+	 * @param class-string<T of Node>
+	 * @return T
+	 */
+	public function of(string $class, string ...$labels): ?Node
+	{
+		$edge = reset($this->active);
+
+		if (!$edge) {
+			return NULL;
+		}
+
+		if (!in_array($class, $edge->__element__->target->classes())) {
+			return NULL;
+		}
+
+		if ($labels && !array_intersect($labels, $edge->__element__->target->labels())) {
+			return NULL;
+		}
+
+		return $edge->__element__->target->as($class);
+	}
+
+
+	/**
 	 *
 	 */
 	public function set(Node $target, array $data = []): static
 	{
 		$this->validate($target);
 
-		if ($pos = $this->includes($target) !== FALSE) {
+		$hash = spl_object_hash($target->__element__);
 
-			//
-			// An edge for the node we're setting is already included, just update it.
-			//
+		if (!isset($this->active[$hash])) {
+			$this->unset();
 
-			$this->included[$pos]->assign($data);
-
-		} else {
-			if ($pos = $this->excludes($target) !== FALSE) {
-
-				//
-				// An existing edge for this node was already excluded, let's use that and
-				// make sure it's no longer excluded.
-				//
-
-				$edge = $this->excluded[$pos]->assign($data);
-
-				unset($this->excluded[$pos]);
+			if (isset($this->loaded[$hash])) {
+				$this->active[$hash] = $this->loaded[$hash];
 
 			} else {
-
 				//
 				// No existing edge found, so we'll create a new one.
 				//
@@ -50,22 +65,22 @@ trait LinkOne
 				$edge   = $this->type::make($data, Entity::MAKE_ASSIGN);
 
 				$edge->with(
-					function(Node &$source, Node &$target) {
+					function(Node $source, Node $target) {
 						/**
 						 * @var Edge $this
 						 */
-						$this->__element__->source = &$source->__element__;
-						$this->__element__->target = &$target->__element__;
+						$this->__element__->source = $source;
+						$this->__element__->target = $target;
 					},
 					$source,
 					$target
 				);
+
+				$this->active[$hash] = $edge;
 			}
-
-			$this->unset();
-
-			$this->included[] = $edge;
 		}
+
+		$this->active[$hash]->assign($data);
 
 		return $this;
 	}
@@ -76,21 +91,7 @@ trait LinkOne
 	 */
 	public function unset(): static
 	{
-		//
-		// We always pop the current edge, as this is a to-one relationship
-		//
-
-		$edge = array_pop($this->included);
-
-		if ($edge && $edge->identity()) {
-
-			//
-			// If the current edge is persisted, we need to exclude it.  If it wasn't then
-			// it doesn't matter as it was never "real" or was already deleted.
-			//
-
-			$this->excluded[] = $edge;
-		}
+		$this->active = [];
 
 		return $this;
 	}

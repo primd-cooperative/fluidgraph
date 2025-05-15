@@ -18,12 +18,12 @@ trait AbstractRelationship
 	/**
 	 * @var array<Edge<T>>
 	 */
-	protected array $excluded = [];
+	protected array $active = [];
 
 	/**
 	 * @var array<Edge<T>>
 	 */
-	protected array $included = [];
+	protected array $loaded = [];
 
 	/**
 	 * The source entity Node for this relationship.
@@ -117,7 +117,7 @@ trait AbstractRelationship
 	public function assign(array $data, Node|Element\Node|string ...$nodes): static
 	{
 		foreach ($nodes as $node) {
-			foreach ($this->included as $edge) {
+			foreach ($this->active as $edge) {
 				if ($edge->for($node)) {
 					$edge->assign($data);
 				}
@@ -133,9 +133,9 @@ trait AbstractRelationship
 	 */
 	public function clean(): static
 	{
-		foreach ($this->excluded as $i => $edge) {
-			if ($edge->status() == Status::DETACHED) {
-				unset($this->excluded[$i]);
+		foreach ($this->loaded as $i => $edge) {
+			if ($edge->__element__->status == Status::DETACHED) {
+				unset($this->loaded[$i]);
 			}
 		}
 
@@ -149,7 +149,7 @@ trait AbstractRelationship
 	public function contains(Node|Element\Node|string ...$nodes): bool
 	{
 		foreach ($nodes as $node) {
-			if ($this->includes($node) === FALSE) {
+			if ($this->position($node) === FALSE) {
 				return FALSE;
 			}
 		}
@@ -164,7 +164,7 @@ trait AbstractRelationship
 	public function containsAny(Node|Element\Node|string ...$nodes): bool
 	{
 		foreach ($nodes as $node) {
-			if ($this->includes($node) !== FALSE) {
+			if ($this->position($node) !== FALSE) {
 				return TRUE;
 			}
 		}
@@ -183,11 +183,11 @@ trait AbstractRelationship
 		$edges = [];
 
 		if (empty($nodes)) {
-			return $this->included;
+			return $this->active;
 		}
 
 		foreach ($nodes as $node) {
-			foreach ($this->included as $edge) {
+			foreach ($this->active as $edge) {
 				if ($edge->for($node)) {
 					$edges[] = $edge;
 				}
@@ -199,26 +199,11 @@ trait AbstractRelationship
 
 
 	/**
-	 * Determine, by position, whether or not a node is excluded from the current relationship.
-	 */
-	protected function excludes(Element\Node|Node|string $node): int|false
-	{
-		foreach ($this->excluded as $i => $edge) {
-			if ($edge->for($node)) {
-				return $i;
-			}
-		}
-
-		return FALSE;
-	}
-
-
-	/**
 	 * Determine, by position, whether or not a node is included in the current relationship.
 	 */
-	protected function includes(Element\Node|Node|string $node): int|false
+	protected function position(Element\Node|Node|string $node): int|false
 	{
-		foreach ($this->included as $i => $edge) {
+		foreach ($this->active as $i => $edge) {
 			if ($edge->for($node)) {
 				return $i;
 			}
@@ -231,13 +216,14 @@ trait AbstractRelationship
 	/**
 	 * Validate a target against basic rules.
 	 *
-	 * - No Detatched Targets
+	 * - No Released or Detatched Targets
 	 * - No Targets of Unsupported Types
 	 */
-	protected function validate(Node $target) {
-		if ($target->status() == Status::DETACHED) {
+	protected function validate(Node $target)
+	{
+		if ($target->status(Status::RELEASED, Status::DETACHED)) {
 			throw new InvalidArgumentException(sprintf(
-				'Relationships cannot include a detached target "%s" on "%s"',
+				'Relationships cannot include released or detached target "%s" on "%s"',
 				$target::class,
 				static::class
 			));

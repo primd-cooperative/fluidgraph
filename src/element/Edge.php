@@ -13,12 +13,28 @@ class Edge extends FluidGraph\Element
 	/**
 	 * The source node from which this edge originates
 	 */
-	public Node $source;
+	public Node|FluidGraph\Node|null $source = NULL{
+		get {
+			if ($this->source instanceof FluidGraph\Node) {
+				return $this->source->__element__;
+			}
+
+			return $this->source;
+		}
+	}
 
 	/**
 	 * The target node to which this edge points
 	 */
-	public Node $target;
+	public Node|FluidGraph\Node|null $target = NULL{
+		get {
+			if ($this->target instanceof FluidGraph\Node) {
+				return $this->target->__element__;
+			}
+
+			return $this->target;
+		}
+	}
 
 	/**
 	 * @type T of FluidGraph\Edge

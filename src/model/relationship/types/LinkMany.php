@@ -14,34 +14,43 @@ trait LinkMany
 	use AbstractRelationship;
 
 	/**
+	 * Get the related node entities when they are of the specified class and labels.
+	 *
+	 * If a related nodes exist but do not match the class/labels, an empty array will be returned.
+	 *
+	 * @param class-string<T of Node>
+	 * @return array<T>
+	 */
+	public function of(string $class, string ...$labels): array
+	{
+		return array_filter(
+			$this->active,
+			function($edge) use ($class, $labels) {
+				if (!in_array($class, $edge->__element__->target->classes())) {
+					return NULL;
+				}
+
+				if ($labels && !array_intersect($labels, $edge->__element__->target->labels())) {
+					return NULL;
+				}
+			}
+		);
+	}
+
+	/**
 	 *
 	 */
 	public function set(Node $target, array $data = []): static
 	{
 		$this->validate($target);
 
-		if ($pos = $this->includes($target) !== FALSE) {
+		$hash = spl_object_hash($target->__element__);
 
-			//
-			// An edge for the node we're setting is already included, just update it.
-			//
-
-			$this->included[$pos]->assign($data);
-
-		} else {
-			if ($pos = $this->excludes($target) !== FALSE) {
-
-				//
-				// An existing edge for this node was already excluded, let's use that and
-				// make sure it's no longer excluded.
-				//
-
-				$edge = $this->excluded[$pos]->assign($data);
-
-				unset($this->excluded[$pos]);
+		if (!isset($this->active[$hash])) {
+			if (isset($this->loaded[$hash])) {
+				$this->active[$hash] = $this->loaded[$hash];
 
 			} else {
-
 				//
 				// No existing edge found, so we'll create a new one.
 				//
@@ -50,20 +59,22 @@ trait LinkMany
 				$edge   = $this->type::make($data, Entity::MAKE_ASSIGN);
 
 				$edge->with(
-					function(Node &$source, Node &$target) {
+					function(Node $source, Node $target) {
 						/**
 						 * @var Edge $this
 						 */
-						$this->__element__->source = &$source->__element__;
-						$this->__element__->target = &$target->__element__;
+						$this->__element__->source = $source;
+						$this->__element__->target = $target;
 					},
 					$source,
 					$target
 				);
-			}
 
-			$this->included[] = $edge;
+				$this->active[$hash] = $edge;
+			}
 		}
+
+		$this->active[$hash]->assign($data);
 
 		return $this;
 	}
@@ -74,19 +85,10 @@ trait LinkMany
 	 */
 	public function unset(Node $target): static
 	{
-		if ($pos = $this->includes($target) !== FALSE) {
-			$edge = $this->included[$pos];
+		$hash = spl_object_hash($target->__element__);
 
-			if ($edge->identity()) {
-				//
-				// If the current edge is persisted, we need to exclude it.  If it wasn't then
-				// it doesn't matter as it was never "real" or was already deleted.
-				//
-
-				$this->excluded[] = $edge;
-			}
-
-			unset($this->included[$pos]);
+		if (isset($this->active[$hash])) {
+			unset($this->active[$hash]);
 		}
 
 		return $this;

@@ -17,20 +17,17 @@ trait DetachRelated
 	 */
 	public function detachRelated(Graph $graph)
 	{
-		if ($this->source->status() == Status::RELEASED) {
-			$graph->detach(...array_map(
-				function($edge) {
-					return $edge()->target;
-				},
-				$this->included
-			));
-		}
+		foreach ([$this->loaded, $this->active] as $set) {
+			foreach ($set as $hash => $edge) {
+				$invalid_edge = $edge->__element__->status(
+					Status::RELEASED,
+					Status::DETACHED
+				);
 
-		$graph->detach(...array_map(
-			function($edge) {
-				return $edge()->target;
-			},
-			$this->excluded
-		));
+				if ($invalid_edge) {
+					$graph->detach($edge->__element__->target);
+				}
+			}
+		}
 	}
 }
