@@ -2,6 +2,8 @@
 
 namespace FluidGraph\Relationship;
 
+use FluidGraph\Graph;
+
 /**
  *
  */
@@ -12,8 +14,8 @@ trait AttachIncluded
 	/**
 	 *
 	 */
-	public function attachIncluded()
+	public function attachIncluded(Graph $graph)
 	{
-		$this->graph->attach(...$this->included);
+		$graph->attach(...$this->included);
 	}
 }

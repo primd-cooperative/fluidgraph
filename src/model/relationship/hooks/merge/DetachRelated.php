@@ -2,6 +2,7 @@
 
 namespace FluidGraph\Relationship;
 
+use FluidGraph\Graph;
 use FluidGraph\Status;
 
 /**
@@ -14,20 +15,20 @@ trait DetachRelated
 	/**
 	 *
 	 */
-	public function detachRelated()
+	public function detachRelated(Graph $graph)
 	{
 		if ($this->source->status() == Status::RELEASED) {
-			$this->graph->detach(...array_map(
+			$graph->detach(...array_map(
 				function($edge) {
-					return $edge->__element__->target;
+					return $edge()->target;
 				},
 				$this->included
 			));
 		}
 
-		$this->graph->detach(...array_map(
+		$graph->detach(...array_map(
 			function($edge) {
-				return $edge->__element__->target;
+				return $edge()->target;
 			},
 			$this->excluded
 		));

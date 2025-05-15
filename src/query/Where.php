@@ -60,6 +60,22 @@ class Where
 	}
 
 
+	public function sourceNode(Node $node): callable
+	{
+		return function() use ($node) {
+			return sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node->identity()));
+		};
+	}
+
+
+	public function targetNode(Node $node): callable
+	{
+		return function() use ($node) {
+			return sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node->identity()));
+		};
+	}
+
+
 	public function uses(Query $query): static
 	{
 		$this->query = $query;
@@ -83,7 +99,7 @@ class Where
 
 		} else {
 			$this->index++;
-			$this->query->with('p' . $this->index, $value);
+			$this->query->set('p' . $this->index, $value);
 
 			return '$p' . $this->index;
 		}

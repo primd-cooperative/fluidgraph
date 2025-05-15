@@ -9,9 +9,9 @@ trait DoesWith
 	/**
 	 * @param Closure<static> $callback
 	 */
-	public function with(Closure $callback): static
+	public function with(Closure $callback, mixed ...$args): static
 	{
-		$callback->bindTo($this, $this)();
+		$callback->bindTo($this, $this)(...$args);
 
 		return $this;
 	}

@@ -9,7 +9,6 @@ use Bolt\enum\Signature;
 class Queue
 {
 	use HasGraph;
-	use DoesWith;
 
 	/**
 	 * @var ArrayObject<Element\Edge>
@@ -68,7 +67,7 @@ class Queue
 				$node = $this->nodes[$identity];
 
 				foreach ($node->relationships() as $relationship) {
-					$relationship->merge($node);
+					$relationship->merge($this->graph);
 				}
 			}
 
@@ -191,14 +190,15 @@ class Queue
 		foreach ($identities as $i => $identity) {
 			$edge = $this->edges[$identity];
 
+
 			$query
 				->run('MATCH (%s) WHERE id(%s) = $%s', "f$i", "f$i", "fd$i")
-				->with("fd$i", $edge->source->identity)
+				->set("fd$i", $edge->source->identity)
 			;
 
 			$query
 				->run('MATCH (%s) WHERE id(%s) = $%s', "t$i", "t$i", "td$i")
-				->with("td$i", $edge->target->identity)
+				->set("td$i", $edge->target->identity)
 			;
 		}
 
@@ -214,17 +214,17 @@ class Queue
 
 			if ($key) {
 				$query
-					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $edge->signature(Status::FASTENED), "d$i", "t$i")
-					->with("k$i", $key)
+					->run('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $edge->signature(Status::FASTENED), "d$i", "t$i")
+					->set("k$i", $key)
 					->run('ON CREATE SET @%s(%s)', "d$i", "i$i")
 					->run('ON MATCH SET @%s(%s)', "d$i", "i$i")
-					->with("d$i", array_diff_key($edge->properties(), $key))
+					->set("d$i", array_diff_key($edge->properties(), $key))
 				;
 
 			} else {
 				$query
 					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $edge->signature(Status::FASTENED), "d$i", "t$i")
-					->with("d$i", $edge->properties())
+					->set("d$i", $edge->properties())
 				;
 
 			}
@@ -239,21 +239,19 @@ class Queue
 
 		foreach ($query->pull(Signature::RECORD) as $i => $record) {
 			if (isset($this->edges[$record->element_id])) {
-
 				//
-				// Duplicate merge, re-fasten the entity
+				// Duplicate merge, re-fasten the entities
 				//
 
-				$this->graph->fasten(
-					$this->edges[$identities[$i]]->entity,
-					$this->edges[$record->element_id]
-				);
+				foreach ($this->edges[$identities[$i]]->entities as $entity) {
+					$this->edges[$record->element_id]->fasten($entity);
+				}
 
 			} else {
 				$this->edges[$record->element_id] = $this->edges[$identities[$i]];
 			}
 
-			$this->graph->resolve($record)->status = Status::ATTACHED;
+			$element = $this->graph->resolve($record);
 
 			unset($this->edges[$identities[$i]]);
 		}
@@ -271,7 +269,7 @@ class Queue
 			$matchers[] = $where->id($identity);
 		}
 
-		$result = $query
+		$responses = $query
 			->run('MATCH (n1)-[e]->(n2) WHERE %s DELETE e', $where->any(...$matchers)())
 			->pull(Signature::SUCCESS)
 		;
@@ -307,7 +305,7 @@ class Queue
 
 			$query
 				->run('MATCH (%s)-[%s]->(%s) WHERE id(%s) = $%s', "f$i", "i$i", "t$i", "i$i", "e$i")
-				->with("e$i", $identity)
+				->set("e$i", $identity)
 			;
 
 			$i++;
@@ -322,7 +320,7 @@ class Queue
 
 			$query
 				->run('SET @%s(%s)', "d$i", "i$i")
-				->with("d$i", $diffs[$i])
+				->set("d$i", $diffs[$i])
 			;
 
 			//
@@ -362,15 +360,15 @@ class Queue
 			if ($key) {
 				$query
 					->run('MERGE (%s:%s {@%s})', "i$i", $node->signature(Status::FASTENED), "k$i")
-					->with("k$i", $key)
+					->set("k$i", $key)
 					->run('ON CREATE SET @%s(%s)', "d$i", "i$i")
 					->run('ON MATCH SET @%s(%s)', "d$i", "i$i")
-					->with("d$i", array_diff_key($node->properties(), $key))
+					->set("d$i", array_diff_key($node->properties(), $key))
 				;
 			} else {
 				$query
 					->run('CREATE (%s:%s {@%s})', "i$i", $node->signature(Status::FASTENED), "d$i")
-					->with("d$i", $node->properties())
+					->set("d$i", $node->properties())
 				;
 			}
 
@@ -386,13 +384,12 @@ class Queue
 			if (isset($this->nodes[$record->element_id])) {
 
 				//
-				// Duplicate merge, re-fasten the entity
+				// Duplicate merge, re-fasten the entities
 				//
 
-				$this->graph->fasten(
-					$this->nodes[$identities[$i]]->entity,
-					$this->nodes[$record->element_id]
-				);
+				foreach ($this->nodes[$identities[$i]]->entities as $entity) {
+					$this->nodes[$record->element_id]->fasten($entity);
+				}
 
 			} else {
 				$this->nodes[$record->element_id] = $this->nodes[$identities[$i]];
@@ -416,7 +413,7 @@ class Queue
 			$matchers[] = $where->id($identity);
 		}
 
-		$result = $query
+		$responses = $query
 			->run('MATCH (n) WHERE %s DETACH DELETE n', $where->any(...$matchers)())
 			->pull(Signature::SUCCESS)
 		;
@@ -451,7 +448,7 @@ class Queue
 
 			$query
 				->run('MATCH (%s) WHERE id(%s) = $%s', "i$i", "i$i", "n$i")
-				->with("n$i", $identity)
+				->set("n$i", $identity)
 			;
 
 			$i++;
@@ -466,7 +463,7 @@ class Queue
 
 			$query
 				->run('SET @%s(%s)', "d$i", "i$i")
-				->with("d$i", $diffs[$i])
+				->set("d$i", $diffs[$i])
 			;
 
 			if ($plus_signature = $node->signature(Status::FASTENED)) {

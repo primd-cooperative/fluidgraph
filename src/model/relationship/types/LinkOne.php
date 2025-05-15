@@ -2,7 +2,8 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph;
+use FluidGraph\Node;
+use FluidGraph\Entity;
 
 /**
  * A type of relationship that links to one node with one edge.
@@ -14,7 +15,7 @@ trait LinkOne
 	/**
 	 *
 	 */
-	public function set(FluidGraph\Node $target, array $data = []): static
+	public function set(Node $target, array $data = []): static
 	{
 		$this->validate($target);
 
@@ -45,17 +46,20 @@ trait LinkOne
 				//
 
 				$source = $this->source;
-				$edge   = $this->make($this->type, $data, FluidGraph\Builder::SKIP_CHECKS);
+				$edge   = $this->type::make($data, Entity::MAKE_ASSIGN);
 
-				$edge->__element__->with(function() use (&$source, &$target) {
+				$edge->with(
+					function(Node $source, Node $target) {
 						//
-						// If this lines shows error it's because tooling can tell the scope;
+						// If these lines shows error it's because tooling can't tell the scope
 						//
 
-						$this->source = &$source->__element__;
-						$this->target = &$target->__element__;
-					})
-				;
+						$this->__element__->source = &$source->__element__;
+						$this->__element__->target = &$target->__element__;
+					},
+					$source,
+					$target
+				);
 			}
 
 			$this->unset();

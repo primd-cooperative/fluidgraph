@@ -11,7 +11,7 @@ abstract class Edge extends Entity
 	 * @var Element\Edge
 	 */
 	public protected(set) ?Element $__element__ {
-		get {
+ 		get {
 			if (!isset($this->__element__)) {
 				$this->__element__ = new Element\Edge($this);
 			}

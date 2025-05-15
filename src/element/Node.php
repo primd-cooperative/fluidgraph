@@ -3,12 +3,38 @@
 namespace FluidGraph\Element;
 
 use FluidGraph;
+use InvalidArgumentException;
 
 /**
  *
  */
 class Node extends FluidGraph\Element
 {
+	/**
+	 * @type T of FluidGraph\Node
+	 * @param class-string<T>
+	 * @return T
+	 */
+	public function as(string $class): FluidGraph\Node
+	{
+		if (!class_exists($class)) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot make "%s," no such class exists',
+				$class
+			));
+		}
+
+		if (!is_subclass_of($class, FluidGraph\Node::class, TRUE)) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot make "%s" from non-Node result',
+				$class
+			));
+		}
+
+		return parent::as($class);
+	}
+
+
 	/**
 	 * Get any relationships for this node
 	 *

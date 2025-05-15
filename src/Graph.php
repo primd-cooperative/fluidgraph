@@ -7,7 +7,6 @@ use Bolt\protocol\IStructure;
 use Bolt\protocol\V5_2 as Protocol;
 use Bolt\protocol\v5\structures as Struct;
 
-use Closure;
 use ArrayObject;
 use RuntimeException;
 use InvalidArgumentException;
@@ -20,9 +19,6 @@ use DateTime;
  */
 class Graph
 {
-	use DoesMake;
-	use DoesWith;
-
 	/**
 	 * The underlying Bolt protocol acccess
 	 */
@@ -110,12 +106,7 @@ class Graph
 	{
 		foreach ($elements as $element) {
 			if ($element instanceof Entity) {
-				$entity  = $element;
-				$element = $entity->__element__;
-
-				if (!$element->status) {
-					$this->fasten($entity);
-				}
+				$element = $element->__element__;
 			}
 
 			switch ($element->status) {
@@ -127,13 +118,8 @@ class Graph
 					} elseif ($element instanceof Element\Edge) {
 						$target = $this->edges;
 
-						if (isset($element->target->entity)) {
-							$this->attach($element->target->entity);
-						}
-
-						if (isset($element->source->entity)) {
-							$this->attach($element->source->entity);
-						}
+						$this->attach($element->target);
+						$this->attach($element->source);
 
 					} else {
 						throw new InvalidArgumentException(sprintf(
@@ -169,8 +155,7 @@ class Graph
 	{
 		foreach ($elements as $element) {
 			if ($element instanceof Entity) {
-				$entity  = $element;
-				$element = $entity->__element__;
+				$element = $element->__element__;
 			}
 
 			switch ($element->status) {
@@ -193,68 +178,6 @@ class Graph
 		}
 
 		return $this;
-	}
-
-
-	/**
-	 * Fasten an element to its content.
-	 *
-	 * This converts entity properties to references and sets the content on the element.  If the
-	 * content doesn't contain a corresponding property, it is created with the value on the
-	 * entity at present.  If no content is provided, new content will be created depending on the
-	 * element type.
-	 */
-	public function fasten(Entity $entity, ?Element $element = NULL): static
-	{
-		if (!$element) {
-			$element = $entity->__element__;
-		} else {
-			$this->union->setRawValue($entity, $element);
-		}
-
-		foreach ($entity->values() as $property => $value) {
-			if (!array_key_exists($property, $element->active)) {
-				$element->active[$property] = $value;
-			}
-
-			if ($value instanceof Relationship) {
-				$value->on($this);
-			}
-
-			//
-			// We use closure here in order to set protected/private properties.
-			//
-
-			$entity->with(
-				function () use ($element, $property) {
-					unset($this->$property);
-
-					$this->$property = &$element->active[$property];
-				}
-			);
-		}
-
-		if (!isset($element->labels[$entity::class])) {
-			$element->labels[$entity::class] = Status::FASTENED;
-		}
-
-		if (!isset($element->status)) {
-			$element->status = Status::FASTENED;
-		}
-
-		return $this;
-	}
-
-
-	/**
-	 * Initiate a merge by constructing a new queue and setting the nodes/edges to be merged.
-	 */
-	public function merge(): Queue
-	{
-		return $this->queue->merge(
-			$this->nodes,
-			$this->edges
-		);
 	}
 
 
@@ -288,10 +211,10 @@ class Graph
 			case Struct\Node::class:
 				$labels   = $structure->labels;
 				$identity = $structure->element_id;
-				$storage  = &$this->nodes;
+				$storage  = $this->nodes;
 
-				if (!isset($storage[$identity])) {
-					$storage[$identity] = new Element\Node();
+				if (!isset($this->nodes[$identity])) {
+					$this->nodes[$identity] = new Element\Node();
 				}
 
 				break;
@@ -299,10 +222,35 @@ class Graph
 			case Struct\Relationship::class:
 				$labels   = [$structure->type];
 				$identity = $structure->element_id;
-				$storage  = &$this->edges;
+				$storage  = $this->edges;
 
-				if (!isset($storage[$identity])) {
-					$storage[$identity] = new Element\Edge();
+				if (!isset($this->edges[$identity])) {
+					$this->edges[$identity] = new Element\Edge();
+
+					if (isset($this->nodes[$structure->startNodeId])) {
+						$source = $this->nodes[$structure->startNodeId];
+					} else {
+						$source = $this->nodes[$structure->startNodeId] = new Element\Node();
+					}
+
+					if (isset($this->nodes[$structure->endNodeId])) {
+						$target = $this->nodes[$structure->endNodeId];
+					} else {
+						$target = $this->nodes[$structure->endNodeId] = new Element\Node();
+					}
+
+					$this->edges[$identity]->with(
+						function(Element $source, Element $target) {
+							//
+							// If these lines shows error it's because tooling can tell the scope;
+							//
+
+							$this->source = $source;
+							$this->target = $target;
+						},
+						$source,
+						$target
+					);
 				}
 				break;
 
@@ -316,7 +264,7 @@ class Graph
 		$element = $storage[$identity];
 
 		if (!isset($element->identity)) {
-			$element->identify($identity);
+			$element->identity = $identity;
 		}
 
 		if ($element->status != Status::RELEASED) {

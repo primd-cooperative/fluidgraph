@@ -2,6 +2,8 @@
 
 namespace FluidGraph\Relationship;
 
+use FluidGraph\Graph;
+
 /**
  *
  */
@@ -12,8 +14,8 @@ trait DetachExcluded
 	/**
 	 *
 	 */
-	public function detachExcluded()
+	public function detachExcluded(Graph $graph)
 	{
-		$this->graph->detach(...$this->excluded);
+		$graph->detach(...$this->excluded);
 	}
 }

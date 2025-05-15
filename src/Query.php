@@ -2,7 +2,10 @@
 
 namespace FluidGraph;
 
+use ArrayObject;
 use Bolt\enum\Signature;
+use Bolt\protocol\IStructure;
+use Bolt\protocol\Response;
 use Bolt\protocol\v5\structures\DateTimeZoneId;
 use InvalidArgumentException;
 use RuntimeException;
@@ -11,12 +14,11 @@ use DateTime;
 class Query
 {
 	use HasGraph;
-	use DoesWith;
 
 	const REGEX_EXPANSION = '#@([a-zA-Z][a-zA-Z0-9]*)(?:\(([a-zA-Z][a-zA-Z0-9]*)\))?#';
 
 	/**
-	 * @var array
+	 * @var array<Element>
 	 */
 	protected array $results;
 
@@ -85,43 +87,23 @@ class Query
 	/**
 	 *
 	 */
-	public function get(int ...$index): Results|Result
+	public function get(int ...$index): Results|Element
 	{
 		if (!isset($this->results)) {
-			$cypher        = '';
-			$this->results = [];
-
-			foreach ($this->pull() as $response) {
-				if ($response->signature != Signature::RECORD) {
-					continue;
-				}
-
-				$this->results = array_merge(
-					$this->results,
-					array_map(
-						$this->graph->resolve(...),
-						$response->content
-					)
-				);
-			}
+			$this->results = array_map(
+				$this->graph->resolve(...),
+				$this->pull(Signature::RECORD)
+			);
 		}
 
 		if (count($index) == 1) {
-			return new Result($this->results[$index[0]])->on($this->graph);
+			return $this->results[$index[0]];
 
 		} elseif (count($index) == 0) {
-			return new Results(array_map(
-				function ($element) {
-					return new Result($element)->on($this->graph);
-				},
-				$this->results
-			))->on($this->graph);
+			return new Results($this->results);
 
 		} else {
-			return new Results(array_map(
-				function($element) {
-					return new Result($element)->on($this->graph);
-				},
+			return new Results(
 				array_filter(
 					$this->results,
 					function($key) use ($index) {
@@ -129,7 +111,7 @@ class Query
 					},
 					ARRAY_FILTER_USE_KEY
 				)
-			))->on($this->graph);
+			);
 		}
 	}
 
@@ -168,9 +150,12 @@ class Query
 			);
 
 		} else {
-			$apply = $terms($this->where->var('n'));
+			$apply = $terms($this->where->var('i'));
 
-			$this->run('MATCH (n:%s)', $class);
+			match(TRUE) {
+				is_subclass_of($class, Node::class, TRUE) => $this->run('MATCH (i:%s)', $class),
+				is_subclass_of($class, Edge::class, TRUE) => $this->run('MATCH (n1)-[i:%s]->(n2)', $class),
+			};
 
 			if ($apply) {
 				$conditions = $apply();
@@ -180,7 +165,7 @@ class Query
 				}
 			}
 
-			$this->run('RETURN n');
+			$this->run('RETURN i');
 
 			if ($order) {
 				$this->run('ORDER BY');
@@ -218,7 +203,7 @@ class Query
 			));
 		}
 
-		return $results[0];
+		return $results[0] ?? NULL;
 	}
 
 
@@ -246,21 +231,24 @@ class Query
 		}
 
 		if (count($signatures)) {
-			$responses = array_values(array_filter(
-				$this->responses,
-				function($response) use ($signatures) {
-					return in_array($response->signature, $signatures);
-				}
-			));
+			$responses = array_values(
+				array_filter(
+					$this->responses,
+					function($response) use ($signatures) {
+						return in_array($response->signature, $signatures);
+					}
+				)
+			);
 
 			if (!count($responses)) {
 				return [];
-			} else {
-				return count($signatures) == 1
-					? $responses[0]->content
-					: $responses
-				;
 			}
+
+			if ($signatures == [Signature::RECORD]) {
+				return $this->unwind(...$responses);
+			}
+
+			return $responses;
 		}
 
 		return $this->responses;
@@ -272,8 +260,6 @@ class Query
 	 */
 	public function run(string $statement, mixed ...$args): static
 	{
-		unset($this->results);
-
 		$this->statements[] = sprintf($statement, ...$args);
 
 		return $this;
@@ -283,10 +269,8 @@ class Query
 	/**
 	 *
 	 */
-	public function with(string $name, mixed $value): static
+	public function set(string $name, mixed $value): static
 	{
-		unset($this->results);
-
 		$this->parameters[$name] = $this->prepare($value);
 
 		return $this;
@@ -296,10 +280,8 @@ class Query
 	/**
 	 *
 	 */
-	public function withAll(array $parameters): static
+	public function setAll(array $parameters): static
 	{
-		unset($this->results);
-
 		$this->parameters = array_replace($this->parameters, $this->prepare($parameters));
 
 		return $this;
@@ -388,5 +370,26 @@ class Query
 		}
 
 		return $property;
+	}
+
+
+	/**
+	 *
+	 */
+	protected function unwind(Response|IStructure|array ...$items): array
+	{
+		$records = [];
+
+		foreach ($items as $item) {
+			if ($item instanceof Response) {
+				array_push($records, ...$this->unwind(...$item->content));
+			} elseif (is_array($item)) {
+				array_push($records, ...$this->unwind(...$item));
+			} else {
+				array_push($records, $item);
+			}
+		}
+
+		return $records;
 	}
 }

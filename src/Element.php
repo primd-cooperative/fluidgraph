@@ -13,20 +13,14 @@ abstract class Element
 	use DoesWith;
 
 	/**
-	 * The latest entity instance of the content
-	 */
-	readonly public Entity $entity;
-
-	/**
 	 * The identity of the element as it is or was in the graph.
 	 */
-	readonly public int $identity;
+	public int $identity;
 
 	/**
 	 * The active properties of the element (as managed by/on its models)
 	 */
 	public array $active = [];
-
 
 	/**
 	 * The labels of the element
@@ -44,12 +38,19 @@ abstract class Element
 	public ?Status $status = NULL;
 
 	/**
+	 * The latest entity instance of the content
+	 *
+	 * @var array<Entity>
+	 */
+	protected array $entities = [];
+
+	/**
 	 *
 	 */
-	public function __construct(?Entity $element = NULL)
+	public function __construct(?Entity $entity = NULL)
 	{
-		if ($element) {
-			$this->entity = $element;
+		if ($entity) {
+			$this->fasten($entity);
 		}
 	}
 
@@ -72,6 +73,21 @@ abstract class Element
 			},
 			ARRAY_FILTER_USE_KEY
 		);
+	}
+
+
+	/**
+	 *
+	 */
+	public function as(string $class): Entity
+	{
+		if (!isset($this->entities[$class])) {
+			$this->entities[$class] = $class::make($this->active);
+
+			$this->fasten($this->entities[$class]);
+		}
+
+		return $this->entities[$class];
 	}
 
 
@@ -144,13 +160,14 @@ abstract class Element
 
 
 	/**
-	 * Get the identity of this element;
+	 *
 	 */
-	public function identify(int $identity): static
+	public function identity(): int|null
 	{
-		$this->identity = $identity;
-
-		return $this;
+		return isset($this->identity)
+			? $this->identity
+			: NULL
+		;
 	}
 
 
@@ -213,4 +230,53 @@ abstract class Element
 		return $this->status;
 	}
 
+
+	/**
+	 * Fasten the content to an entity.
+	 *
+	 * This converts entity properties to references and sets the content on the element.  If the
+	 * content doesn't contain a corresponding property, it is created with the value on the
+	 * entity at present.  If no content is provided, new content will be created depending on the
+	 * element type.
+	 */
+	protected function fasten(Entity $entity): void
+	{
+		if (!isset($this->status)) {
+			$this->status = Status::FASTENED;
+		}
+
+		if (!isset($this->labels[$entity::class])) {
+			$this->labels[$entity::class] = Status::FASTENED;
+		}
+
+		$entity->with(
+			function(Element $element, $properties) {
+				foreach ($properties as $property => $value) {
+					if (!array_key_exists($property, $element->active)) {
+						$element->active[$property] = isset($this->$property)
+							? $this->$property
+							: NULL;
+					}
+
+					unset($this->$property);
+
+					$this->$property = &$element->active[$property];
+				}
+			},
+			$this,
+			array_filter(
+				get_class_vars($entity::class),
+				function($property) {
+					return !in_array($property, [
+						'__element__'
+					]);
+				},
+				ARRAY_FILTER_USE_KEY
+			)
+		);
+
+		if (!isset($this->entities[$entity::class])) {
+			$this->entities[$entity::class] = $entity;
+		}
+	}
 }

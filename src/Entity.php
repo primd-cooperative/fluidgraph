@@ -10,15 +10,14 @@ use InvalidArgumentException;
 abstract class Entity
 {
 	use DoesWith;
+	use DoesMake;
 
 	/**
 	 *
 	 */
 	abstract public protected(set) ?Element $__element__ {
 		get;
-		set {
-			$this->__element__ = $value;
-		}
+		set;
 	}
 
 	/**

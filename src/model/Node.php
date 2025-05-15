@@ -2,6 +2,8 @@
 
 namespace FluidGraph;
 
+use InvalidArgumentException;
+
 /**
  *
  */
@@ -11,7 +13,7 @@ abstract class Node extends Entity
 	 * @var Element\Node
 	 */
 	public protected(set) ?Element $__element__ {
-		get {
+ 		get {
 			if (!isset($this->__element__)) {
 				$this->__element__ = new Element\Node($this);
 			}
@@ -19,7 +21,6 @@ abstract class Node extends Entity
 			return $this->__element__;
 		}
 	}
-
 
 	/**
 	 * Attach one or more labels to the node

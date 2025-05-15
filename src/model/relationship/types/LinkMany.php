@@ -2,7 +2,8 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph;
+use FluidGraph\Node;
+use FluidGraph\Entity;
 
 /**
  * A type of relationship that links to many nodes with one edge per node.
@@ -16,7 +17,7 @@ trait LinkMany
 	/**
 	 *
 	 */
-	public function set(FluidGraph\Node $target, array $data = []): static
+	public function set(Node $target, array $data = []): static
 	{
 		$this->validate($target);
 
@@ -47,16 +48,20 @@ trait LinkMany
 				//
 
 				$source = $this->source;
-				$edge   = $this->make($this->type, $data, FluidGraph\Builder::SKIP_CHECKS);
+				$edge   = $this->type::make($data, Entity::MAKE_ASSIGN);
 
-				$edge->__element__->with(function() use (&$source, &$target) {
-					//
-					// If this lines shows error it's because tooling can tell the scope;
-					//
+				$edge->with(
+					function(Node $source, Node $target) {
+						//
+						// If these lines shows error it's because tooling can't tell the scope
+						//
 
-					$this->source = &$source->__element__;
-					$this->target = &$target->__element__;
-				});
+						$this->__element__->source = &$source->__element__;
+						$this->__element__->target = &$target->__element__;
+					},
+					$source,
+					$target
+				);
 			}
 
 			$this->included[] = $edge;
@@ -69,7 +74,7 @@ trait LinkMany
 	/**
 	 *
 	 */
-	public function unset(FluidGraph\Node $target): static
+	public function unset(Node $target): static
 	{
 		if ($pos = $this->includes($target) !== FALSE) {
 			$edge = $this->included[$pos];

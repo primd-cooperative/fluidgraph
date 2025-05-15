@@ -5,11 +5,22 @@ namespace FluidGraph;
 use ArrayObject;
 
 /**
- *
+ * @extends ArrayObject<Element>
  */
 class Results extends ArrayObject
 {
-	use HasGraph;
+	/**
+	 *
+	 */
+	public function of(string ...$labels): Results
+	{
+		return new self(array_filter(
+			$this->getArrayCopy(),
+			function($result) use ($labels) {
+				return array_intersect($labels, $result->labels);
+			}
+		));
+	}
 
 	/**
 	 *
@@ -19,19 +30,6 @@ class Results extends ArrayObject
 		return array_map(
 			function($result) use ($class) {
 				return $result->as($class);
-			},
-			$this->getArrayCopy()
-		);
-	}
-
-	/**
-	 *
-	 */
-	public function raw(): array
-	{
-		return array_map(
-			function($result) {
-				return $result->raw();
 			},
 			$this->getArrayCopy()
 		);
