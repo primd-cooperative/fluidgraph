@@ -194,15 +194,11 @@ class Queue
 		foreach ($identities as $i => $identity) {
 			$edge = $this->edges[$identity];
 
-
 			$query
 				->run('MATCH (%s) WHERE id(%s) = $%s', "f$i", "f$i", "fd$i")
 				->set("fd$i", $edge->source->identity)
 			;
 
-			if (!isset($edge->target->identity)) {
-				var_dump($this->nodeOperations, spl_object_hash($edge->target), $edge); exit();
-			}
 			$query
 				->run('MATCH (%s) WHERE id(%s) = $%s', "t$i", "t$i", "td$i")
 				->set("td$i", $edge->target->identity)
@@ -210,22 +206,21 @@ class Queue
 		}
 
 		$i = 0; foreach ($identities as $identity) {
-			$edge = $this->edges[$identity];
-			$key  = $edge->key();
+			$edge    = $this->edges[$identity];
+			$created = [];
 
 			foreach ($edge->classes() as $class) {
-				$class::onCreate($edge);
-
-				$key = $edge->key();
+				$created = $class::onCreate($edge);
 			}
 
-			if ($key) {
+			if ($key = $edge->key()) {
 				$query
 					->run('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $edge->signature(Status::FASTENED), "d$i", "t$i")
 					->set("k$i", $key)
-					->run('ON CREATE SET @%s(%s)', "d$i", "i$i")
-					->run('ON MATCH SET @%s(%s)', "d$i", "i$i")
-					->set("d$i", array_diff_key($edge->properties(), $key))
+					->run('ON CREATE SET @%s(%s)', "c$i", "i$i")
+					->run('ON MATCH SET @%s(%s)', "m$i", "i$i")
+					->set("c$i", array_diff_key($edge->properties(), $key))
+					->set("m$i", array_diff_key($edge->properties(), $key, $created))
 				;
 
 			} else {
@@ -355,24 +350,21 @@ class Queue
 		$identities = $this->nodeOperations[static::CREATE];
 
 		$i = 0; foreach ($identities as $identity) {
-			$node = $this->nodes[$identity];
-			$key  = $node->key();
+			$node    = $this->nodes[$identity];
+			$created = [];
 
 			foreach ($node->classes() as $class) {
-				$class::onCreate($node);
-
-				// TODO: Figure out a way to exclude create properties
-
-				$key = $node->key();
+				$created = $class::onCreate($node);
 			}
 
-			if ($key) {
+			if ($key = $node->key()) {
 				$query
 					->run('MERGE (%s:%s {@%s})', "i$i", $node->signature(Status::FASTENED), "k$i")
 					->set("k$i", $key)
-					->run('ON CREATE SET @%s(%s)', "d$i", "i$i")
-					->run('ON MATCH SET @%s(%s)', "d$i", "i$i")
-					->set("d$i", array_diff_key($node->properties(), $key))
+					->run('ON CREATE SET @%s(%s)', "c$i", "i$i")
+					->run('ON MATCH SET @%s(%s)', "m$i", "i$i")
+					->set("c$i", array_diff_key($node->properties(), $key))
+					->set("m$i", array_diff_key($node->properties(), $key, $created))
 				;
 			} else {
 				$query

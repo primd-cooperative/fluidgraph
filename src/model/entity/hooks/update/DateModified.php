@@ -14,8 +14,10 @@ trait DateModified
 	/**
 	 *
 	 */
-	static public function dateModified(Element $element): void
+	static public function dateModified(Element $element): array
 	{
-		$element->active['dateModified'] = new DateTime();
+		return [
+			'dateModified' => new DateTime()
+		];
 	}
 }

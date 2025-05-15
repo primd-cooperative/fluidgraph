@@ -30,34 +30,59 @@ abstract class Entity
 
 
 	/**
-	 *
+	 * @return array<string, mixed>
 	 */
-	static public function onCreate(Element $element): void
+	static public function onCreate(Element $element): array
 	{
+		$results = [];
+
 		for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
-			self::doHooks($class, Entity\CreateHook::class, $element);
+			$results = array_replace(
+				$results,
+				self::doHooks($class, Entity\CreateHook::class, $element)
+			);
 		}
+
+		foreach ($results as $property => $value) {
+			if (!isset($element->active[$property])) {
+				$element->active[$property] = $value;
+			}
+		}
+
+		return $results;
 	}
 
 
 	/**
-	 *
+	 * @return array<string, mixed>
 	 */
-	static public function onUpdate(Element $element): void
+	static public function onUpdate(Element $element): array
 	{
-		for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
-			self::doHooks($class, Entity\UpdateHook::class, $element);
+		$results = [];
+
+		if (count($element->changes())) {
+			for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
+				$results = self::doHooks($class, Entity\UpdateHook::class, $element);
+
+				foreach ($results as $property => $value) {
+					$element->active[$property] = $value;
+				}
+			}
 		}
+
+		return $results;
 	}
 
 
 	/**
-	 *
+	 * @return array<string, mixed>
 	 */
-	static protected function doHooks(string $class, string $hook, Element $element): void
+	static protected function doHooks(string $class, string $hook, Element $element): array
 	{
+		$results = [];
+
 		foreach (class_uses($class) as $trait) {
-			self::doHooks($trait, $hook, $element);
+			$results = array_replace($results, self::doHooks($trait, $hook, $element));
 
 			if (!in_array($hook, class_uses($trait))) {
 				continue;
@@ -66,8 +91,10 @@ abstract class Entity
 			$parts  = explode('\\', $trait);
 			$method = lcfirst(end($parts));
 
-			static::$method($element);
+			$results = array_replace($results, static::$method($element));
 		}
+
+		return $results;
 	}
 
 
