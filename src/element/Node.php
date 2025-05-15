@@ -11,11 +11,12 @@ use InvalidArgumentException;
 class Node extends FluidGraph\Element
 {
 	/**
-	 * @type T of FluidGraph\Node
-	 * @param class-string<T>
+	 * @template T of FluidGraph\Node
+	 * @param class-string<T> $class
+	 * @param array<string, mixed> $defaults
 	 * @return T
 	 */
-	public function as(string $class): FluidGraph\Node
+	public function as(string $class, array $defaults = []): FluidGraph\Node
 	{
 		if (!class_exists($class)) {
 			throw new InvalidArgumentException(sprintf(
@@ -31,7 +32,7 @@ class Node extends FluidGraph\Element
 			));
 		}
 
-		return parent::as($class);
+		return parent::as($class, $defaults);
 	}
 
 

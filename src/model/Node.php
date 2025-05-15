@@ -22,6 +22,7 @@ abstract class Node extends Entity
 		}
 	}
 
+
 	/**
 	 * Attach one or more labels to the node
 	 */

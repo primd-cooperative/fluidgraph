@@ -10,6 +10,7 @@ namespace FluidGraph;
  */
 abstract class Element
 {
+	use HasGraph;
 	use DoesWith;
 
 	/**
@@ -45,7 +46,11 @@ abstract class Element
 	protected array $entities = [];
 
 	/**
+	 * Instantiate a new element
 	 *
+	 * If the element is being insantiated by an entity either during its construction or when an
+	 * attempt is made to access its element, the entity should pass itself into the constructor
+	 * so that it can be fastened immediately.
 	 */
 	public function __construct(?Entity $entity = NULL)
 	{
@@ -67,7 +72,7 @@ abstract class Element
 					$key,
 					[
 						'graph',
-						'entity'
+						'entities',
 					]
 				);
 			},
@@ -77,14 +82,25 @@ abstract class Element
 
 
 	/**
+	 * Instantiate the element as an entity
 	 *
+	 * If an existing entity expressing this element exists, it will be returned.  If not a new
+	 * one will be created using the active element properties for construction with a fallback
+	 * to defaults provided.
+	 *
+	 * @param class-string<Entity> $class The entity class to instantiate as
+	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
 	 */
-	public function as(string $class): Entity
+	public function as(string $class, array $defaults = []): Entity
 	{
 		if (!isset($this->entities[$class])) {
-			$this->entities[$class] = $class::make($this->active);
+			$this->fasten($class::make($this->active + $defaults));
+		}
 
-			$this->fasten($this->entities[$class]);
+		if ($this instanceof Element\Node) {
+			foreach ($this->relationships() as $relationship) {
+				$relationship->load($this->graph);
+			}
 		}
 
 		return $this->entities[$class];
@@ -93,6 +109,8 @@ abstract class Element
 
 	/**
 	 * Get the changes to this element by comparing active to loaded values.
+	 *
+	 * @return array<string, mixed> The properties which have changed and their current values
 	 */
 	public function changes(): array
 	{
@@ -116,6 +134,8 @@ abstract class Element
 
 	/**
 	 * Get the element classes for this content based on labels.
+	 *
+	 * @return array<class-string<Entity>> The valid entity types
 	 */
 	public function classes(): array
 	{
@@ -180,12 +200,14 @@ abstract class Element
 			$statuses = [Status::FASTENED, Status::ATTACHED];
 		}
 
-		return array_keys(array_filter(
-			$this->labels,
-			function (Status $status) use ($statuses) {
-				return in_array($status, $statuses, TRUE);
-			}
-		));
+		return array_keys(
+			array_filter(
+				$this->labels,
+				function (Status $status) use ($statuses) {
+					return in_array($status, $statuses, TRUE);
+				}
+			)
+		);
 	}
 
 
@@ -232,15 +254,29 @@ abstract class Element
 
 
 	/**
-	 * Fasten the content to an entity.
+	 * Fasten the element to an entity.
 	 *
-	 * This converts entity properties to references and sets the content on the element.  If the
-	 * content doesn't contain a corresponding property, it is created with the value on the
-	 * entity at present.  If no content is provided, new content will be created depending on the
-	 * element type.
+	 * This converts entity properties to references on the element and sets the element on the
+	 * entity itself.  We use visible class properties from the element scope to determine which
+	 * properties to look for, but defer to the values currently set on the entity instance.
+	 *
+	 * NOTE: This will not gracefully handle static properties and all properties that map to the
+	 * graph must be publicly readable (although can be protected or privately set).  They,
+	 * however, cannot contain property hooks.
+	 *
 	 */
-	protected function fasten(Entity $entity): void
+	protected function fasten(Entity $entity): Entity
 	{
+		$properties = array_filter(
+			get_class_vars($entity::class),
+			function($property) {
+				return !in_array($property, [
+					'__element__'
+				]);
+			},
+			ARRAY_FILTER_USE_KEY
+		);
+
 		if (!isset($this->status)) {
 			$this->status = Status::FASTENED;
 		}
@@ -249,13 +285,24 @@ abstract class Element
 			$this->labels[$entity::class] = Status::FASTENED;
 		}
 
+		//
+		// The following executes the callback within the scope of the entity allowing us to
+		// set __element__ and assign references to protected/privately set properties.
+		//
+
 		$entity->with(
 			function(Element $element, $properties) {
+				/**
+				 * @var Entity $this
+				 */
+
+				$this->__element__ = $element;
+
 				foreach ($properties as $property => $value) {
 					if (!array_key_exists($property, $element->active)) {
 						$element->active[$property] = isset($this->$property)
 							? $this->$property
-							: NULL;
+							: $value;
 					}
 
 					unset($this->$property);
@@ -264,19 +311,13 @@ abstract class Element
 				}
 			},
 			$this,
-			array_filter(
-				get_class_vars($entity::class),
-				function($property) {
-					return !in_array($property, [
-						'__element__'
-					]);
-				},
-				ARRAY_FILTER_USE_KEY
-			)
+			$properties
 		);
 
 		if (!isset($this->entities[$entity::class])) {
 			$this->entities[$entity::class] = $entity;
 		}
+
+		return $entity;
 	}
 }

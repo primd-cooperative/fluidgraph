@@ -26,52 +26,64 @@ namespace an Entity Node is simply a `Node` while an Element Node is an `Element
 namespace an Entity Edge is simply an `Edge` while an Element Node is an `Element\Edge`.
 
 **Relationship**: A collection of one or more Edges connecting a source Node, pointing to one or
-more target Nodes.
+more target Nodes.  The relationship knows of the source Entity Node, while its edges know only
+of the source Element Node and the target Element Nodes.
 
 ## Basic Usage
 
-Create a new Entity class by defining its properties and relationships.  All properties on your
-entities MUST be publicly redadable.  They can be protected/private for setting, however, note
-that you MUST NOT use property hooks.
+Create a new Entity classes (Edges and Nodes) defining their properties and relationships.  All
+properties on your entities MUST be publicly readable.  They can have `protected(set)` or
+`private(set)`, however, note that you CANNOT use property hooks.
 
 ```php
-<?php
-
 use FluidGraph\Node;
+use FluidGraph\Edge;
 use FluidGraph\Entity;
 use FluidGraph\Relationship;
-use FluidGraph\Mode;
 
-class Person extends FluidGraph\Node
+class FriendsWith extends Edge
+{
+	use Entity\DateCreated;
+	use Entity\DateModified;
+
+	public string $description;
+}
+
+class Person extends Node
 {
 	use Entity\DateCreated;
 	use Entity\DateModified;
 	use Entity\Id\Uuid7;
 
-	public private(set) Relationship\ToMany $suggestions;
+	public private(set) Relationship\ToMany $friends;
 
 	public function __construct(
 		public ?string $firstName = NULL,
 		public ?string $lastName = NULL,
 	) {
-		$this->suggestions = new Relationship\ToMany(
+		$this->friends = new Relationship\ToMany(
 			$this,
-			Suggested::class,
+			FriendsWith::class,
 			[
-				Claim::class
-			],
-			Mode::LAZY
+				self::class
+			]
 		);
 	}
 }
 ```
 
-In the above example, we create a new node class which
-
-You can initialize an entity using its native class constructor and received the fastened instance
-back.  The fastened instance is backed by a `Element\Node` or `Element\Edge` depending on its type
-and its relationships are linked to the graph instance.
+Now use your entities as basic objects:
 
 ```php
-$person = $graph->init(new Person(firstName: 'Bob'));
+$matt = new Person(firstName: 'Matt');
+$jill = new Person(firstName: 'Jill');
+
+$matt->friends->set($jill, [
+	'description' => 'Best friends forever!'
+]);
+
+$graph->attach($matt)->queue->merge()->run();
 ```
+
+In the above example, there's no need to attach the other objects, as they will cascade.
+

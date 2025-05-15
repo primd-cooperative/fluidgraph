@@ -128,7 +128,7 @@ class Graph
 						));
 					}
 
-					$target[$identity] = $element;
+					$target[$identity] = $element->on($this);
 					$element->status   = Status::INDUCTED;
 					break;
 
@@ -214,7 +214,7 @@ class Graph
 				$storage  = $this->nodes;
 
 				if (!isset($this->nodes[$identity])) {
-					$this->nodes[$identity] = new Element\Node();
+					$this->nodes[$identity] = new Element\Node()->on($this);
 				}
 
 				break;
@@ -225,7 +225,7 @@ class Graph
 				$storage  = $this->edges;
 
 				if (!isset($this->edges[$identity])) {
-					$this->edges[$identity] = new Element\Edge();
+					$this->edges[$identity] = new Element\Edge()->on($this);
 
 					if (isset($this->nodes[$structure->startNodeId])) {
 						$source = $this->nodes[$structure->startNodeId];
@@ -241,10 +241,9 @@ class Graph
 
 					$this->edges[$identity]->with(
 						function(Element $source, Element $target) {
-							//
-							// If these lines shows error it's because tooling can tell the scope;
-							//
-
+							/**
+							 * @var Element\Edge $this
+							 */
 							$this->source = $source;
 							$this->target = $target;
 						},

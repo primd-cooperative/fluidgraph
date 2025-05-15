@@ -7,7 +7,7 @@ use Closure;
 trait DoesWith
 {
 	/**
-	 * @param Closure<static> $callback
+	 * @param Closure $callback
 	 */
 	public function with(Closure $callback, mixed ...$args): static
 	{

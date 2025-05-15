@@ -2,18 +2,13 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph;
-use FluidGraph\Mode;
 use FluidGraph\Node;
 use FluidGraph\Edge;
 use FluidGraph\Status;
 use FluidGraph\Element;
 use FluidGraph\Graph;
 
-
 use InvalidArgumentException;
-use DateTime;
-use FluidGraph\Results;
 
 /**
  * @template T of Edge
@@ -21,32 +16,27 @@ use FluidGraph\Results;
 trait AbstractRelationship
 {
 	/**
-	 * @var array<Edge>
+	 * @var array<Edge<T>>
 	 */
 	protected array $excluded = [];
 
 	/**
-	 * @var array<Edge>
+	 * @var array<Edge<T>>
 	 */
 	protected array $included = [];
 
 	/**
-	 * The last time the relationship was loaded, NULL if never loaded.
-	 */
-	public protected(set) ?DateTime $loaded = NULL;
-
-	/**
-	 * How this relationship should be populated when loaded from the graph
-	 */
-	public protected(set) Mode $mode;
-
-	/**
-	 * THe source node for this relationship
+	 * The source entity Node for this relationship.
+	 *
+	 * This can be used when resolving relationships or determining merge effects.  For example
+	 * If the source node was released, a specific type of relationship could detach target nodes.
 	 */
 	public protected(set) Node $source;
 
 	/**
-	 * The types of targets this relationship allows, if empty, any target
+	 * The target Node entity classes this relationship allows for, if empty, any type is supported.
+	 *
+	 * @var array<class-string>
 	 */
 	public protected(set) array $targets = [];
 
@@ -58,12 +48,22 @@ trait AbstractRelationship
 	public protected(set) string $type;
 
 	/**
+	 * Load the edges/nodes for the relationship.
 	 *
+	 * This method should be implemented by a concrete relationship implementation which can
+	 * choose to implement more advanced loading features such as Eager and Lazy loading.
+	 *
+	 * Called from Element::as() -- for Node elements only, Edge elements do not have relationships.
 	 */
 	abstract public function load(Graph $graph): static;
 
 	/**
+	 * Merge the relationship into the graph object.
 	 *
+	 * This method should be implemented by a concrete relationship implementation which can
+	 * choose to implement more advanced merging features such as Merge hooks.
+	 *
+	 * Called from Queue::merge().
 	 */
 	abstract public function merge(Graph $graph): static;
 
@@ -77,8 +77,7 @@ trait AbstractRelationship
 	public function __construct(
 		Node $source,
 		string $type,
-		array $targets = [],
-		Mode $mode = Mode::EAGER,
+		array $targets = []
 	) {
 		if (!is_subclass_of($type, Edge::class, TRUE)) {
 			throw new InvalidArgumentException(sprintf(
@@ -87,10 +86,9 @@ trait AbstractRelationship
 			));
 		}
 
-		$this->type     = $type;
-		$this->source   = $source;
-		$this->targets  = $targets;
-		$this->mode     = $mode;
+		$this->type    = $type;
+		$this->source  = $source;
+		$this->targets = $targets;
 	}
 
 	/**
@@ -131,7 +129,7 @@ trait AbstractRelationship
 
 
 	/**
-	 *
+	 * Clean the relationship of detached nodes.
 	 */
 	public function clean(): static
 	{
@@ -146,7 +144,7 @@ trait AbstractRelationship
 
 
 	/**
-	 * {@inheritDoc}
+	 * Determine whether or not the relationship contains all of a set of nodes or node types.
 	 */
 	public function contains(Node|Element\Node|string ...$nodes): bool
 	{
@@ -161,7 +159,7 @@ trait AbstractRelationship
 
 
 	/**
-	 * {@inheritDoc}
+	 * Determine whether or not the relationship contains any of a set of nodes or node types.
 	 */
 	public function containsAny(Node|Element\Node|string ...$nodes): bool
 	{
@@ -176,25 +174,7 @@ trait AbstractRelationship
 
 
 	/**
-	 *
-	 */
-	public function of(string ...$labels): Results
-	{
-		$nodes = new Results(
-			array_map(
-				function(Element\Edge $edge): Element\Node {
-					return $edge->target;
-				},
-				$this->included
-			)
-		);
-
-		return $nodes->of(...$labels);
-	}
-
-
-	/**
-	 * Get an array of all the edges for one or more nodes or kinds
+	 * Get an array of all the edges for one or more nodes or node types.
 	 *
 	 * @return array<T>
 	 */
@@ -219,7 +199,7 @@ trait AbstractRelationship
 
 
 	/**
-	 * Determine by position whether or not a node is excluded from the current relationship
+	 * Determine, by position, whether or not a node is excluded from the current relationship.
 	 */
 	protected function excludes(Element\Node|Node|string $node): int|false
 	{
@@ -234,7 +214,7 @@ trait AbstractRelationship
 
 
 	/**
-	 * Determine by position whether or not a node is included in the current relationship
+	 * Determine, by position, whether or not a node is included in the current relationship.
 	 */
 	protected function includes(Element\Node|Node|string $node): int|false
 	{
@@ -249,7 +229,10 @@ trait AbstractRelationship
 
 
 	/**
-	 * Validate a target
+	 * Validate a target against basic rules.
+	 *
+	 * - No Detatched Targets
+	 * - No Targets of Unsupported Types
 	 */
 	protected function validate(Node $target) {
 		if ($target->status() == Status::DETACHED) {
@@ -260,7 +243,7 @@ trait AbstractRelationship
 			));
 		}
 
-		if (!in_array($target::class, $this->targets)) {
+		if ($this->targets && !in_array($target::class, $this->targets)) {
 			throw new InvalidArgumentException(sprintf(
 				'Relationships cannot include a target of class "%s" on "%s"',
 				$target::class,

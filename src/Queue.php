@@ -10,6 +10,10 @@ class Queue
 {
 	use HasGraph;
 
+	const CREATE = 1;
+	const UPDATE = 2;
+	const DELETE = 3;
+
 	/**
 	 * @var ArrayObject<Element\Edge>
 	 */
@@ -94,22 +98,22 @@ class Queue
 
 		foreach ($this->nodes as $identity => $node) {
 			$operation = match ($node->status) {
-				Status::INDUCTED => Operation::CREATE,
-				Status::ATTACHED => Operation::UPDATE,
-				Status::RELEASED => Operation::DELETE,
+				Status::INDUCTED => static::CREATE,
+				Status::ATTACHED => static::UPDATE,
+				Status::RELEASED => static::DELETE,
 			};
 
-			$this->nodeOperations[$operation->value][] = $identity;
+			$this->nodeOperations[$operation][] = $identity;
 		}
 
 		foreach ($this->edges as $identity => $edge) {
 			$operation = match ($edge->status) {
-				Status::INDUCTED => Operation::CREATE,
-				Status::ATTACHED => Operation::UPDATE,
-				Status::RELEASED => Operation::DELETE,
+				Status::INDUCTED => static::CREATE,
+				Status::ATTACHED => static::UPDATE,
+				Status::RELEASED => static::DELETE,
 			};
 
-			$this->edgeOperations[$operation->value][] = $identity;
+			$this->edgeOperations[$operation][] = $identity;
 		}
 
 		$this->spent = FALSE;
@@ -123,15 +127,15 @@ class Queue
 	public function reset(): static
 	{
 		$this->nodeOperations = [
-			Operation::CREATE->value => [],
-			Operation::UPDATE->value => [],
-			Operation::DELETE->value => [],
+			static::CREATE => [],
+			static::UPDATE => [],
+			static::DELETE => [],
 		];
 
 		$this->edgeOperations = [
-			Operation::CREATE->value => [],
-			Operation::UPDATE->value => [],
-			Operation::DELETE->value => [],
+			static::CREATE => [],
+			static::UPDATE => [],
+			static::DELETE => [],
 		];
 
 		return $this;
@@ -149,27 +153,27 @@ class Queue
 			));
 		}
 
-		if (count($this->nodeOperations[Operation::CREATE->value])) {
+		if (count($this->nodeOperations[static::CREATE])) {
 			$this->doNodeCreates();
 		}
 
-		if (count($this->nodeOperations[Operation::UPDATE->value])) {
+		if (count($this->nodeOperations[static::UPDATE])) {
 			$this->doNodeUpdates();
 		}
 
-		if (count($this->edgeOperations[Operation::CREATE->value])) {
+		if (count($this->edgeOperations[static::CREATE])) {
 			$this->doEdgeCreates();
 		}
 
-		if (count($this->edgeOperations[Operation::UPDATE->value])) {
+		if (count($this->edgeOperations[static::UPDATE])) {
 			$this->doEdgeUpdates();
 		}
 
-		if (count($this->edgeOperations[Operation::DELETE->value])) {
+		if (count($this->edgeOperations[static::DELETE])) {
 			$this->doEdgeDeletes();
 		}
 
-		if (count($this->nodeOperations[Operation::DELETE->value])) {
+		if (count($this->nodeOperations[static::DELETE])) {
 			$this->doNodeDeletes();
 		}
 
@@ -185,7 +189,7 @@ class Queue
 	protected function doEdgeCreates(): void
 	{
 		$query      = $this->graph->query;
-		$identities = $this->edgeOperations[Operation::CREATE->value];
+		$identities = $this->edgeOperations[static::CREATE];
 
 		foreach ($identities as $i => $identity) {
 			$edge = $this->edges[$identity];
@@ -261,7 +265,7 @@ class Queue
 	protected function doEdgeDeletes(): void
 	{
 		$matchers   = [];
-		$identities = $this->edgeOperations[Operation::DELETE->value];
+		$identities = $this->edgeOperations[static::DELETE];
 		$query      = $this->graph->query;
 		$where      = $query->where->var('e');
 
@@ -287,7 +291,7 @@ class Queue
 	{
 		$diffs      = [];
 		$query      = $this->graph->query;
-		$identities = $this->edgeOperations[Operation::UPDATE->value];
+		$identities = $this->edgeOperations[static::UPDATE];
 
 		$i = 0; foreach ($identities as $identity) {
 			$edge      = $this->edges[$identity];
@@ -345,7 +349,7 @@ class Queue
 	protected function doNodeCreates(): void
 	{
 		$query      = $this->graph->query;
-		$identities = $this->nodeOperations[Operation::CREATE->value];
+		$identities = $this->nodeOperations[static::CREATE];
 
 		$i = 0; foreach ($identities as $identity) {
 			$node = $this->nodes[$identity];
@@ -405,7 +409,7 @@ class Queue
 	protected function doNodeDeletes(): void
 	{
 		$matchers   = [];
-		$identities = $this->nodeOperations[Operation::DELETE->value];
+		$identities = $this->nodeOperations[static::DELETE];
 		$query      = $this->graph->query;
 		$where      = $query->where->var('n');
 
@@ -430,7 +434,7 @@ class Queue
 	{
 		$diffs      = [];
 		$query      = $this->graph->query;
-		$identities = $this->nodeOperations[Operation::UPDATE->value];
+		$identities = $this->nodeOperations[static::UPDATE];
 
 		$i = 0; foreach ($identities as $identity) {
 			$node      = $this->nodes[$identity];

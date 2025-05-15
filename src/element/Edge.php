@@ -23,9 +23,10 @@ class Edge extends FluidGraph\Element
 	/**
 	 * @type T of FluidGraph\Edge
 	 * @param class-string<T>
+	 * @param array<string, mixed> $data
 	 * @return T
 	 */
-	public function as(string $class): FluidGraph\Edge
+	public function as(string $class, array $data = []): FluidGraph\Edge
 	{
 		if (!class_exists($class)) {
 			throw new InvalidArgumentException(sprintf(
@@ -36,11 +37,11 @@ class Edge extends FluidGraph\Element
 
 		if (!is_subclass_of($class, FluidGraph\Edge::class, TRUE)) {
 			throw new InvalidArgumentException(sprintf(
-				'Cannot make "%s" from non-Node result',
+				'Cannot make "%s" from non-Edge result',
 				$class
 			));
 		}
 
-		return parent::as($class);
+		return parent::as($class, $data);
 	}
 }

@@ -3,7 +3,6 @@
 namespace FluidGraph;
 
 use DateTime;
-use InvalidArgumentException;
 
 /**
  * Relationships represent a collection of edges
@@ -12,17 +11,21 @@ abstract class Relationship
 {
 	use Relationship\AbstractRelationship;
 
+	protected DateTime $loaded;
+
 	/**
-	 *
+	 * {@inheritDoc}
 	 */
 	public function load(Graph $graph): static
 	{
-		$loader = function() use ($graph) {
-			$source = $this->source::class;
+		if (!isset($loaded)) {
 			$target = implode('|', $this->targets);
+			$source = $this->source::class;
 			$edges  = $graph
 				->run('MATCH (n1:%s)-[r:%s]->(n2:%s)', $source, $this->type, $target)
+				->run('WHERE id(n1) = $source')
 				->run('RETURN n1, n2, r')
+				->set('source', $this->source->identity())
 				->get()
 				->of($this->type)
 				->as($this->type)
@@ -45,22 +48,13 @@ abstract class Relationship
 			);
 
 			$this->loaded = new DateTime();
-		};
-
-		if ($this->mode == Mode::EAGER) {
-			$loader();
 		}
 
 		return $this;
 	}
 
 	/**
-	 * Merge the relationship into the graph object.
-	 *
-	 * This allows for relationships to control the the behavior and status of their edges and
-	 * nodes.  It works by iterating through all MergeHook traits and running them.
-	 *
-	 * Called from Queue on merge().
+	 * {@inheritDoc}
 	 */
 	public function merge(Graph $graph): static
 	{

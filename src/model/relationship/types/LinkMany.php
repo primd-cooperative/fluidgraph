@@ -2,6 +2,7 @@
 
 namespace FluidGraph\Relationship;
 
+use FluidGraph\Edge;
 use FluidGraph\Node;
 use FluidGraph\Entity;
 
@@ -10,8 +11,6 @@ use FluidGraph\Entity;
  */
 trait LinkMany
 {
-	use AbstractRelationship;
-
 	use AbstractRelationship;
 
 	/**
@@ -51,11 +50,10 @@ trait LinkMany
 				$edge   = $this->type::make($data, Entity::MAKE_ASSIGN);
 
 				$edge->with(
-					function(Node $source, Node $target) {
-						//
-						// If these lines shows error it's because tooling can't tell the scope
-						//
-
+					function(Node &$source, Node &$target) {
+						/**
+						 * @var Edge $this
+						 */
 						$this->__element__->source = &$source->__element__;
 						$this->__element__->target = &$target->__element__;
 					},
