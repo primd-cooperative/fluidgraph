@@ -14,7 +14,7 @@ trait DateCreated
 	/**
 	 *
 	 */
-	static public function dateCreated(Element $element): array
+	static public function createDateCreated(Element $element): array
 	{
 		return [
 			'dateCreated' => new DateTime()

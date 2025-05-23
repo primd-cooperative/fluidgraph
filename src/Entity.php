@@ -90,7 +90,10 @@ abstract class Entity
 			}
 
 			$parts  = explode('\\', $trait);
-			$method = lcfirst(end($parts));
+			$method = match($hook) {
+				Entity\CreateHook::class => 'create' . end($parts),
+				Entity\UpdateHook::class => 'update' . end($parts),
+			};
 
 			$results = array_replace($results, static::$method($element));
 		}

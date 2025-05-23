@@ -14,7 +14,7 @@ trait Uuid7
 	/**
 	 *
 	 */
-	static public function uuid7(Element $element): array
+	static public function createUuid7(Element $element): array
 	{
 		return [
 			'id' => Uuid::uuid7()

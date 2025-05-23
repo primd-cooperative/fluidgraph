@@ -14,7 +14,7 @@ trait DateModified
 	/**
 	 *
 	 */
-	static public function dateModified(Element $element): array
+	static public function updateDateModified(Element $element): array
 	{
 		return [
 			'dateModified' => new DateTime()
