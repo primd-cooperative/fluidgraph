@@ -50,6 +50,12 @@ abstract class Relationship
 	protected Closure $loader;
 
 	/**
+	 *
+	 */
+	protected Graph $loadGraph;
+
+
+	/**
 	 * When the relationship was loaded
 	 */
 	public protected(set) DateTime $loadTime;
@@ -226,6 +232,8 @@ abstract class Relationship
 	{
 		if ($this->source->identity() && !isset($this->loadTime)) {
 			$this->loader = function() use ($graph) {
+				unset($this->loader);
+
 				$target = implode('|', $this->targets);
 				$source = $this->source::class;
 				$edges  = $graph
@@ -238,7 +246,8 @@ abstract class Relationship
 					->as($this->type)
 				;
 
-				$this->loaded = [];
+				$this->loaded    = [];
+				$this->loadGraph = $graph;
 
 				foreach ($edges as $edge) {
 					$hash = spl_object_hash($edge->__element__);
@@ -247,7 +256,6 @@ abstract class Relationship
 					$this->active[$hash] = $edge;
 				}
 
-				unset($this->loader);
 
 				return new DateTime();
 			};
@@ -283,6 +291,21 @@ abstract class Relationship
 				$this->$method($graph);
 			}
 		}
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function reload(Graph $graph): static
+	{
+		unset($this->loadTime);
+
+		$this->load($graph);
+
+		call_user_func($this->loader);
 
 		return $this;
 	}
