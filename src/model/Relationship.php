@@ -22,7 +22,7 @@ abstract class Relationship
 	 * @var array<Edge<T>>
 	 */
 	protected array $active = [] {
-		get {
+		&get {
 			if (isset($this->loader)) {
 				$this->loadTime = call_user_func(($this->loader));
 			}
@@ -35,7 +35,7 @@ abstract class Relationship
 	 * @var array<Edge<T>>
 	 */
 	protected array $loaded = [] {
-		get {
+		&get {
 			if (isset($this->loader)) {
 				$this->loadTime = call_user_func(($this->loader));
 			}
