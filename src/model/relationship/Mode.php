@@ -2,7 +2,8 @@
 
 namespace FluidGraph\Relationship;
 
-trait MergeHook
+enum Mode
 {
-
+	case EAGER;
+	case LAZY;
 }

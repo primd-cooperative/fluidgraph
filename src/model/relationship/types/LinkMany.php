@@ -11,8 +11,6 @@ use FluidGraph\Entity;
  */
 trait LinkMany
 {
-	use AbstractRelationship;
-
 	/**
 	 * Get the related node entities when they are of the specified class and labels.
 	 *

@@ -11,8 +11,6 @@ use FluidGraph\Entity;
  */
 trait LinkOne
 {
-	use AbstractRelationship;
-
 	/**
 	 * Get the related node entity when it is of the specified type and labels.
 	 *
