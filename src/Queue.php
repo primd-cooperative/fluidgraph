@@ -295,7 +295,7 @@ class Queue
 			$edge      = $this->edges[$identity];
 			$diffs[$i] = $edge->changes();
 
-			if (!count($diffs[$i])) {
+			if (empty($diffs[$i])) {
 				continue;
 			}
 
@@ -316,7 +316,7 @@ class Queue
 		$i = 0; foreach ($identities as $identity) {
 			$edge = $this->edges[$identity];
 
-			if (!count($diffs[$i])) {
+			if (empty($diffs[$i])) {
 				continue;
 			}
 
@@ -328,15 +328,19 @@ class Queue
 			//
 			// TODO: Renamed edge?
 			//
+
+			$i++;
 		}
 
-		$query->run(
-			'RETURN %s',
-			implode(',', array_map(fn($i) => "i$i", array_keys(array_filter($diffs))))
-		);
+		if (count($changes = array_filter($diffs))) {
+			$query->run(
+				'RETURN %s',
+				implode(',', array_map(fn($i) => "i$i", array_keys($changes)))
+			);
 
-		foreach ($query->pull(Signature::RECORD) as $record) {
-			$element = $this->graph->resolve($record);
+			foreach ($query->pull(Signature::RECORD) as $record) {
+				$element = $this->graph->resolve($record);
+			}
 		}
 	}
 
@@ -437,7 +441,7 @@ class Queue
 			$node      = $this->nodes[$identity];
 			$diffs[$i] = $node->changes();
 
-			if (!count($diffs[$i])) {
+			if (empty($diffs[$i])) {
 				continue;
 			}
 
@@ -458,7 +462,7 @@ class Queue
 		$i = 0; foreach ($identities as $identity) {
 			$node = $this->nodes[$identity];
 
-			if (!count($diffs[$i])) {
+			if (empty($diffs[$i])) {
 				continue;
 			}
 
@@ -476,20 +480,24 @@ class Queue
 			}
 		}
 
-		$query->run(
-			'RETURN %s',
-			implode(',', array_map(fn($i) => "i$i", array_keys(array_filter($diffs))))
-		);
+		if (count($changes = array_filter($diffs))) {
+			$query->run(
+				'RETURN %s',
+				implode(',', array_map(fn($i) => "i$i", array_keys($changes)))
+			);
 
-		foreach ($query->pull(Signature::RECORD) as $record) {
-			$element = $this->graph->resolve($record);
+			foreach ($query->pull(Signature::RECORD) as $record) {
+				$element = $this->graph->resolve($record);
 
-			foreach ($element->labels as $label => $status) {
-				if ($status != Status::ATTACHED) {
-					unset($element->labels[$label]);
+				foreach ($element->labels as $label => $status) {
+					if ($status != Status::ATTACHED) {
+						unset($element->labels[$label]);
+					}
 				}
 			}
 		}
+
+
 	}
 }
 
