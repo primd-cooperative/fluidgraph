@@ -215,7 +215,7 @@ class Queue
 
 			if ($key = $edge->key()) {
 				$query
-					->run('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $edge->signature(Status::FASTENED), "d$i", "t$i")
+					->run('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $edge->signature(Status::FASTENED), "k$i", "t$i")
 					->set("k$i", $key)
 					->run('ON CREATE SET @%s(%s)', "c$i", "i$i")
 					->run('ON MATCH SET @%s(%s)', "m$i", "i$i")
