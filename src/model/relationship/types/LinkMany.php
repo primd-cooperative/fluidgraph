@@ -86,10 +86,14 @@ trait LinkMany
 	 */
 	public function unset(Node $target): static
 	{
-		$hash = spl_object_hash($target->__element__);
+		$edge = $this->for($target)[0] ?? null;
 
-		if (isset($this->active[$hash])) {
-			unset($this->active[$hash]);
+		if ($edge) {
+			$hash = spl_object_hash($edge->__element__);
+
+			if (isset($this->active[$hash])) {
+				unset($this->active[$hash]);
+			}
 		}
 
 		return $this;
