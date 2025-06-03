@@ -171,7 +171,7 @@ abstract class Relationship
 	public function contains(Node|Element\Node|string ...$nodes): bool
 	{
 		foreach ($nodes as $node) {
-			if ($this->position($node) === FALSE) {
+			if ($this->index($node) === FALSE) {
 				return FALSE;
 			}
 		}
@@ -186,7 +186,7 @@ abstract class Relationship
 	public function containsAny(Node|Element\Node|string ...$nodes): bool
 	{
 		foreach ($nodes as $node) {
-			if ($this->position($node) !== FALSE) {
+			if ($this->index($node) !== FALSE) {
 				return TRUE;
 			}
 		}
@@ -312,9 +312,9 @@ abstract class Relationship
 
 
 	/**
-	 * Determine, by position, whether or not a node is included in the current relationship.
+	 * Determine, by index, whether or not a node is included in the current relationship.
 	 */
-	protected function position(Element\Node|Node|string $node): int|false
+	protected function index(Element\Node|Node|string $node): string|false
 	{
 		foreach ($this->active as $i => $edge) {
 			if ($edge->for($node)) {
