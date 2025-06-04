@@ -24,7 +24,7 @@ abstract class Relationship
 	protected array $active = [] {
 		&get {
 			if (isset($this->loader)) {
-				$this->loadTime = call_user_func(($this->loader));
+				$this->loadTime = call_user_func($this->loader);
 			}
 
 			return $this->active;
@@ -37,7 +37,7 @@ abstract class Relationship
 	protected array $loaded = [] {
 		&get {
 			if (isset($this->loader)) {
-				$this->loadTime = call_user_func(($this->loader));
+				$this->loadTime = call_user_func($this->loader);
 			}
 
 			return $this->loaded;
@@ -256,7 +256,6 @@ abstract class Relationship
 					$this->active[$hash] = $edge;
 				}
 
-
 				return new DateTime();
 			};
 
@@ -305,7 +304,7 @@ abstract class Relationship
 
 		$this->load($graph);
 
-		call_user_func($this->loader);
+		$this->loadTime = call_user_func($this->loader);
 
 		return $this;
 	}
