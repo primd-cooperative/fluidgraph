@@ -16,8 +16,9 @@ trait LinkMany
 	 *
 	 * If a related nodes exist but do not match the class/labels, an empty array will be returned.
 	 *
-	 * @param class-string<T of Node>
-	 * @return array<T>
+	 * @template N of Node
+	 * @param class-string<N> $class
+	 * @return array<N>
 	 */
 	public function of(string $class, string ...$labels): array
 	{

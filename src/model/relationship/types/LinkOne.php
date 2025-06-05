@@ -16,8 +16,9 @@ trait LinkOne
 	 *
 	 * If a related node exists but does not match the class/labels, null will be returned.
 	 *
-	 * @param class-string<T of Node>
-	 * @return T
+	 * @template N of Node
+	 * @param class-string<N> $class
+	 * @return N
 	 */
 	public function of(string $class, string ...$labels): ?Node
 	{

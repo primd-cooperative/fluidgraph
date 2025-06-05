@@ -4,7 +4,7 @@ namespace FluidGraph\Entity;
 
 trait Id
 {
-	public private(set) ?string $id;
+	public protected(set) ?string $id;
 
 	static public function key(): array
 	{
