@@ -304,7 +304,9 @@ abstract class Relationship
 
 		$this->load($graph);
 
-		$this->loadTime = call_user_func($this->loader);
+		if (isset($this->loader)) {
+			$this->loadTime = call_user_func($this->loader);
+		}
 
 		return $this;
 	}
