@@ -18,6 +18,8 @@ use Closure;
  */
 abstract class Relationship
 {
+	static protected bool $inverse = FALSE;
+
 	/**
 	 * @var array<Edge<T>>
 	 */
@@ -236,8 +238,15 @@ abstract class Relationship
 
 				$target = implode('|', $this->targets);
 				$source = $this->source::class;
+
+				if (static::$inverse) {
+					$match = 'MATCH (n1:%s)-[r:%s]->(n2:%s)';
+				} else {
+					$match = 'MATCH (n1:%s)<-[r:%s]-(n2:%s)';
+				}
+
 				$edges  = $graph
-					->run('MATCH (n1:%s)-[r:%s]->(n2:%s)', $source, $this->type, $target)
+					->run($match, $source, $this->type, $target)
 					->run('WHERE id(n1) = $source')
 					->run('RETURN n1, n2, r')
 					->set('source', $this->source->identity())

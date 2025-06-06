@@ -2,7 +2,6 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph\Node;
 use FluidGraph\Relationship;
 
 /**

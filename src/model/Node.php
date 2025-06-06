@@ -2,8 +2,6 @@
 
 namespace FluidGraph;
 
-use InvalidArgumentException;
-
 /**
  *
  */

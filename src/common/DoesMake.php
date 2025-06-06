@@ -78,7 +78,7 @@ trait DoesMake
 	/**
 	 *
 	 */
-	static protected function getClass(string $class): ReflectionClass
+	static public function getClass(string $class): ReflectionClass
 	{
 		if (!array_key_exists($class, self::$classes)) {
 			if (!class_exists($class)) {
