@@ -240,9 +240,9 @@ abstract class Relationship
 				$source = $this->source::class;
 
 				if (static::$inverse) {
-					$match = 'MATCH (n1:%s)-[r:%s]->(n2:%s)';
-				} else {
 					$match = 'MATCH (n1:%s)<-[r:%s]-(n2:%s)';
+				} else {
+					$match = 'MATCH (n1:%s)-[r:%s]->(n2:%s)';
 				}
 
 				$edges  = $graph

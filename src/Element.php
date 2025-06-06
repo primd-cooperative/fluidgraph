@@ -193,8 +193,11 @@ abstract class Element
 			$this->status = Status::FASTENED;
 		}
 
-		if (is_subclass_of($entity::class, Edge::class, TRUE)) {
-			$labels = [$entity::class];
+		if ($entity instanceof Edge) {
+			if (!isset($this->labels[$entity::class])) {
+				$this->labels[$entity::class] = Status::FASTENED;
+			}
+
 		} else {
 			for ($class = $entity::class; $class != Node::class; $class = get_parent_class($class)) {
 				if (!isset($this->labels[$class]) && !$entity::getClass($class)->isAbstract()) {
