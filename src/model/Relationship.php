@@ -21,7 +21,7 @@ use FluidGraph\Relationship\Method;
 abstract class Relationship
 {
 	/**
-	 * @var array<Edge<T>>
+	 * @var array<T>
 	 */
 	protected array $active = [] {
 		&get {
@@ -34,7 +34,7 @@ abstract class Relationship
 	}
 
 	/**
-	 * @var array<Edge<T>>
+	 * @var array<T>
 	 */
 	protected array $loaded = [] {
 		&get {
@@ -107,7 +107,7 @@ abstract class Relationship
 	/**
 	 * Construct a new Relationship
 	 *
-	 * @param class-string<Edge> $kind
+	 * @param class-string<T> $kind
 	 * @param array<class-string<Node>> $targets
 	 */
 	public function __construct(

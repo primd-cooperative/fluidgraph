@@ -22,18 +22,22 @@ trait LinkMany
 	 */
 	public function of(string $class, string ...$labels): array
 	{
-		$results = [];
+		$results  = [];
+		$property = match ($this->method) {
+			Method::TO   => 'target',
+			Method::FROM => 'source'
+		};
 
 		foreach ($this->active as $edge) {
-			if (!in_array($class, $edge->__element__->target->classes())) {
+			if (!in_array($class, $edge->__element__->$property->classes())) {
 				continue;
 			}
 
-			if ($labels && !array_intersect($labels, $edge->__element__->target->labels())) {
+			if ($labels && !array_intersect($labels, $edge->__element__->$property->labels())) {
 				continue;
 			}
 
-			$results[] = $edge->__element__->target->as($class);
+			$results[] = $edge->__element__->$property->as($class);
 		}
 
 		return $results;

@@ -69,6 +69,24 @@ abstract class Edge extends Entity
 	/**
 	 *
 	 */
+	public function source()
+	{
+		return $this->__element__->source;
+	}
+
+
+	/**
+	 *
+	 */
+	public function target()
+	{
+		return $this->__element__->target;
+	}
+
+
+	/**
+	 *
+	 */
 	public function to(Element\Node|Node|string $node): bool
 	{
 		return $this->for(Method::TO, $node);

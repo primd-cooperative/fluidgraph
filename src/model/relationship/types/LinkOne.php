@@ -23,21 +23,25 @@ trait LinkOne
 	 */
 	public function of(string $class, string ...$labels): ?Node
 	{
-		$edge = reset($this->active);
+		$edge     = reset($this->active);
+		$property = match ($this->method) {
+			Method::TO   => 'target',
+			Method::FROM => 'source'
+		};
 
 		if (!$edge) {
 			return NULL;
 		}
 
-		if (!in_array($class, $edge->__element__->target->classes())) {
+		if (!in_array($class, $edge->__element__->$property->classes())) {
 			return NULL;
 		}
 
-		if ($labels && !array_intersect($labels, $edge->__element__->target->labels())) {
+		if ($labels && !array_intersect($labels, $edge->__element__->$property->labels())) {
 			return NULL;
 		}
 
-		return $edge->__element__->target->as($class);
+		return $edge->__element__->$property->as($class);
 	}
 
 
