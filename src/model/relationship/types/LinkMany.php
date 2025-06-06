@@ -42,11 +42,11 @@ trait LinkMany
 	/**
 	 *
 	 */
-	public function set(Node $target, array $data = []): static
+	public function set(Node $concern, array $data = []): static
 	{
-		$this->validate($target);
+		$this->validate($concern);
 
-		$hash = spl_object_hash($target->__element__);
+		$hash = spl_object_hash($concern->__element__);
 
 		if (!isset($this->active[$hash])) {
 			if (isset($this->loaded[$hash])) {
@@ -57,8 +57,15 @@ trait LinkMany
 				// No existing edge found, so we'll create a new one.
 				//
 
-				$source = $this->source;
-				$edge   = $this->type::make($data, Entity::MAKE_ASSIGN);
+				if ($this->reverse) {
+					$source = $concern;
+					$target = $this->subject;
+				} else {
+					$source = $this->subject;
+					$target = $concern;
+				}
+
+				$edge = $this->kind::make($data, Entity::MAKE_ASSIGN);
 
 				$edge->with(
 					function(Node $source, Node $target) {

@@ -25,7 +25,11 @@ trait DetachRelated
 				);
 
 				if ($invalid_edge) {
-					$graph->detach($edge->__element__->target);
+					if (!$this->reverse) {
+						$graph->detach($edge->__element__->target);
+					} else {
+						$graph->detach($edge->__element__->source);
+					}
 				}
 			}
 		}

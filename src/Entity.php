@@ -169,7 +169,7 @@ abstract class Entity
 		}
 
 		foreach ($keys as $property) {
-			$this[$property] = $data[$property];
+			$this->$property = $data[$property];
 		}
 
 		return $this;

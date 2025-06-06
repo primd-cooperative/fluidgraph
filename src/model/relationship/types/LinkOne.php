@@ -8,6 +8,7 @@ use FluidGraph\Entity;
 
 /**
  * A type of relationship that links to one node with one edge.
+ * @extends \FluidGraph\Relationship
  */
 trait LinkOne
 {
@@ -43,11 +44,11 @@ trait LinkOne
 	/**
 	 *
 	 */
-	public function set(Node $target, array $data = []): static
+	public function set(Node $concern, array $data = []): static
 	{
-		$this->validate($target);
+		$this->validate($concern);
 
-		$hash = spl_object_hash($target->__element__);
+		$hash = spl_object_hash($concern->__element__);
 
 		if (!isset($this->active[$hash])) {
 			$this->unset();
@@ -60,8 +61,15 @@ trait LinkOne
 				// No existing edge found, so we'll create a new one.
 				//
 
-				$source = $this->source;
-				$edge   = $this->type::make($data, Entity::MAKE_ASSIGN);
+				if ($this->reverse) {
+					$source = $concern;
+					$target = $this->subject;
+				} else {
+					$source = $this->subject;
+					$target = $concern;
+				}
+
+				$edge = $this->kind::make($data, Entity::MAKE_ASSIGN);
 
 				$edge->with(
 					function(Node $source, Node $target) {

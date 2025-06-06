@@ -17,18 +17,25 @@ trait AttachIncluded
 	 */
 	public function attachIncluded(Graph $graph)
 	{
-		$valid_source = $this->source->__element__->status(
+		$valid_subject = $this->subject->__element__->status(
 			Status::INDUCTED,
 			Status::ATTACHED
 		);
 
 		foreach ($this->active as $edge) {
-			$valid_target = !$edge->__element__->target->status(
-				Status::RELEASED,
-				Status::DETACHED
-			);
+			if (!$this->reverse) {
+				$valid_concern = !$edge->__element__->target->status(
+					Status::RELEASED,
+					Status::DETACHED
+				);
+			} else {
+				$valid_concern = !$edge->__element__->source->status(
+					Status::RELEASED,
+					Status::DETACHED
+				);
+			}
 
-			if ($valid_source && $valid_target) {
+			if ($valid_subject && $valid_concern) {
 				$graph->attach($edge);
 			}
 		}

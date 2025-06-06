@@ -18,8 +18,6 @@ use Closure;
  */
 abstract class Relationship
 {
-	static protected bool $inverse = FALSE;
-
 	/**
 	 * @var array<Edge<T>>
 	 */
@@ -51,6 +49,7 @@ abstract class Relationship
 	 */
 	protected Closure $loader;
 
+
 	/**
 	 *
 	 */
@@ -60,59 +59,72 @@ abstract class Relationship
 	/**
 	 * When the relationship was loaded
 	 */
-	public protected(set) DateTime $loadTime;
+	protected DateTime $loadTime;
+
 
 	/**
 	 *
 	 */
-	public protected(set) Mode $mode;
+	protected bool $reverse = FALSE;
+
 
 	/**
-	 * The source entity Node for this relationship.
-	 *
-	 * This can be used when resolving relationships or determining merge effects.  For example
-	 * If the source node was released, a specific type of relationship could detach target nodes.
-	 */
-	public protected(set) Node $source;
-
-	/**
-	 * The target Node entity classes this relationship allows for, if empty, any type is supported.
+	 * The Node entity which this relationship is concerned with, if empty, any type is supported.
 	 *
 	 * @var array<class-string>
 	 */
-	public protected(set) array $targets = [];
+	public protected(set) array $concerns = [];
+
 
 	/**
 	 * The edge type that defines the relationship
 	 *
 	 * @var class-string<T>
 	 */
-	public protected(set) string $type;
+	public protected(set) string $kind;
+
+
+	/**
+	 *
+	 */
+	public protected(set) Mode $mode;
+
+
+	/**
+	 * The subject for this relationship.
+	 *
+	 * This can be used when resolving relationships or determining merge effects.  For example
+	 * If the subject node was released, a specific type of relationship could detach target nodes.
+	 */
+	public protected(set) Node $subject;
+
+
+
 
 
 	/**
 	 * Construct a new Relationship
 	 *
-	 * @param class-string<Edge> $type
+	 * @param class-string<Edge> $kind
 	 * @param array<class-string<Node>> $targets
 	 */
 	public function __construct(
-		Node $source,
-		string $type,
-		array $targets = [],
+		Node $subject,
+		string $kind,
+		array $concerns = [],
 		Mode $mode = Mode::LAZY
 	) {
-		if (!is_subclass_of($type, Edge::class, TRUE)) {
+		if (!is_subclass_of($kind, Edge::class, TRUE)) {
 			throw new InvalidArgumentException(sprintf(
-				'Cannot create relationship of non-edge type "%s"',
-				$type
+				'Cannot create relationship of non-edge kind "%s"',
+				$kind
 			));
 		}
 
-		$this->type    = $type;
-		$this->source  = $source;
-		$this->targets = $targets;
-		$this->mode    = $mode;
+		$this->kind     = $kind;
+		$this->subject  = $subject;
+		$this->concerns = $concerns;
+		$this->mode     = $mode;
 	}
 
 	/**
@@ -232,27 +244,27 @@ abstract class Relationship
 	 */
 	public function load(Graph $graph): static
 	{
-		if ($this->source->identity() && !isset($this->loadTime)) {
+		if ($this->subject->identity() && !isset($this->loadTime)) {
 			$this->loader = function() use ($graph) {
 				unset($this->loader);
 
-				$target = implode('|', $this->targets);
-				$source = $this->source::class;
+				$concerns  = implode('|', $this->concerns);
+				$subject   = $this->subject::class;
 
-				if (static::$inverse) {
+				if ($this->reverse) {
 					$match = 'MATCH (n1:%s)<-[r:%s]-(n2:%s)';
 				} else {
 					$match = 'MATCH (n1:%s)-[r:%s]->(n2:%s)';
 				}
 
 				$edges  = $graph
-					->run($match, $source, $this->type, $target)
-					->run('WHERE id(n1) = $source')
+					->run($match, $subject, $this->kind, $concerns)
+					->run('WHERE id(n1) = $subject')
 					->run('RETURN n1, n2, r')
-					->set('source', $this->source->identity())
+					->set('subject', $this->subject->identity())
 					->get()
-					->of($this->type)
-					->as($this->type)
+					->of($this->kind)
+					->as($this->kind)
 				;
 
 				$this->loaded    = [];
@@ -352,9 +364,9 @@ abstract class Relationship
 			));
 		}
 
-		if ($this->targets && !in_array($target::class, $this->targets)) {
+		if ($this->concerns && !array_intersect($target->__element__->labels(), $this->concerns)) {
 			throw new InvalidArgumentException(sprintf(
-				'Relationships cannot include a target of class "%s" on "%s"',
+				'Relationships cannot include a concern of class "%s" on "%s"',
 				$target::class,
 				static::class
 			));

@@ -13,7 +13,7 @@ class Edge extends FluidGraph\Element
 	/**
 	 * The source node from which this edge originates
 	 */
-	public Node|FluidGraph\Node|null $source = NULL{
+	public Node|FluidGraph\Node|null $source = NULL {
 		get {
 			if ($this->source instanceof FluidGraph\Node) {
 				return $this->source->__element__;
