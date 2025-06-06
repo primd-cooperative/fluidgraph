@@ -12,7 +12,7 @@ use FluidGraph\Relationship;
  */
 class FromOne extends Relationship
 {
-	protected bool $reverse = TRUE;
+	protected Method $method = Method::FROM;
 
 	use AttachIncluded;
 	use DetachExcluded;

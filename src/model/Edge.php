@@ -2,6 +2,8 @@
 
 namespace FluidGraph;
 
+use FluidGraph\Relationship\Method;
+
 /**
  *
  */
@@ -20,21 +22,36 @@ abstract class Edge extends Entity
 		}
 	}
 
+
 	/**
 	 *
 	 */
-	public function for(Element\Node|Node|string $node): bool
+	public function from(Element\Node|Node|string $node): bool
 	{
-		if (!isset($this->__element__->target)) {
+		return $this->for(Method::FROM, $node);
+	}
+
+
+	/**
+	 *
+	 */
+	public function for(Method $method, Element\Node|Node|string $node): bool
+	{
+		$property = match ($method) {
+			Method::TO   => 'target',
+			Method::FROM => 'source'
+		};
+
+		if (!isset($this->__element__->$property)) {
 			return FALSE;
 		}
 
 		if (is_string($node)) {
-			if (!isset($this->__element__->target->labels[$node])) {
+			if (!isset($this->__element__->$property->labels[$node])) {
 				return FALSE;
 			}
 
-			return in_array($this->__element__->target->labels[$node], [
+			return in_array($this->__element__->$property->labels[$node], [
 				Status::FASTENED,
 				Status::INDUCTED,
 				Status::ATTACHED
@@ -45,6 +62,15 @@ abstract class Edge extends Entity
 			$node = $node->__element__;
 		}
 
-		return $node === $this->__element__->target;
+		return $node === $this->__element__->$property;
+	}
+
+
+	/**
+	 *
+	 */
+	public function to(Element\Node|Node|string $node): bool
+	{
+		return $this->for(Method::TO, $node);
 	}
 }

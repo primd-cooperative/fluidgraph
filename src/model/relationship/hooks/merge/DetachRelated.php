@@ -25,7 +25,7 @@ trait DetachRelated
 				);
 
 				if ($invalid_edge) {
-					if (!$this->reverse) {
+					if ($this->method == Method::TO) {
 						$graph->detach($edge->__element__->target);
 					} else {
 						$graph->detach($edge->__element__->source);

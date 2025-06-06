@@ -2,15 +2,15 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph\Edge;
 use FluidGraph\Node;
-use FluidGraph\Entity;
 
 /**
  * A type of relationship that links to many nodes with one edge per node.
  */
 trait LinkMany
 {
+	use Link;
+
 	/**
 	 * Get the related node entities when they are of the specified class and labels.
 	 *
@@ -46,41 +46,10 @@ trait LinkMany
 	{
 		$this->validate($concern);
 
-		$hash = spl_object_hash($concern->__element__);
+		$hash = $this->index($concern);
 
-		if (!isset($this->active[$hash])) {
-			if (isset($this->loaded[$hash])) {
-				$this->active[$hash] = $this->loaded[$hash];
-
-			} else {
-				//
-				// No existing edge found, so we'll create a new one.
-				//
-
-				if ($this->reverse) {
-					$source = $concern;
-					$target = $this->subject;
-				} else {
-					$source = $this->subject;
-					$target = $concern;
-				}
-
-				$edge = $this->kind::make($data, Entity::MAKE_ASSIGN);
-
-				$edge->with(
-					function(Node $source, Node $target) {
-						/**
-						 * @var Edge $this
-						 */
-						$this->__element__->source = $source;
-						$this->__element__->target = $target;
-					},
-					$source,
-					$target
-				);
-
-				$this->active[$hash] = $edge;
-			}
+		if (!$hash) {
+			$hash = $this->realize($concern, $data);
 		}
 
 		$this->active[$hash]->assign($data);
@@ -92,16 +61,12 @@ trait LinkMany
 	/**
 	 *
 	 */
-	public function unset(Node $target): static
+	public function unset(Node $concern): static
 	{
-		$edge = $this->for($target)[0] ?? null;
+		$hash = $this->index($concern);
 
-		if ($edge) {
-			$hash = spl_object_hash($edge->__element__);
-
-			if (isset($this->active[$hash])) {
-				unset($this->active[$hash]);
-			}
+		if ($hash) {
+			unset($this->active[$hash]);
 		}
 
 		return $this;

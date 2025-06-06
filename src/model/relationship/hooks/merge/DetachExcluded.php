@@ -23,7 +23,7 @@ trait DetachExcluded
 		);
 
 		foreach ($this->loaded as $hash => $edge) {
-			if (!$this->reverse) {
+			if ($this->method == Method::TO) {
 				$valid_concern = !$edge->__element__->target->status(
 					Status::RELEASED,
 					Status::DETACHED

@@ -2,9 +2,7 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph\Edge;
 use FluidGraph\Node;
-use FluidGraph\Entity;
 
 /**
  * A type of relationship that links to one node with one edge.
@@ -12,6 +10,8 @@ use FluidGraph\Entity;
  */
 trait LinkOne
 {
+	use Link;
+
 	/**
 	 * Get the related node entity when it is of the specified type and labels.
 	 *
@@ -48,43 +48,12 @@ trait LinkOne
 	{
 		$this->validate($concern);
 
-		$hash = spl_object_hash($concern->__element__);
+		$hash = $this->index($concern);
 
-		if (!isset($this->active[$hash])) {
+		if (!$hash) {
 			$this->unset();
 
-			if (isset($this->loaded[$hash])) {
-				$this->active[$hash] = $this->loaded[$hash];
-
-			} else {
-				//
-				// No existing edge found, so we'll create a new one.
-				//
-
-				if ($this->reverse) {
-					$source = $concern;
-					$target = $this->subject;
-				} else {
-					$source = $this->subject;
-					$target = $concern;
-				}
-
-				$edge = $this->kind::make($data, Entity::MAKE_ASSIGN);
-
-				$edge->with(
-					function(Node $source, Node $target) {
-						/**
-						 * @var Edge $this
-						 */
-						$this->__element__->source = $source;
-						$this->__element__->target = $target;
-					},
-					$source,
-					$target
-				);
-
-				$this->active[$hash] = $edge;
-			}
+			$hash = $this->realize($concern, $data);
 		}
 
 		$this->active[$hash]->assign($data);

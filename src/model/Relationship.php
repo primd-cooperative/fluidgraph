@@ -8,10 +8,12 @@ use FluidGraph\Status;
 use FluidGraph\Element;
 use FluidGraph\Graph;
 use FluidGraph\Relationship\Mode;
+use FluidGraph\Relationship\Index;
 
 use InvalidArgumentException;
 use DateTime;
 use Closure;
+use FluidGraph\Relationship\Method;
 
 /**
  * @template T of Edge
@@ -65,7 +67,7 @@ abstract class Relationship
 	/**
 	 *
 	 */
-	protected bool $reverse = FALSE;
+	protected Method $method = Method::TO;
 
 
 	/**
@@ -154,7 +156,7 @@ abstract class Relationship
 	{
 		foreach ($nodes as $node) {
 			foreach ($this->active as $edge) {
-				if ($edge->for($node)) {
+				if ($edge->for($this->method, $node)) {
 					$edge->assign($data);
 				}
 			}
@@ -224,7 +226,7 @@ abstract class Relationship
 
 		foreach ($nodes as $node) {
 			foreach ($this->active as $edge) {
-				if ($edge->for($node)) {
+				if ($edge->for($this->method, $node)) {
 					$edges[] = $edge;
 				}
 			}
@@ -251,10 +253,10 @@ abstract class Relationship
 				$concerns  = implode('|', $this->concerns);
 				$subject   = $this->subject::class;
 
-				if ($this->reverse) {
-					$match = 'MATCH (n1:%s)<-[r:%s]-(n2:%s)';
-				} else {
+				if ($this->method == Method::TO) {
 					$match = 'MATCH (n1:%s)-[r:%s]->(n2:%s)';
+				} else {
+					$match = 'MATCH (n1:%s)<-[r:%s]-(n2:%s)';
 				}
 
 				$edges  = $graph
@@ -336,10 +338,12 @@ abstract class Relationship
 	/**
 	 * Determine, by index, whether or not a node is included in the current relationship.
 	 */
-	protected function index(Element\Node|Node|string $node): string|false
+	protected function index(Element\Node|Node|string $node, Index $index = Index::ACTIVE): string|false
 	{
-		foreach ($this->active as $i => $edge) {
-			if ($edge->for($node)) {
+		$index = $index->value;
+
+		foreach ($this->$index as $i => $edge) {
+			if ($edge->for($this->method, $node)) {
 				return $i;
 			}
 		}
