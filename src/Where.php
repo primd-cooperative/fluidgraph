@@ -34,7 +34,7 @@ class Where
 	}
 
 
-	public function eq(array|string $condition, mixed $value = NULL): callable|array
+	public function eq(array|string|callable $condition, mixed $value = NULL): callable|array
 	{
 		if (is_array($condition)) {
 			$hooks = [];
@@ -47,7 +47,11 @@ class Where
 
 		} else {
 			return function() use ($condition, $value) {
-				return sprintf('%s.%s = %s', $this->alias, $condition, $this->param($value));
+				if (is_callable($condition)) {
+					return sprintf('%s = %s', $condition(), $this->param($value));
+				} else {
+					return sprintf('%s.%s = %s', $this->alias, $condition, $this->param($value));
+				}
 			};
 		}
 	}
@@ -57,6 +61,12 @@ class Where
 		return function() use ($term) {
 			return sprintf('id(%s) = %s', $this->alias, $this->param($term));
 		};
+	}
+
+
+	public function md5(string|callable $property): callable
+	{
+		return $this->wrap('util_module.md5', $property);
 	}
 
 
@@ -76,6 +86,12 @@ class Where
 	}
 
 
+	public function upper(string|callable $property): callable
+	{
+		return $this->wrap('toupper', $property);
+	}
+
+
 	public function uses(Query $query): static
 	{
 		$this->query = $query;
@@ -89,6 +105,18 @@ class Where
 		$this->alias = $alias;
 
 		return $this;
+	}
+
+
+	protected function wrap(string $function, string|callable $property): callable
+	{
+		return function() use ($function, $property) {
+			if (is_callable($property)) {
+				return sprintf($function . '(%s)', $property());
+			} else {
+				return sprintf($function . '(%s.%s)', $this->alias, $property);
+			}
+		};
 	}
 
 
