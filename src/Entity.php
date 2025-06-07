@@ -24,7 +24,7 @@ abstract class Entity
 
 	/**
 	 * Get the properties which identify this element uniquely.
-	 * 
+	 *
 	 * @return array<string>
 	 */
 	static public function key(): array
@@ -68,7 +68,7 @@ abstract class Entity
 	{
 		$results = [];
 
-		if (count($element->changes())) {
+		if (count(Element::changes($element))) {
 			for(
 				$class = static::class;
 				$class && $class != self::class;
@@ -174,6 +174,22 @@ abstract class Entity
 
 
 	/**
+	 * Instantiate an entity as another type of entity
+	 *
+	 * If an existing entity expressing this element exists, it will be returned.  If not a new
+	 * one will be created using the active element properties for construction with a fallback
+	 * to defaults provided.
+	 *
+	 * @param class-string<Entity> $class The entity class to instantiate as
+	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
+	 */
+	public function as(string $class, array $defaults = []): Entity
+	{
+		return $this->__element__->as($class, $defaults);
+	}
+
+
+	/**
 	 * Assign data to the entity/element in a safe/bulk manner
 	 * @param array<string, mixed> $data
 	 */
@@ -190,9 +206,7 @@ abstract class Entity
 			));
 		}
 
-		foreach ($keys as $property) {
-			$this->$property = $data[$property];
-		}
+		$this->__element__->assign($data);
 
 		return $this;
 	}
@@ -205,35 +219,18 @@ abstract class Entity
 	 */
 	public function identity(): int|null
 	{
-		if (!isset($this->__element__->identity)) {
-			return NULL;
-		}
-
-		return $this->__element__->identity;
+		return $this->__element__->identity();
 	}
 
 
 	/**
-	 * Determine whether or not this element is an expression of another element or element content
+	 * Determine whether or not this entity is an expression of another entity or element or class
+	 *
+	 * @param Entity|Element|class-string $essence
 	 */
-	public function is(Entity|Element $element): bool
+	public function is(Entity|Element|string $essence): bool
 	{
-		if ($element instanceof Entity) {
-			if ($this === $element) {
-				return TRUE;
-			}
-
-			if ($this->__element__ === $element->__element__) {
-				return TRUE;
-			}
-
-		} else {
-			if ($this->__element__ === $element) {
-				return TRUE;
-			}
-		}
-
-		return FALSE;
+		return $this->__element__->is($essence);
 	}
 
 
@@ -244,25 +241,6 @@ abstract class Entity
 	 */
 	public function status(Status ...$statuses): Status|bool|null
 	{
-		if (count($statuses)) {
-			return in_array($this->__element__->status, $statuses);
-		}
-
-		return $this->__element__->status;
-	}
-
-
-	/**
-	 * @return array<string, mixed>
-	 */
-	public function values(): array
-	{
-		return array_filter(
-			get_object_vars($this) + get_class_vars(static::class),
-			fn($key) => !in_array($key, [
-					'__element__'
-				]),
-			ARRAY_FILTER_USE_KEY
-		);
+		return $this->__element__->status(...$statuses);
 	}
 }

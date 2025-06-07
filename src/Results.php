@@ -21,7 +21,7 @@ class Results extends ArrayObject
 		return new static(
 			array_filter(
 				$this->getArrayCopy(),
-				fn(Element $element) => array_intersect($labels, $element->labels())
+				fn(Element $element) => array_intersect($labels, Element::labels($element))
 			)
 		);
 	}

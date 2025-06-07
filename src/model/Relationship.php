@@ -199,31 +199,6 @@ abstract class Relationship
 
 
 	/**
-	 * Get an array of all the edges for one or more nodes or node types.
-	 *
-	 * @return array<T>
-	 */
-	public function for(Element\Node|Node|string ...$nodes): array
-	{
-		$edges = [];
-
-		if (empty($nodes)) {
-			return $this->active;
-		}
-
-		foreach ($nodes as $node) {
-			foreach ($this->active as $edge) {
-				if ($edge->for($this->method, $node)) {
-					$edges[] = $edge;
-				}
-			}
-		}
-
-		return $edges;
-	}
-
-
-	/**
 	 * Load the edges/nodes for the relationship.
 	 *
 	 * This method should be implemented by a concrete relationship implementation which can
@@ -340,6 +315,47 @@ abstract class Relationship
 
 
 	/**
+	 *
+	 */
+	protected function realize(Node $concern, array $data = []): string
+	{
+		$hash = $this->index($concern, Index::LOADED);
+
+		if ($hash) {
+			$this->active[$hash] = $this->loaded[$hash];
+
+		} else {
+			$edge = $this->kind::make($data, Entity::MAKE_ASSIGN);
+			$hash = spl_object_hash($edge);
+
+			if ($this->method == Method::TO) {
+				$source = $this->subject;
+				$target = $concern;
+			} else {
+				$source = $concern;
+				$target = $this->subject;
+			}
+
+			$edge->with(
+				function(Node $source, Node $target): void {
+					/**
+					 * @var Edge $this
+					 */
+					$this->__element__->source = $source;
+					$this->__element__->target = $target;
+				},
+				$source,
+				$target
+			);
+
+			$this->active[$hash] = $edge;
+		}
+
+		return $hash;
+	}
+
+
+	/**
 	 * Validate a target against basic rules.
 	 *
 	 * - No Released or Detatched Targets
@@ -355,7 +371,7 @@ abstract class Relationship
 			));
 		}
 
-		if ($this->concerns && !array_intersect($target->__element__->labels(), $this->concerns)) {
+		if ($this->concerns && !array_intersect(Element::labels($target->__element__), $this->concerns)) {
 			throw new InvalidArgumentException(sprintf(
 				'Relationships cannot include a concern of class "%s" on "%s"',
 				$target::class,

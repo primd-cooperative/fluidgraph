@@ -2,6 +2,7 @@
 
 namespace FluidGraph;
 
+use HRTime;
 use ArrayObject;
 use RuntimeException;
 use Bolt\enum\Signature;
@@ -10,22 +11,28 @@ class Queue
 {
 	use HasGraph;
 
-	const CREATE = 1;
-	const UPDATE = 2;
-	const DELETE = 3;
+	const CREATE = 'create';
+	const UPDATE = 'update';
+	const DELETE = 'delete';
 
 	/**
-	 * @var ArrayObject<Element\Edge>
+	 * @var ArrayObject<string, Element\Edge>
 	 */
 	protected ArrayObject $edges;
 
 	/**
-	 * @var ArrayObject<Element\Node>
+	 * @var ArrayObject<string, Element\Node>
 	 */
 	protected ArrayObject $nodes;
 
+	/**
+	 * @var array<string, array<string>>
+	 */
 	protected array $nodeOperations;
 
+	/**
+	 * @var array<string, array<string>>
+	 */
 	protected array $edgeOperations;
 
 	protected bool $spent = FALSE;
@@ -55,8 +62,12 @@ class Queue
 	 * @param ArrayObject<Element\Node> $nodes
 	 * @param ArrayObject<Element\Edge> $edges
 	 */
-	public function merge(): static
+	public function merge(array &$info = []): static
 	{
+		/**
+		 * @disregard P1009
+		 */
+		$start       = hrtime(TRUE);
 		$visit_nodes = [
 			'new' => [],
 			'old' => [],
@@ -70,7 +81,7 @@ class Queue
 			foreach ($visit_nodes['new'] as $identity => $status) {
 				$node = $this->nodes[$identity];
 
-				foreach ($node->relationships() as $relationship) {
+				foreach (Element\Node::relationships($node) as $relationship) {
 					$relationship->merge($this->graph);
 				}
 			}
@@ -116,7 +127,30 @@ class Queue
 			$this->edgeOperations[$operation][] = $identity;
 		}
 
+		foreach (['nodeOperations' => 'nodes', 'edgeOperations' => 'edges'] as $type => $list) {
+			foreach ($this->$type[static::UPDATE] as $i => $identity) {
+				$element = $this->$list[$identity];
+				$diffs   = Element::changes($element);
+
+				if (empty($diffs)) {
+					unset($this->$type[static::UPDATE][$i]);
+					continue;
+				}
+
+				foreach (Element::classes($element) as $class) {
+					$class::onUpdate($element);
+
+					$diffs[$i] = Element::changes($element);
+				}
+			}
+		}
+
 		$this->spent = FALSE;
+		$info        = [
+			'time'  => (hrtime(TRUE) - $start) / 1_000_000_000,
+			'nodes' => $this->nodeOperations,
+			'edges' => $this->edgeOperations,
+		];
 
 		return $this;
 	}
@@ -209,24 +243,24 @@ class Queue
 			$edge    = $this->edges[$identity];
 			$created = [];
 
-			foreach ($edge->classes() as $class) {
+			foreach (Element::classes($edge) as $class) {
 				$created = $class::onCreate($edge);
 			}
 
-			if ($key = $edge->key()) {
+			if ($key = Element::key($edge)) {
 				$query
-					->run('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $edge->signature(Status::FASTENED), "k$i", "t$i")
+					->run('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::FASTENED), "k$i", "t$i")
 					->set("k$i", $key)
 					->run('ON CREATE SET @%s(%s)', "c$i", "i$i")
 					->run('ON MATCH SET @%s(%s)', "m$i", "i$i")
-					->set("c$i", array_diff_key($edge->properties(), $key))
-					->set("m$i", array_diff_key($edge->properties(), $key, $created))
+					->set("c$i", array_diff_key(Element::properties($edge), $key))
+					->set("m$i", array_diff_key(Element::properties($edge), $key, $created))
 				;
 
 			} else {
 				$query
-					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", $edge->signature(Status::FASTENED), "d$i", "t$i")
-					->set("d$i", $edge->properties())
+					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::FASTENED), "d$i", "t$i")
+					->set("d$i", Element::properties($edge))
 				;
 
 			}
@@ -246,7 +280,7 @@ class Queue
 				//
 
 				foreach ($this->edges[$identities[$i]]->entities as $entity) {
-					$this->edges[$record->element_id]->fasten($entity);
+					Element::fasten($this->edges[$record->element_id], $entity);
 				}
 
 			} else {
@@ -292,33 +326,12 @@ class Queue
 		$identities = $this->edgeOperations[static::UPDATE];
 
 		$i = 0; foreach ($identities as $identity) {
-			$edge      = $this->edges[$identity];
-			$diffs[$i] = $edge->changes();
-
-			if (empty($diffs[$i])) {
-				continue;
-			}
-
-			foreach ($edge->classes() as $class) {
-				$class::onUpdate($edge);
-
-				$diffs[$i] = $edge->changes();
-			}
+			$edge = $this->edges[$identity];
 
 			$query
 				->run('MATCH (%s)-[%s]->(%s) WHERE id(%s) = $%s', "f$i", "i$i", "t$i", "i$i", "e$i")
 				->set("e$i", $identity)
 			;
-
-			$i++;
-		}
-
-		$i = 0; foreach ($identities as $identity) {
-			$edge = $this->edges[$identity];
-
-			if (empty($diffs[$i])) {
-				continue;
-			}
 
 			$query
 				->run('SET @%s(%s)', "d$i", "i$i")
@@ -357,23 +370,23 @@ class Queue
 			$node    = $this->nodes[$identity];
 			$created = [];
 
-			foreach ($node->classes() as $class) {
+			foreach (Element::classes($node) as $class) {
 				$created = $class::onCreate($node);
 			}
 
-			if ($key = $node->key()) {
+			if ($key = Element::key($node)) {
 				$query
-					->run('MERGE (%s:%s {@%s})', "i$i", $node->signature(Status::FASTENED), "k$i")
+					->run('MERGE (%s:%s {@%s})', "i$i", Element::signature($node, Status::FASTENED), "k$i")
 					->set("k$i", $key)
 					->run('ON CREATE SET @%s(%s)', "c$i", "i$i")
 					->run('ON MATCH SET @%s(%s)', "m$i", "i$i")
-					->set("c$i", array_diff_key($node->properties(), $key))
-					->set("m$i", array_diff_key($node->properties(), $key, $created))
+					->set("c$i", array_diff_key(Element::properties($node), $key))
+					->set("m$i", array_diff_key(Element::properties($node), $key, $created))
 				;
 			} else {
 				$query
-					->run('CREATE (%s:%s {@%s})', "i$i", $node->signature(Status::FASTENED), "d$i")
-					->set("d$i", $node->properties())
+					->run('CREATE (%s:%s {@%s})', "i$i", Element::signature($node, Status::FASTENED), "d$i")
+					->set("d$i", Element::properties($node))
 				;
 			}
 
@@ -393,7 +406,7 @@ class Queue
 				//
 
 				foreach ($this->nodes[$identities[$i]]->entities as $entity) {
-					$this->nodes[$record->element_id]->fasten($entity);
+					Element::fasten($this->nodes[$record->element_id], $entity);
 				}
 
 			} else {
@@ -439,22 +452,18 @@ class Queue
 
 		$i = 0; foreach ($identities as $identity) {
 			$node      = $this->nodes[$identity];
-			$diffs[$i] = $node->changes();
+			$diffs[$i] = Element::changes($node);
 
 			if (empty($diffs[$i])) {
 				continue;
 			}
 
-			foreach ($node->classes() as $class) {
+			foreach (Element::classes($node) as $class) {
 				$class::onUpdate($node);
 
-				$diffs[$i] = $node->changes();
+				$diffs[$i] = Element::changes($node);
 			}
 
-			$query
-				->run('MATCH (%s) WHERE id(%s) = $%s', "i$i", "i$i", "n$i")
-				->set("n$i", $identity)
-			;
 
 			$i++;
 		}
@@ -462,20 +471,21 @@ class Queue
 		$i = 0; foreach ($identities as $identity) {
 			$node = $this->nodes[$identity];
 
-			if (empty($diffs[$i])) {
-				continue;
-			}
+			$query
+				->run('MATCH (%s) WHERE id(%s) = $%s', "i$i", "i$i", "n$i")
+				->set("n$i", $identity)
+			;
 
 			$query
 				->run('SET @%s(%s)', "d$i", "i$i")
 				->set("d$i", $diffs[$i])
 			;
 
-			if ($plus_signature = $node->signature(Status::FASTENED)) {
+			if ($plus_signature = Element::signature($node, Status::FASTENED)) {
 				$query->run('SET %s:%s', "i$i", $plus_signature);
 			}
 
-			if ($less_signature = $node->signature(Status::RELEASED)) {
+			if ($less_signature = Element::signature($node, Status::RELEASED)) {
 				$query->run('REMOVE %s:%s', "i$i", $less_signature);
 			}
 		}
@@ -496,8 +506,6 @@ class Queue
 				}
 			}
 		}
-
-
 	}
 }
 

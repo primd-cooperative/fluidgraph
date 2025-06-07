@@ -10,10 +10,9 @@ use FluidGraph;
  * When the source node is attached, so is the target node.
  * When the source node is detached, so is the target node.
  */
-class OwnedOne extends FluidGraph\Relationship
+class OwnedOne extends FluidGraph\Relationship\LinkOne
 {
 	use AttachIncluded;
 	use DetachExcluded;
 	use DetachRelated;
-	use LinkOne;
 }

@@ -3,13 +3,38 @@
 namespace FluidGraph\Relationship;
 
 use FluidGraph\Node;
+use FluidGraph\Element;
+use FluidGraph\Relationship;
 
 /**
  * A type of relationship that links to many nodes with one edge per node.
  */
-trait LinkMany
+abstract class LinkMany extends Relationship
 {
-	use Link;
+	/**
+	 * Get an array of all the edges for one or more nodes or node types.
+	 *
+	 * @return array<T>
+	 */
+	public function for(Element\Node|Node|string ...$nodes): array
+	{
+		$edges = [];
+
+		if (empty($nodes)) {
+			return $this->active;
+		}
+
+		foreach ($nodes as $node) {
+			foreach ($this->active as $edge) {
+				if ($edge->for($this->method, $node)) {
+					$edges[] = $edge;
+				}
+			}
+		}
+
+		return $edges;
+	}
+
 
 	/**
 	 * Get the related node entities when they are of the specified class and labels.

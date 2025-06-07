@@ -11,6 +11,19 @@ use InvalidArgumentException;
 class Node extends FluidGraph\Element
 {
 	/**
+	 * Get any relationships for this node
+	 *
+	 * @return array<FluidGraph\Relationship>
+	 */
+	static public function relationships(self $node): array
+	{
+		return array_filter(
+			$node->active,
+			fn($value) => $value instanceof FluidGraph\Relationship
+		);
+	}
+
+	/**
 	 * @template T of FluidGraph\Node
 	 * @param class-string<T> $class
 	 * @param array<string, mixed> $defaults
@@ -33,19 +46,5 @@ class Node extends FluidGraph\Element
 		}
 
 		return parent::as($class, $defaults);
-	}
-
-
-	/**
-	 * Get any relationships for this node
-	 *
-	 * @return array<FluidGraph\Relationship>
-	 */
-	public function relationships(): array
-	{
-		return array_filter(
-			$this->active,
-			fn($value) => $value instanceof FluidGraph\Relationship
-		);
 	}
 }
