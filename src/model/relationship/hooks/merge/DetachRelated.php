@@ -15,10 +15,10 @@ trait DetachRelated
 	/**
 	 *
 	 */
-	public function detachRelated(Graph $graph)
+	public function mergeDetachRelated(Graph $graph): void
 	{
 		foreach ([$this->loaded, $this->active] as $set) {
-			foreach ($set as $hash => $edge) {
+			foreach ($set as $edge) {
 				$invalid_edge = $edge->__element__->status(
 					Status::RELEASED,
 					Status::DETACHED

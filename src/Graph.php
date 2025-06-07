@@ -68,24 +68,14 @@ class Graph
 	/**
 	 *
 	 */
-	private Bolt $bolt;
-
-	/**
-	 * @var array
-	 */
-	private array $login;
-
-	/**
-	 *
-	 */
-	private ReflectionProperty $union;
+	private readonly ReflectionProperty $union;
 
 	/**
 	 *
 	 */
 	public function __construct(
-		array $login,
-		Bolt $bolt,
+		private readonly array $login,
+		private readonly Bolt $bolt,
 		Query $query,
 		Queue $queue
 	) {
@@ -94,8 +84,6 @@ class Graph
 		$this->union = new ReflectionProperty(Entity::class, '__element__');
 		$this->queue = $queue->on($this)->manage($this->nodes, $this->edges);
 		$this->query = $query->on($this);
-		$this->login = $login;
-		$this->bolt  = $bolt;
 	}
 
 
@@ -124,7 +112,7 @@ class Graph
 					} else {
 						throw new InvalidArgumentException(sprintf(
 							'Unknown element type "%s" on attach()',
-							get_class($element)
+							$element !== null ? $element::class : self::class
 						));
 					}
 
@@ -191,7 +179,7 @@ class Graph
 	 */
 	public function resolve(IStructure $structure): mixed
 	{
-		switch(get_class($structure)) {
+		switch($structure::class) {
 			case Struct\DateTimeZoneId::class:
 				$zone  = new DateTimeZone($structure->tz_id);
 				$value = DateTime::createFromFormat(
@@ -240,7 +228,7 @@ class Graph
 					}
 
 					$this->edges[$identity]->with(
-						function(Element $source, Element $target) {
+						function(Element $source, Element $target): void {
 							/**
 							 * @var Element\Edge $this
 							 */
@@ -256,7 +244,7 @@ class Graph
 			default:
 				throw new RuntimeException(sprintf(
 					'Cannot resolve property of type "%s"',
-					get_class($structure)
+					$structure::class
 				));
 		}
 

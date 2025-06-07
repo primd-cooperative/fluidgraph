@@ -58,15 +58,13 @@ class Query
 	{
 		return array_filter(
 			get_object_vars($this),
-			function($key) {
-				return !in_array(
+			fn($key) => !in_array(
 					$key,
 					[
 						'graph',
 						'where'
 					]
-				);
-			},
+				),
 			ARRAY_FILTER_USE_KEY
 		);
 	}
@@ -106,9 +104,7 @@ class Query
 			return new Results(
 				array_filter(
 					$this->results,
-					function($key) use ($index) {
-						return in_array($key, $index);
-					},
+					fn($key) => in_array($key, $index),
 					ARRAY_FILTER_USE_KEY
 				)
 			);
@@ -130,9 +126,7 @@ class Query
 		if (is_int($terms)) {
 			return $this->match(
 				$class,
-				function($where) use ($terms) {
-					return $where->id($terms);
-				},
+				fn($where) => $where->id($terms),
 				$order,
 				$limit,
 				$skip
@@ -141,9 +135,7 @@ class Query
 		} elseif (is_array($terms)) {
 			return $this->match(
 				$class,
-				function($where) use ($terms) {
-					return $where->all(...$where->eq($terms));
-				},
+				fn($where) => $where->all(...$where->eq($terms)),
 				$order,
 				$limit,
 				$skip
@@ -234,9 +226,7 @@ class Query
 			$responses = array_values(
 				array_filter(
 					$this->responses,
-					function($response) use ($signatures) {
-						return in_array($response->signature, $signatures);
-					}
+					fn($response) => in_array($response->signature, $signatures)
 				)
 			);
 

@@ -71,25 +71,11 @@ abstract class Relationship
 
 
 	/**
-	 * The Node entity which this relationship is concerned with, if empty, any type is supported.
-	 *
-	 * @var array<class-string>
-	 */
-	public protected(set) array $concerns = [];
-
-
-	/**
 	 * The edge type that defines the relationship
 	 *
 	 * @var class-string<T>
 	 */
 	public protected(set) string $kind;
-
-
-	/**
-	 *
-	 */
-	public protected(set) Mode $mode;
 
 
 	/**
@@ -113,8 +99,13 @@ abstract class Relationship
 	public function __construct(
 		Node $subject,
 		string $kind,
-		array $concerns = [],
-		Mode $mode = Mode::LAZY
+		/**
+         * The Node entity which this relationship is concerned with, if empty, any type is supported.
+         *
+         * @var array<class-string>
+         */
+        public protected(set) array $concerns = [],
+		public protected(set) Mode $mode = Mode::LAZY
 	) {
 		if (!is_subclass_of($kind, Edge::class, TRUE)) {
 			throw new InvalidArgumentException(sprintf(
@@ -125,8 +116,6 @@ abstract class Relationship
 
 		$this->kind     = $kind;
 		$this->subject  = $subject;
-		$this->concerns = $concerns;
-		$this->mode     = $mode;
 	}
 
 	/**
@@ -136,14 +125,12 @@ abstract class Relationship
 	{
 		return array_filter(
 			get_object_vars($this),
-			function($key) {
-				return !in_array(
+			fn($key) => !in_array(
 					$key,
 					[
 						'graph'
 					]
-				);
-			},
+				),
 			ARRAY_FILTER_USE_KEY
 		);
 	}
@@ -301,14 +288,14 @@ abstract class Relationship
 	 */
 	public function merge(Graph $graph): static
 	{
-		for($class = get_class($this); $class != Relationship::class; $class = get_parent_class($class)) {
+		for($class = static::class; $class != Relationship::class; $class = get_parent_class($class)) {
 			foreach (class_uses($class) as $trait) {
 				if (!in_array(Relationship\MergeHook::class, class_uses($trait))) {
 					continue;
 				}
 
 				$parts  = explode('\\', $trait);
-				$method = lcfirst(end($parts));
+				$method = 'merge' . end($parts);
 
 				$this->$method($graph);
 			}

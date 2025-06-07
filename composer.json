@@ -18,7 +18,7 @@
         "classmap": ["src/"]
     },
     "autoload-dev": {
-        "classmap": ["test/src"]
+        "psr-0": {"": "test/src"}
     },
     "require-dev": {
         "phpstan/phpstan": "^2.0",

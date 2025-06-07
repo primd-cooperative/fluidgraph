@@ -39,15 +39,13 @@ class Node extends FluidGraph\Element
 	/**
 	 * Get any relationships for this node
 	 *
-	 * @return array<Relationship>
+	 * @return array<FluidGraph\Relationship>
 	 */
 	public function relationships(): array
 	{
 		return array_filter(
 			$this->active,
-			function($value) {
-				return $value instanceof FluidGraph\Relationship;
-			}
+			fn($value) => $value instanceof FluidGraph\Relationship
 		);
 	}
 }

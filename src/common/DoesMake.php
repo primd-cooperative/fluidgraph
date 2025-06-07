@@ -64,9 +64,7 @@ trait DoesMake
 		if ($flags & static::MAKE_ASSIGN) {
 			return new static(...$required)->assign(array_filter(
 				$data,
-				function ($key) use ($required) {
-					return !in_array($key, $required);
-				},
+				fn($key) => !in_array($key, $required),
 				ARRAY_FILTER_USE_KEY
 			));
 		} else {

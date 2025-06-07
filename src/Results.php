@@ -21,9 +21,7 @@ class Results extends ArrayObject
 		return new static(
 			array_filter(
 				$this->getArrayCopy(),
-				function(Element $element) use ($labels) {
-					return array_intersect($labels, $element->labels());
-				}
+				fn(Element $element) => array_intersect($labels, $element->labels())
 			)
 		);
 	}
@@ -39,9 +37,7 @@ class Results extends ArrayObject
 	public function as(string $class, array $defaults = []): array
 	{
 		return array_map(
-			function($result) use ($class, $defaults) {
-				return $result->as($class, $defaults);
-			},
+			fn($result) => $result->as($class, $defaults),
 			$this->getArrayCopy()
 		);
 	}

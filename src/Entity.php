@@ -21,8 +21,11 @@ abstract class Entity
 		set;
 	}
 
+
 	/**
-	 *
+	 * Get the properties which identify this element uniquely.
+	 * 
+	 * @return array<string>
 	 */
 	static public function key(): array
 	{
@@ -37,7 +40,11 @@ abstract class Entity
 	{
 		$results = [];
 
-		for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
+		for(
+			$class = static::class;
+			$class && $class != self::class;
+			$class = get_parent_class($class)
+		) {
 			$results = array_replace(
 				$results,
 				self::doHooks($class, Entity\CreateHook::class, $element)
@@ -62,7 +69,11 @@ abstract class Entity
 		$results = [];
 
 		if (count($element->changes())) {
-			for($class = static::class; $class != self::class; $class = get_parent_class($class)) {
+			for(
+				$class = static::class;
+				$class && $class != self::class;
+				$class = get_parent_class($class)
+			) {
 				$results = self::doHooks($class, Entity\UpdateHook::class, $element);
 
 				foreach ($results as $property => $value) {
@@ -76,13 +87,14 @@ abstract class Entity
 
 
 	/**
+	 * @param class-string $hook
 	 * @return array<string, mixed>
 	 */
 	static protected function doHooks(string $class, string $hook, Element $element): array
 	{
 		$results = [];
 
-		foreach (class_uses($class) as $trait) {
+		foreach (class_uses($class) ?: [] as $trait) {
 			$results = array_replace($results, self::doHooks($trait, $hook, $element));
 
 			if (!in_array($hook, class_uses($trait))) {
@@ -93,7 +105,16 @@ abstract class Entity
 			$method = match($hook) {
 				Entity\CreateHook::class => 'create' . end($parts),
 				Entity\UpdateHook::class => 'update' . end($parts),
+				default => FALSE
 			};
+
+			if (!$method || !method_exists($trait, $method)) {
+				throw new InvalidArgumentException(sprintf(
+					'Invalid hook "%s" specified, method "%s" does not exist',
+					$trait,
+					$method
+				));
+			}
 
 			$results = array_replace($results, static::$method($element));
 		}
@@ -121,7 +142,7 @@ abstract class Entity
 			]
 		);
 
-		$this->with(function() use ($keys, $clone) {
+		$this->with(function() use ($keys, $clone): void {
 			foreach ($keys as $property) {
 				unset($this->$property);
 			}
@@ -154,6 +175,7 @@ abstract class Entity
 
 	/**
 	 * Assign data to the entity/element in a safe/bulk manner
+	 * @param array<string, mixed> $data
 	 */
 	public function assign(array $data): static
 	{
@@ -231,17 +253,15 @@ abstract class Entity
 
 
 	/**
-	 *
+	 * @return array<string, mixed>
 	 */
 	public function values(): array
 	{
 		return array_filter(
-			get_object_vars($this) + get_class_vars($this::class),
-			function($key) {
-				return !in_array($key, [
+			get_object_vars($this) + get_class_vars(static::class),
+			fn($key) => !in_array($key, [
 					'__element__'
-				]);
-			},
+				]),
 			ARRAY_FILTER_USE_KEY
 		);
 	}

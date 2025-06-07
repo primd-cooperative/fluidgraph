@@ -16,9 +16,7 @@ class Where
 			return NULL;
 		}
 
-		return function() use ($parts) {
-			return '(' . implode(' AND ', array_map(fn($part) => $part(), $parts)) . ')';
-		};
+		return fn() => '(' . implode(' AND ', array_map(fn($part) => $part(), $parts)) . ')';
 	}
 
 
@@ -28,9 +26,7 @@ class Where
 			return NULL;
 		}
 
-		return function() use ($parts) {
-			return '(' . implode(' OR ', array_map(fn($part) => $part(), $parts)) . ')';
-		};
+		return fn() => '(' . implode(' OR ', array_map(fn($part) => $part(), $parts)) . ')';
 	}
 
 
@@ -58,9 +54,7 @@ class Where
 
 	public function id(int $term): callable
 	{
-		return function() use ($term) {
-			return sprintf('id(%s) = %s', $this->alias, $this->param($term));
-		};
+		return fn() => sprintf('id(%s) = %s', $this->alias, $this->param($term));
 	}
 
 
@@ -72,17 +66,13 @@ class Where
 
 	public function sourceNode(Node $node): callable
 	{
-		return function() use ($node) {
-			return sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node->identity()));
-		};
+		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node->identity()));
 	}
 
 
 	public function targetNode(Node $node): callable
 	{
-		return function() use ($node) {
-			return sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node->identity()));
-		};
+		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node->identity()));
 	}
 
 

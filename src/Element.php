@@ -20,16 +20,19 @@ abstract class Element
 
 	/**
 	 * The active properties of the element (as managed by/on its models)
+	 * @var array<string, mixed>
 	 */
 	public array $active = [];
 
 	/**
 	 * The labels of the element
+	 * @var array<string, Status>
 	 */
 	public array $labels = [];
 
 	/**
 	 * The loaded properties of the element (as retreived from the graph)
+	 * @var array<string, mixed>
 	 */
 	public array $loaded = [];
 
@@ -67,15 +70,13 @@ abstract class Element
 	{
 		return array_filter(
 			get_object_vars($this),
-			function($key) {
-				return !in_array(
+			fn($key) => !in_array(
 					$key,
 					[
 						'graph',
 						'entities',
 					]
-				);
-			},
+				),
 			ARRAY_FILTER_USE_KEY
 		);
 	}
@@ -181,11 +182,9 @@ abstract class Element
 
 		$properties = array_filter(
 			get_class_vars($entity::class),
-			function($property) {
-				return !in_array($property, [
+			fn($property) => !in_array($property, [
 					'__element__'
-				]);
-			},
+				]),
 			ARRAY_FILTER_USE_KEY
 		);
 
@@ -199,7 +198,11 @@ abstract class Element
 			}
 
 		} else {
-			for ($class = $entity::class; $class != Node::class; $class = get_parent_class($class)) {
+			for (
+				$class = $entity::class;
+				$class && $class != Node::class;
+				$class = get_parent_class($class)
+			) {
 				if (!isset($this->labels[$class]) && !$entity::getClass($class)->isAbstract()) {
 					$this->labels[$class] = Status::FASTENED;
 				}
@@ -212,7 +215,7 @@ abstract class Element
 		//
 
 		$entity->with(
-			function(Element $element, $properties) {
+			function(Element $element, $properties): void {
 				/**
 				 * @var Entity $this
 				 */
@@ -221,9 +224,7 @@ abstract class Element
 
 				foreach ($properties as $property => $value) {
 					if (!array_key_exists($property, $element->active)) {
-						$element->active[$property] = isset($this->$property)
-							? $this->$property
-							: $value;
+						$element->active[$property] = $this->$property ?? $value;
 					}
 
 					unset($this->$property);
@@ -248,15 +249,14 @@ abstract class Element
 	 */
 	public function identity(): int|null
 	{
-		return isset($this->identity)
-			? $this->identity
-			: NULL
+		return $this->identity ?? NULL
 		;
 	}
 
 
 	/**
 	 * Get the key properties for this element based on element classes.
+	 * @return array<string, mixed>
 	 */
 	public function key(): array
 	{
@@ -279,6 +279,7 @@ abstract class Element
 
 	/**
 	 * Get the labels (or labels matching specific statuses) for this element
+	 * @return array<string>
 	 */
 	public function labels(Status ...$statuses): array
 	{
@@ -289,9 +290,7 @@ abstract class Element
 		return array_keys(
 			array_filter(
 				$this->labels,
-				function (Status $status) use ($statuses) {
-					return in_array($status, $statuses, TRUE);
-				}
+				fn(Status $status) => in_array($status, $statuses, TRUE)
 			)
 		);
 	}
@@ -306,9 +305,7 @@ abstract class Element
 	{
 		return array_filter(
 			$this->active,
-			function($value) {
-				return !$value instanceof Relationship;
-			}
+			fn($value) => !$value instanceof Relationship
 		);
 	}
 

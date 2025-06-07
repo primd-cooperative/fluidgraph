@@ -15,7 +15,7 @@ trait DetachExcluded
 	/**
 	 *
 	 */
-	public function detachExcluded(Graph $graph)
+	public function mergeDetachExcluded(Graph $graph): void
 	{
 		$valid_subject = $this->subject->__element__->status(
 			Status::INDUCTED,

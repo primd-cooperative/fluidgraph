@@ -34,7 +34,7 @@ trait Link
 			}
 
 			$edge->with(
-				function(Node $source, Node $target) {
+				function(Node $source, Node $target): void {
 					/**
 					 * @var Edge $this
 					 */

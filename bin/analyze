@@ -1,0 +1,9 @@
+<?php
+
+if (file_exists(__DIR__ . '/../vendor/bin/phpstan')) {
+	$STAN_BIN = realpath(__DIR__ . '/../vendor/bin/phpstan');
+} else {
+	$STAN_BIN = '$(which phpstan)';
+}
+
+passthru(sprintf('%s %s -l7 analyse src/', PHP_BINARY, $STAN_BIN));

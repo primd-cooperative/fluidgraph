@@ -15,7 +15,7 @@ trait AttachIncluded
 	/**
 	 *
 	 */
-	public function attachIncluded(Graph $graph)
+	public function mergeAttachIncluded(Graph $graph): void
 	{
 		$valid_subject = $this->subject->__element__->status(
 			Status::INDUCTED,
