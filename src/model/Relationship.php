@@ -289,7 +289,7 @@ abstract class Relationship
 	/**
 	 *
 	 */
-	public function reload(Graph $graph): static
+	public function reload(): static
 	{
 		if (isset($this->graph)) {
 			unset($this->loadTime);
