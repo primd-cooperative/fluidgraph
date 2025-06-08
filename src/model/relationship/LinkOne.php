@@ -14,33 +14,9 @@ use FluidGraph\Relationship;
 abstract class LinkOne extends Relationship
 {
 	/**
-	 * Get the related node entity of() the specified class as() that class.
-	 *
-	 * If a related node entity exists but does not match the class, NULL will be returned.
-	 *
-	 * @template N of Node
-	 * @param class-string<N> $class
-	 * @return ?N
+	 * Get the edge entity for this relationship, regardless what it corresponds to.
 	 */
-	public function as(string $class): ?Node
-	{
-		$edge = $this->of($class);
-
-		if ($edge) {
-			return match ($this->method) {
-				Method::TO   => $edge->__element__->target->as($class),
-				Method::FROM => $edge->__element__->source->as($class)
-			};
-		}
-
-		return NULL;
-	}
-
-
-	/**
-	 * Get edge entity for this relationship, regardless what it corresponds to.
-	 */
-	public function get(): ?Edge
+	public function any(): ?Edge
 	{
 		$edge = reset($this->active);
 
@@ -62,7 +38,7 @@ abstract class LinkOne extends Relationship
 	public function for(Element\Node|Node|string $essence, Element\Node|Node|string ...$essences): ?Edge
 	{
 		if (count($this->active)) {
-			$edge = $this->get();
+			$edge = $this->any();
 
 			array_unshift($essences, $essence);
 
@@ -80,6 +56,31 @@ abstract class LinkOne extends Relationship
 
 
 	/**
+	 * Get the related node entity of() the specified class as that class.
+	 *
+	 * If a related node entity exists but does not match the class, NULL will be returned.
+	 *
+	 * @template N of Node
+	 * @param class-string<N> $class
+	 * @param class-string<N> $classes
+	 * @return ?N
+	 */
+	public function get(string $class): ?Node
+	{
+		$edge = $this->of($class);
+
+		if ($edge) {
+			return match ($this->method) {
+				Method::TO   => $edge->__element__->target->as($class),
+				Method::FROM => $edge->__element__->source->as($class)
+			};
+		}
+
+		return NULL;
+	}
+
+
+	/**
 	 * Get the edge entity for this relationship only if it corresponds to all node(s)/class(es)
 	 *
 	 * @param Element\Node|Node|class-string $essence
@@ -89,7 +90,7 @@ abstract class LinkOne extends Relationship
 	public function of(Element\Node|Node|string $essence, Element\Node|Node|string ...$essences): ?Edge
 	{
 		if (count($this->active)) {
-			$edge = $this->get();
+			$edge = $this->any();
 
 			array_unshift($essences, $essence);
 
