@@ -9,17 +9,19 @@ use FluidGraph\Element;
 use FluidGraph\Graph;
 use FluidGraph\Relationship\Mode;
 use FluidGraph\Relationship\Index;
+use FluidGraph\Relationship\Method;
 
 use InvalidArgumentException;
 use DateTime;
 use Closure;
-use FluidGraph\Relationship\Method;
 
 /**
  * @template E of Edge
  */
 abstract class Relationship
 {
+	use HasGraph;
+
 	/**
 	 * @var array<E>
 	 */
@@ -208,6 +210,10 @@ abstract class Relationship
 	 */
 	public function load(Graph $graph): static
 	{
+		if (!isset($this->graph)) {
+			$this->graph = $graph;
+		}
+
 		if ($this->subject->identity() && !isset($this->loadTime)) {
 			$this->loader = function() use ($graph) {
 				unset($this->loader);
@@ -285,12 +291,14 @@ abstract class Relationship
 	 */
 	public function reload(Graph $graph): static
 	{
-		unset($this->loadTime);
+		if (isset($this->graph)) {
+			unset($this->loadTime);
 
-		$this->load($graph);
+			$this->load($this->graph);
 
-		if (isset($this->loader)) {
-			$this->loadTime = call_user_func($this->loader);
+			if (isset($this->loader)) {
+				$this->loadTime = call_user_func($this->loader);
+			}
 		}
 
 		return $this;
