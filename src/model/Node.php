@@ -24,19 +24,9 @@ abstract class Node extends Entity
 	/**
 	 * Attach one or more labels to the node
 	 */
-	public function label(string ...$labels): static
+	public function label(string $label, string ...$labels): static
 	{
-		foreach ($labels as $label) {
-			if (!isset($this->__element__->labels[$label])) {
-				$this->__element__->labels[$label] = Status::FASTENED;
-				continue;
-			}
-
-			if ($this->__element__->labels[$label] == Status::RELEASED) {
-				$this->__element__->labels[$label] = Status::ATTACHED;
-				continue;
-			}
-		}
+		$this->__element__->label($label, ...$labels);
 
 		return $this;
 	}
@@ -45,30 +35,18 @@ abstract class Node extends Entity
 	/**
 	 *
 	 */
-	public function like(string ...$labels): bool
+	public function like(string $label, string ...$labels): bool
 	{
-		$intersection = array_intersect($labels, array_keys($this->__element__->labels));
-
-		if (count($intersection) == count($labels)) {
-			return TRUE;
-		}
-
-		return FALSE;
+		return $this->__element__->like($label, ...$labels);
 	}
 
 
 	/**
 	 *
 	 */
-	public function likeAny(string ...$labels): bool
+	public function likeAny(string $label, string ...$labels): bool
 	{
-		$intersection = array_intersect($labels, array_keys($this->__element__->labels));
-
-		if (count($intersection)) {
-			return TRUE;
-		}
-
-		return FALSE;
+		return $this->__element__->likeAny($label, ...$labels);
 	}
 
 
@@ -77,21 +55,7 @@ abstract class Node extends Entity
 	 */
 	public function unlabel(string ...$labels): static
 	{
-		foreach ($labels as $labels) {
-			if (!isset($this->__element__->labels[$labels])) {
-				continue;
-			}
-
-			if ($this->__element__->labels[$labels] == Status::ATTACHED) {
-				$this->__element__->labels[$labels] = Status::RELEASED;
-				continue;
-			}
-
-			if (in_array($this->__element__->labels[$labels], [Status::FASTENED, Status::INDUCTED])) {
-				unset($this->__element__->labels[$labels]);
-				continue;
-			}
-		}
+		$this->__element__->unlabel(...$labels);
 
 		return $this;
 	}

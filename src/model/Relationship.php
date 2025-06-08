@@ -16,12 +16,12 @@ use Closure;
 use FluidGraph\Relationship\Method;
 
 /**
- * @template T of Edge
+ * @template E of Edge
  */
 abstract class Relationship
 {
 	/**
-	 * @var array<T>
+	 * @var array<E>
 	 */
 	protected array $active = [] {
 		&get {
@@ -34,7 +34,7 @@ abstract class Relationship
 	}
 
 	/**
-	 * @var array<T>
+	 * @var array<E>
 	 */
 	protected array $loaded = [] {
 		&get {
@@ -73,7 +73,7 @@ abstract class Relationship
 	/**
 	 * The edge type that defines the relationship
 	 *
-	 * @var class-string<T>
+	 * @var class-string<E>
 	 */
 	public protected(set) string $kind;
 
@@ -93,7 +93,7 @@ abstract class Relationship
 	/**
 	 * Construct a new Relationship
 	 *
-	 * @param class-string<T> $kind
+	 * @param class-string<E> $kind
 	 * @param array<class-string<Node>> $targets
 	 */
 	public function __construct(
@@ -143,7 +143,7 @@ abstract class Relationship
 	{
 		foreach ($nodes as $node) {
 			foreach ($this->active as $edge) {
-				if ($edge->for($this->method, $node)) {
+				if ($edge->of($node, $this->method)) {
 					$edge->assign($data);
 				}
 			}
@@ -227,7 +227,6 @@ abstract class Relationship
 					->run('RETURN n1, n2, r')
 					->set('subject', $this->subject->identity())
 					->get()
-					->of($this->kind)
 					->as($this->kind)
 				;
 
@@ -305,7 +304,7 @@ abstract class Relationship
 		$index = $index->value;
 
 		foreach ($this->$index as $i => $edge) {
-			if ($edge->for($this->method, $node)) {
+			if ($edge->of($node, $this->method)) {
 				return $i;
 			}
 		}

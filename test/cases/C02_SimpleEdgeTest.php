@@ -38,8 +38,7 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 		assertCount(1, $info['nodes']['create']);
 		assertCount(1, $info['edges']['create']);
 
-		assertEquals(Status::INDUCTED, $book->authorship->for()->status());
-		assertEquals(Status::INDUCTED, $book->authorship->for($author)->status());
+		assertEquals(Status::INDUCTED, $book->authorship->of($author)->status());
 	}
 
 
@@ -51,7 +50,6 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 		$author = static::$data->author;
 
 		assertEquals(Status::ATTACHED, $book->status());
-		assertEquals(Status::ATTACHED, $book->authorship->for()->status());
-		assertEquals(Status::ATTACHED, $book->authorship->for($author)->status());
+		assertEquals(Status::ATTACHED, $book->authorship->of($author)->status());
 	}
 }

@@ -3,6 +3,7 @@
 namespace FluidGraph\Element;
 
 use FluidGraph;
+use FluidGraph\Relationship\Method;
 use InvalidArgumentException;
 
 /**
@@ -59,5 +60,45 @@ class Edge extends FluidGraph\Element
 		}
 
 		return parent::as($class, $data);
+	}
+
+
+	/**
+	 *
+	 */
+	public function for(FluidGraph\Node|Node|string $node, Method ...$methods): bool
+	{
+		foreach ($methods ?: [Method::FROM, Method::TO] as $method) {
+			$element = match(TRUE) {
+				$method == Method::TO   => $this->target,
+				$method == Method::FROM => $this->source
+			};
+
+			if ($element->is($node, TRUE)) {
+				return TRUE;
+			}
+		}
+
+		return FALSE;
+	}
+
+
+	/**
+	 *
+	 */
+	public function of(FluidGraph\Node|Node|string $node, Method ...$methods): bool
+	{
+		foreach ($methods ?: [Method::FROM, Method::TO] as $method) {
+			$element = match(TRUE) {
+				$method == Method::TO   => $this->target,
+				$method == Method::FROM => $this->source
+			};
+
+			if ($element->is($node)) {
+				return TRUE;
+			}
+		}
+
+		return FALSE;
 	}
 }

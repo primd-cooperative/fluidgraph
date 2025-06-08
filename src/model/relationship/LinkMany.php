@@ -4,6 +4,7 @@ namespace FluidGraph\Relationship;
 
 use FluidGraph\Node;
 use FluidGraph\Element;
+use FluidGraph\Results;
 use FluidGraph\Relationship;
 
 /**
@@ -12,61 +13,97 @@ use FluidGraph\Relationship;
 abstract class LinkMany extends Relationship
 {
 	/**
-	 * Get an array of all the edges for one or more nodes or node types.
+	 * Get related node entities of() the specified class as() Results.
 	 *
-	 * @return array<T>
+	 * If related node entities exist but do not match the class, an empty array will be returned.
+	 *
+	 * @template N of Node
+	 * @param class-string<N> $class
+	 * @return Results<N>
 	 */
-	public function for(Element\Node|Node|string ...$nodes): array
+	public function as(string $class): Results
 	{
-		$edges = [];
+		$nodes = [];
 
-		if (empty($nodes)) {
-			return $this->active;
+		foreach ($this->of($class) as $edge) {
+			$nodes[] = match ($this->method) {
+				Method::TO   => $edge->__element__->target->as($class),
+				Method::FROM => $edge->__element__->soruce->as($class)
+			};
 		}
 
-		foreach ($nodes as $node) {
-			foreach ($this->active as $edge) {
-				if ($edge->for($this->method, $node)) {
-					$edges[] = $edge;
-				}
-			}
-		}
-
-		return $edges;
+		return new Results($nodes);
 	}
 
 
 	/**
-	 * Get the related node entities when they are of the specified class and labels.
+	 * Get all edge entities for this relationship, regardless what they correspond to as Results.
 	 *
-	 * If a related nodes exist but do not match the class/labels, an empty array will be returned.
-	 *
-	 * @template N of Node
-	 * @param class-string<N> $class
-	 * @return array<N>
+	 * @return Results<E>
 	 */
-	public function of(string $class, string ...$labels): array
+	public function get(): Results
 	{
-		$results  = [];
-		$property = match ($this->method) {
-			Method::TO   => 'target',
-			Method::FROM => 'source'
-		};
+		return new Results(array_values($this->active));
+	}
 
-		foreach ($this->active as $edge) {
-			if (!in_array($class, $edge->__element__->$property->classes())) {
-				continue;
+
+	/**
+	 * Get all edge entities for this relationship that corresponds to all node(s)/classes(s) as() Results
+	 *
+	 * @param Element\Node|Node|class-string $essence
+	 * @param Element\Node|Node|class-string $essences
+	 * @return array<E>
+	 */
+	public function of(Element\Node|Node|string $essence, Element\Node|Node|string ...$essences): array
+	{
+		if (count($this->active)) {
+			$edges = [];
+
+			array_unshift($essences, $essence);
+
+			foreach ($essences as $essence) {
+				foreach ($this->active as $edge) {
+					if ($edge->of($essence, $this->method)) {
+						$edges[] = $edge;
+					}
+				}
 			}
 
-			if ($labels && !array_intersect($labels, $edge->__element__->$property->labels())) {
-				continue;
-			}
-
-			$results[] = $edge->__element__->$property->as($class);
+			return $edges;
 		}
 
-		return $results;
+		return [];
 	}
+
+
+
+	/**
+	 * Get all edge entities for this relationship that corresponds to all node(s)/label(s) as() Results
+	 *
+	 * @param Element\Node|Node|class-string $essence
+	 * @param Element\Node|Node|class-string $essences
+	 * @return Results<E>
+
+	 */
+	public function for(Element\Node|Node|string $essence, Element\Node|Node|string ...$essences): Results
+	{
+		$edges = [];
+
+		if (count($this->active)) {
+			array_unshift($essences, $essence);
+
+			foreach ($essences as $essence) {
+				foreach ($this->active as $edge) {
+					if ($edge->for($essence, $this->method)) {
+						$edges[] = $edge;
+					}
+				}
+			}
+		}
+
+		return new Results($edges);
+	}
+
 
 	/**
 	 *

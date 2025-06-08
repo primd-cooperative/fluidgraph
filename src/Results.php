@@ -5,40 +5,46 @@ namespace FluidGraph;
 use ArrayObject;
 
 /**
- * @extends ArrayObject<Element>
+ * @template T
+ * @extends ArrayObject<T>
  */
 class Results extends ArrayObject
 {
 	/**
-	 * Filter the results by one or more labels.
+	 * Get the element results as an array of entities of a particular class.
 	 *
-	 * This is useful when you want to query multiple return types for loading elements but only
-	 * want to get a subset.  Most commonly used for relationship loading which will generally
-	 * attempt to load the source and target nodes, but only needs the edges instantiated.
+	 *
+	 * @param class-string<Entity> $class The entity class to instantiate as.
+	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
+	 * @return Results<T>
 	 */
-	public function of(string ...$labels): Results
+	public function as(string $class, array $defaults = []): Results
 	{
-		return new static(
-			array_filter(
-				$this->getArrayCopy(),
-				fn(Element $element) => array_intersect($labels, Element::labels($element))
-			)
-		);
+		return new self(array_map(
+			fn($result) =>
+				$result->as($class, $defaults),
+			$this->getArrayCopy()
+		));
 	}
 
 
 	/**
-	 * Get the element results as an array of entities of a particular class.
 	 *
-	 * @param class-string<Entity> $class The entity class to instantiate as.
-	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
-	 * @return array<T>
 	 */
-	public function as(string $class, array $defaults = []): array
+	public function by(string|callable $index)
 	{
-		return array_map(
-			fn($result) => $result->as($class, $defaults),
-			$this->getArrayCopy()
-		);
+		$result = [];
+
+		if (is_string($index)) {
+			$index = function($result) use ($index) {
+				return $result->$index;
+			};
+		}
+
+		foreach ($this as $result) {
+			$results[$index($result)] = $result;
+		}
+
+		return new Results($results);
 	}
 }

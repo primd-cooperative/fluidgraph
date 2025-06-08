@@ -14,55 +14,23 @@ use FluidGraph\Relationship;
 abstract class LinkOne extends Relationship
 {
 	/**
-	 * Get the related node element as a given class.
+	 * Get the related node entity of() the specified class as() that class.
 	 *
-	 * If a related node element exists but does not match the class/labels, null will be returned.
+	 * If a related node entity exists but does not match the class, NULL will be returned.
 	 *
 	 * @template N of Node
-	 * @param class-string<N> $concern
-	 * @return N
+	 * @param class-string<N> $class
+	 * @return ?N
 	 */
-	public function as(string $concern): ?Element\Node
+	public function as(string $class): ?Node
 	{
-		$edge     = reset($this->active);
-		$property = match ($this->method) {
-			Method::TO   => 'target',
-			Method::FROM => 'source'
-		};
-
-		if (!$edge) {
-			return NULL;
-		}
-
-		if (!in_array($concern, $edge->__element__->$property->labels())) {
-			return NULL;
-		}
-
-		return $edge->__element__->$property;
-	}
-
-
-	/**
-	 * Get the edge or the edge for one or more nodes or node types.
-	 *
-	 * @param Element\Node|Node|class-string $nodes
-	 * @return array<T>
-	 */
-	public function for(Element\Node|Node|string ...$nodes): ?Edge
-	{
-		$edge = $this->get();
+		$edge = $this->of($class);
 
 		if ($edge) {
-			if (count($nodes)) {
-				foreach ($nodes as $node) {
-					if ($edge->for($this->method, $node)) {
-						return $edge;
-					}
-				}
-
-			} else {
-				return $edge;
-			}
+			return match ($this->method) {
+				Method::TO   => $edge->__element__->target->as($class),
+				Method::FROM => $edge->__element__->source->as($class)
+			};
 		}
 
 		return NULL;
@@ -70,11 +38,71 @@ abstract class LinkOne extends Relationship
 
 
 	/**
-	 *
+	 * Get edge entity for this relationship, regardless what it corresponds to.
 	 */
 	public function get(): ?Edge
 	{
-		return reset($this->active) ?: NULL;
+		$edge = reset($this->active);
+
+		if ($edge) {
+			return $edge->as($this->kind);
+		}
+
+		return NULL;
+	}
+
+
+	/**
+	 * Get the edge entity for this relationship only if it corresponds to all node(s)/label(s)
+	 *
+	 * @param Element\Node|Node|class-string $essence
+	 * @param Element\Node|Node|class-string $essences
+	 * @return E
+	 */
+	public function for(Element\Node|Node|string $essence, Element\Node|Node|string ...$essences): ?Edge
+	{
+		if (count($this->active)) {
+			$edge = $this->get();
+
+			array_unshift($essences, $essence);
+
+			foreach ($essences as $essence) {
+				if (!$edge->for($essence, $this->method)) {
+					return NULL;
+				}
+			}
+
+			return $edge;
+		}
+
+		return NULL;
+	}
+
+
+	/**
+	 * Get the edge entity for this relationship only if it corresponds to all node(s)/class(es)
+	 *
+	 * @param Element\Node|Node|class-string $essence
+	 * @param Element\Node|Node|class-string $essences
+	 * @return E
+	 */
+	public function of(Element\Node|Node|string $essence, Element\Node|Node|string ...$essences): ?Edge
+	{
+		if (count($this->active)) {
+			$edge = $this->get();
+
+			array_unshift($essences, $essence);
+
+			foreach ($essences as $essence) {
+				if (!$edge->of($essence, $this->method)) {
+					return NULL;
+				}
+			}
+
+			return $edge;
+		}
+
+		return NULL;
 	}
 
 

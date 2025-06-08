@@ -24,63 +24,29 @@ abstract class Edge extends Entity
 
 
 	/**
-	 *
+	 * Determine wehther or not this edge
 	 */
 	public function from(Element\Node|Node|string $node): bool
 	{
-		return $this->for(Method::FROM, $node);
+		return $this->of($node, Method::FROM);
 	}
 
 
 	/**
 	 *
 	 */
-	public function for(Method $method, Element\Node|Node|string $node): bool
+	public function for(Element\Node|Node|string $node, Method ...$methods): bool
 	{
-		$property = match ($method) {
-			Method::TO   => 'target',
-			Method::FROM => 'source'
-		};
-
-		if (!isset($this->__element__->$property)) {
-			return FALSE;
-		}
-
-		if (is_string($node)) {
-			if (!isset($this->__element__->$property->labels[$node])) {
-				return FALSE;
-			}
-
-			return in_array($this->__element__->$property->labels[$node], [
-				Status::FASTENED,
-				Status::INDUCTED,
-				Status::ATTACHED
-			]);
-		}
-
-		if ($node instanceof Node) {
-			$node = $node->__element__;
-		}
-
-		return $node === $this->__element__->$property;
+		return $this->__element__->for($node, ...$methods);
 	}
 
 
 	/**
 	 *
 	 */
-	public function source()
+	public function of(Element\Node|Node|string $node, Method ...$methods): bool
 	{
-		return $this->__element__->source;
-	}
-
-
-	/**
-	 *
-	 */
-	public function target()
-	{
-		return $this->__element__->target;
+		return $this->__element__->of($node, ...$methods);
 	}
 
 
@@ -89,6 +55,6 @@ abstract class Edge extends Entity
 	 */
 	public function to(Element\Node|Node|string $node): bool
 	{
-		return $this->for(Method::TO, $node);
+		return $this->of($node, Method::TO);
 	}
 }

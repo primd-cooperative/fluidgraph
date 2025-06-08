@@ -119,9 +119,9 @@ class Query
 	 *
 	 * @template T of Entity
 	 * @param class-string<T> $class
-	 * @return array<T>
+	 * @return Results<T>
 	 */
-	public function match(string $class, callable|array|int $terms = [], ?array $order = NULL, int $limit = -1, int $skip = 0): array
+	public function match(string $class, callable|array|int $terms = [], ?array $order = NULL, int $limit = -1, int $skip = 0): Results
 	{
 		if (is_int($terms)) {
 			return $this->match(
