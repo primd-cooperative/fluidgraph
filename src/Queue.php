@@ -139,8 +139,6 @@ class Queue
 
 				foreach (Element::classes($element) as $class) {
 					$class::onUpdate($element);
-
-					$diffs[$i] = Element::changes($element);
 				}
 			}
 		}
@@ -321,21 +319,24 @@ class Queue
 
 	protected function doEdgeUpdates(): void
 	{
-		$diffs      = [];
 		$query      = $this->graph->query;
 		$identities = $this->edgeOperations[static::UPDATE];
 
 		$i = 0; foreach ($identities as $identity) {
-			$edge = $this->edges[$identity];
-
 			$query
 				->run('MATCH (%s)-[%s]->(%s) WHERE id(%s) = $%s', "f$i", "i$i", "t$i", "i$i", "e$i")
 				->set("e$i", $identity)
 			;
 
+			$i++;
+		}
+
+		$i = 0; foreach ($identities as $identity) {
+			$edge = $this->edges[$identity];
+
 			$query
 				->run('SET @%s(%s)', "d$i", "i$i")
-				->set("d$i", $diffs[$i])
+				->set("d$i", Element::changes($edge))
 			;
 
 			//
@@ -345,15 +346,13 @@ class Queue
 			$i++;
 		}
 
-		if (count($changes = array_filter($diffs))) {
-			$query->run(
-				'RETURN %s',
-				implode(',', array_map(fn($i) => "i$i", array_keys($changes)))
-			);
+		$query->run(
+			'RETURN %s',
+			implode(',', array_map(fn($i) => "i$i", range(0, $i - 1)))
+		);
 
-			foreach ($query->pull(Signature::RECORD) as $record) {
-				$element = $this->graph->resolve($record);
-			}
+		foreach ($query->pull(Signature::RECORD) as $record) {
+			$element = $this->graph->resolve($record);
 		}
 	}
 
@@ -446,24 +445,14 @@ class Queue
 
 	protected function doNodeUpdates(): void
 	{
-		$diffs      = [];
 		$query      = $this->graph->query;
 		$identities = $this->nodeOperations[static::UPDATE];
 
 		$i = 0; foreach ($identities as $identity) {
-			$node      = $this->nodes[$identity];
-			$diffs[$i] = Element::changes($node);
-
-			if (empty($diffs[$i])) {
-				continue;
-			}
-
-			foreach (Element::classes($node) as $class) {
-				$class::onUpdate($node);
-
-				$diffs[$i] = Element::changes($node);
-			}
-
+			$query
+				->run('MATCH (%s) WHERE id(%s) = $%s', "i$i", "i$i", "n$i")
+				->set("n$i", $identity)
+			;
 
 			$i++;
 		}
@@ -472,13 +461,8 @@ class Queue
 			$node = $this->nodes[$identity];
 
 			$query
-				->run('MATCH (%s) WHERE id(%s) = $%s', "i$i", "i$i", "n$i")
-				->set("n$i", $identity)
-			;
-
-			$query
 				->run('SET @%s(%s)', "d$i", "i$i")
-				->set("d$i", $diffs[$i])
+				->set("d$i", Element::changes($node))
 			;
 
 			if ($plus_signature = Element::signature($node, Status::FASTENED)) {
@@ -488,21 +472,21 @@ class Queue
 			if ($less_signature = Element::signature($node, Status::RELEASED)) {
 				$query->run('REMOVE %s:%s', "i$i", $less_signature);
 			}
+
+			$i++;
 		}
 
-		if (count($changes = array_filter($diffs))) {
-			$query->run(
-				'RETURN %s',
-				implode(',', array_map(fn($i) => "i$i", array_keys($changes)))
-			);
+		$query->run(
+			'RETURN %s',
+			implode(',', array_map(fn($i) => "i$i", range(0, $i - 1)))
+		);
 
-			foreach ($query->pull(Signature::RECORD) as $record) {
-				$element = $this->graph->resolve($record);
+		foreach ($query->pull(Signature::RECORD) as $record) {
+			$element = $this->graph->resolve($record);
 
-				foreach ($element->labels as $label => $status) {
-					if ($status != Status::ATTACHED) {
-						unset($element->labels[$label]);
-					}
+			foreach ($element->labels as $label => $status) {
+				if ($status != Status::ATTACHED) {
+					unset($element->labels[$label]);
 				}
 			}
 		}

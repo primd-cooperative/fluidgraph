@@ -52,13 +52,13 @@ abstract class LinkMany extends Relationship
 	 *
 	 * @param Element\Node|Node|class-string $essence
 	 * @param Element\Node|Node|class-string $essences
-	 * @return array<E>
+	 * @return Results<E>
 	 */
-	public function of(Element\Node|Node|string $essence, Element\Node|Node|string ...$essences): array
+	public function of(Element\Node|Node|string $essence, Element\Node|Node|string ...$essences): Results
 	{
-		if (count($this->active)) {
-			$edges = [];
+		$edges = [];
 
+		if (count($this->active)) {
 			array_unshift($essences, $essence);
 
 			foreach ($essences as $essence) {
@@ -68,11 +68,9 @@ abstract class LinkMany extends Relationship
 					}
 				}
 			}
-
-			return $edges;
 		}
 
-		return [];
+		return new Results($edges);
 	}
 
 

@@ -18,7 +18,7 @@ class Results extends ArrayObject
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
 	 * @return Results<T>
 	 */
-	public function as(string $class, array $defaults = []): Results
+	public function as(string $class, array $defaults = []): static
 	{
 		return new self(array_map(
 			fn($result) =>
@@ -31,7 +31,7 @@ class Results extends ArrayObject
 	/**
 	 *
 	 */
-	public function by(string|callable $index)
+	public function by(string|callable $index): static
 	{
 		$result = [];
 
@@ -46,5 +46,26 @@ class Results extends ArrayObject
 		}
 
 		return new Results($results);
+	}
+
+
+	/**
+	 *
+	 */
+	public function is(Element|Entity|string $class): static
+	{
+		return $this->filter(fn($result) => $result->is($class));
+	}
+
+
+	/**
+	 *
+	 */
+	public function filter(callable $condition): static
+	{
+		return new Results(array_filter(
+			$this->getArrayCopy(),
+			$condition
+		));
 	}
 }

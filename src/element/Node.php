@@ -79,7 +79,7 @@ class Node extends FluidGraph\Element
 	{
 		array_unshift($labels, $label);
 
-		$intersection = array_intersect($labels, array_keys($this->labels));
+		$intersection = array_intersect($labels, self::labels($this));
 
 		if (count($intersection) == count($labels)) {
 			return TRUE;
@@ -96,7 +96,7 @@ class Node extends FluidGraph\Element
 	{
 		array_unshift($labels, $label);
 
-		$intersection = array_intersect($labels, array_keys($this->labels));
+		$intersection = array_intersect($labels, self::labels($this));
 
 		if (count($intersection)) {
 			return TRUE;

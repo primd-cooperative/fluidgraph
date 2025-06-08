@@ -345,14 +345,12 @@ abstract class Element
 	 * @param Entity|Element|class-string $essence
 	 * @param bool $use_labels Whether or not we should check all labels (not just classes)
 	 */
-	public function is(Entity|Element|string $essence, bool $use_labels = FALSE): bool
+	public function is(Entity|Element|string $essence): bool
 	{
 		return match(TRUE) {
 			$essence instanceof Element => $this === $essence,
 			$essence instanceof Entity  => $this === $essence->__element__,
-			default => $use_labels
-				? in_array($essence, self::labels($this))
-				: in_array($essence, self::classes($this))
+			default => in_array($essence, self::classes($this))
 		};
 	}
 

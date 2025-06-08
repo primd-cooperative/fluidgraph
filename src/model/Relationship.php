@@ -227,6 +227,7 @@ abstract class Relationship
 					->run('RETURN n1, n2, r')
 					->set('subject', $this->subject->identity())
 					->get()
+					->is($this->kind)
 					->as($this->kind)
 				;
 
