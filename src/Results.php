@@ -33,7 +33,7 @@ class Results extends ArrayObject
 	 */
 	public function by(string|callable $index): static
 	{
-		$result = [];
+		$results = [];
 
 		if (is_string($index)) {
 			$index = function($result) use ($index) {
