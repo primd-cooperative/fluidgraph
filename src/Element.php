@@ -343,7 +343,6 @@ abstract class Element
 	 * Determine whether or not this element is an expression of another entity, element, or label
 	 *
 	 * @param Entity|Element|class-string $essence
-	 * @param bool $use_labels Whether or not we should check all labels (not just classes)
 	 */
 	public function is(Entity|Element|string $essence): bool
 	{

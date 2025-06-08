@@ -68,4 +68,15 @@ class Results extends ArrayObject
 			$condition
 		));
 	}
+
+
+	/**
+	 *
+	 */
+	public function status(Status $status, Status ...$statuses): static
+	{
+		array_unshift($statuses, $status);
+
+		return $this->filter(fn($result) => $result->status($statuses));
+	}
 }
