@@ -33,9 +33,7 @@ class C00_BaseTest extends TestCase
 					'principal'   => 'memgraph',
 					'credentials' => 'password'
 				],
-				new Bolt(new StreamSocket()),
-				new Query(),
-				new Queue()
+				new Bolt(new StreamSocket())
 			);
 		}
 	}

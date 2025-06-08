@@ -70,18 +70,28 @@ class Graph
 	 */
 	private readonly ReflectionProperty $union;
 
+
 	/**
 	 *
 	 */
 	public function __construct(
 		private readonly array $login,
 		private readonly Bolt $bolt,
-		Query $query,
-		Queue $queue
+		?Query $query = NULL,
+		?Queue $queue = NULL
 	) {
 		$this->nodes = new ArrayObject();
 		$this->edges = new ArrayObject();
 		$this->union = new ReflectionProperty(Entity::class, '__element__');
+
+		if (!$query) {
+			$query = new Query();
+		}
+
+		if (!$queue) {
+			$queue = new Queue();
+		}
+
 		$this->queue = $queue->on($this)->manage($this->nodes, $this->edges);
 		$this->query = $query->on($this);
 	}

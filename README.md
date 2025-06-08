@@ -1,86 +1,253 @@
 # FluidGraph
 
-FluidGraph is an Object Graph Manager (OGM) for memgraph (though in principle should also work with
-Neo4j).  It borrows a lot of concepts from Doctrine (a PHP ORM for relational databases), but aims
-to "rethink" many of those concepts in the graph paradigm.
+FluidGraph is an Object Graph Manager (OGM) for memgraph (though in principle could also work with Neo4j).  It borrows a lot of concepts from Doctrine (a PHP ORM for relational databases), but aims to "rethink" many of those concepts in the graph paradigm.
 
-This project is part of the Primd application stack and is copyright Primd Cooperative. Primd
-Cooperative is a worker-owned start-up aiming to revolutionize hiring, learning, and work itself.
+This project is part of the Primd application stack and is copyright Primd Cooperative, licensed MIT. Primd Cooperative is a worker-owned start-up aiming to revolutionize hiring, learning, and work itself. For more information, or to support our work:
 
-For more information, or to support our work see:
+- See what we do: https://primd.app
+- Become a Patreon Member: https://patreon.com/primd
+- Star and Share this Repository
 
-- https://primd.app
-- https://patreon.com/primd
+## Installation
 
-## Usage and Documentation
+```
+composer require primd/fluidgraph
+```
 
-FluidGraph is still **pre-alpha** software, many features are incomplete and documentation is
-effectively non-existent.  As an open-source driven startup, we want to allow people to learn and
-use our work at the earliest opportunity.  We believe, at this stage, the basic skeleton of what
-we're doing is in place enough for the curious observer to dig in and see how things connect
-together.
+## Basic Concepts
 
-If you're waiting for a ready made solution, star and follow.  We'll get there!
+FluidGraph borrows a bit of a "spiritual ontology" in order to talk about its core concepts.  The **Entity** world is effectively the natural world.  These are your concrete models and the things you interact with.
 
-## Why?
+The **Element** world is the spiritual world.  Entities are fastened to an Element.  A single Element can be expressed in one or more Entities.  These are the underlying graph data and not generally meant to be interacted with (unless you're doing more advanced development).
 
-Primd uses PHP for effectively all "front-end" code.  In this context "front-end" refers to
-rendering back-end data to users.  User interactions are still handled by JavaScript, which may or
-may not include requests that re-render server-side.  This is accomplished through HTMX and
-AlpineJS.
+Both Entities and Elements have different forms, namely Nodes and Edges, i.e. there is a "Node Element" as well as a "Node Entity."
 
-Primd uses Memgraph for handling complex data relationships which often need to be presented to or
-modified by users.
+> NOTE: FluidGraph is still **alpha** and is subject to fairly rapid changes, though we'll try not to break documented APIs.
 
-While there are existing solutions modeled after Doctrine, we also encountered the following:
+## Basic Usage
 
-1. Many solutions are much older and unmaintained.
-2. Those soltuions are **too** specific to Doctrine, not accounting for differences between graph
-vs. traditional relational databases.
-3. Those solutions are specific to Neo4j.
+Instantiating a graph:
 
-In practice, the Bolt protocol and Cypher are common "standards" for working with graph databases.
-We opted to use the excellent work of Michal Štefaňák (https://github.com/stefanak-michal) to try
-and make something that was a bit more flexible.
+```php
+use Bolt\Bolt;
+use Bolt\connection\StreamSocket;
 
-## Key Features
+$graph = new FluidGraph\Graph(
+    [
+        'scheme'      => 'basic',
+        'principal'   => 'memgraph',
+        'credentials' => 'password'
+    ],
+    new Bolt(new StreamSocket())
+);
+```
 
-FluidGraph maintains something of a Data Mapper pattern in that entities (nodes/edges) are not
-strongly coupled to the graph.  In fact, nodes and edges are _basically_ DTOs with a managed
-reference.  This is achieved through a few different ways.
+Create a Node class:
 
-### Property Mapping
+```php
+class Person extends FluidGraph\Node
+{
+	use FluidGraph\Entity\Id\Uuid7;
 
-Many people familiar with Doctrine or Data Mapper patterns more generally may be familiar with the
-concept of an Identity Map.  Basically, what this means is that each entity gets indexed by its
-identity and if you query an entity with the same identity, you receive the same object in return.
+	public function __construct(
+		public ?string $firstName = NULL,
+		public ?string $lastName = NULL,
+	) {}
+}
+```
 
-FluidGraph takes this concept a bit further.  The graph representation maintains an identity map,
-however an individual entity (object representation) also maintains mapped properties.  In practice
-this means that two entities representing the same graph node will share properties.  This is
-important because "labels" act as both tags and interfaces (of sorts).  So you can imagine that a
-"Person" is also "Locatable" (i.e. has a canonical location), while a Business/Employer has very
-different properties, it also shares this concept of being "Locatable."
+Traits are used to provide built-in common functionality and usually represent hooks.  The example above uses the `Uuid7` trait to identify the entity.  This will provide a key of `id` and automatically generate the UUID `onCreate`.
 
-Both a "Person" and a "Business" may be represented as a "Locatable" entity.  If the "Locatable"
-expression of either is updated, any entity representing the same node as either a "Person" or a
-"Business" should also see those changes.  Hence, the Node "content" is held distinct from the
-entity, and the entity simply maps its properties to the "content."
+Create an Edge class:
 
-### Relationships (Distinct from Edges)
+```php
+class FriendsWith extends FluidGraph\Edge
+{
+	use FluidGraph\Entity\DateCreated;
+	use FluidGraph\Entity\DateModified;
 
-A relationship in FluidGraph is a collection of one or more edges.  Relationships are not simply
-defined by the edges they contain, but are also defined by their behavior.  Relationships may have
-different traits which augment how the edges and the target nodes are treated.  For example, an
-"owning" relationship may say that if the source is deleted, all related targets should also be
-deleted.  The edge is merely the connection.
+	public string $description;
+}
+```
 
-Similarly, it's possible to have the same relationship to a variety of different nodes.  For
-example, a person may have many suggestions.  In the context of Primd someone could be suggested
-a Capacity (Skill or Ability), but they may also be suggested a training Provider, or a Person as
-Colleague, or an Institution as an Educator, etc.  In this context, the realtionship is primary and
-the target node type is secondary.  For this reason, relationships can allow any number of target
-node types (kinds).
+Add a relationship between people:
+
+```php
+class Person extends FluidGraph\Node
+{
+	use FluidGraph\Entity\Id\Uuid7;
+
+    public protected(set) FluidGraph\Relationship\ToMany $friends;
+
+	public function __construct(
+		public ?string $firstName = NULL,
+		public ?string $lastName = NULL,
+	) {
+		$this->friendships = new FluidGraph\Relationship\ToMany(
+			$this,
+			FriendsWith::class,
+			[
+				self::class
+			]
+		);
+	}
+}
+```
+
+> Note: All properties on your entities MUST be publicly readable.  They can have `protected(set)` or `private(set)`, however, note that you CANNOT use property hooks.  FluidGraph avoids reflection where possible, but due to how it uses per-property references, hooks are not viable.
+
+Instantiate nodes:
+
+```php
+$matt = new Person(firstName: 'Matt');
+$jill = new Person(firstName: 'Jill');
+```
+
+Set the relationship between them:
+
+```php
+$matt->friendships->set($jill, [
+	'description' => 'Best friends forever!'
+]);
+```
+
+Attach, merge changes into the queue, and execute it:
+
+```php
+$graph->attach($matt)->queue->merge()->run();
+```
+
+> Note: There is no need to attach `$jill` or the `FriendsWith` edge, as these are cascaded from `$matt` being attached.  Without the relationship, `$jill` would need to be attached separately to persist.
+
+Find a person:
+
+```php
+$matt = $graph->query->matchOne(Person::class, ['firstName' => 'Matt']);
+```
+
+Get their friends:
+
+```php
+$friends = $matt->friendships->get(Person::class);
+```
+
+Get the friendships (The actual `FriendsWith` edges):
+
+```php
+$friendships = $matt->friendships->all();
+```
+
+>  Note: The available methods and return values depend on the relationship type.  A `ToMany` has `all()` while a `ToOne` has `any()` for example.
+
+### Working with Entities and Elements
+
+#### Status
+
+To determine the status of an Entity or Element you can use the `status()` method which, with no arguments will return a `FluidGraph\Status` or `NULL` if somehow an Entity has not been fastened.
+
+```php
+$entity_or_element->status()
+```
+
+Status types:
+
+| FluidGraph\Status::* | Description                                                  |
+| -------------------- | ------------------------------------------------------------ |
+| FASTENED             | The entity or element is bound to its other half, that's it. |
+| INDUCTED             | The entity or element is ready and waiting to be merged with the graph. |
+| ATTACHED             | The entity or element has been merged with and is attached to the graph |
+| RELEASED             | The entity or element is ready and waiting to be removed from the graph. |
+| DETACHED             | The entity or element has been merged with and is detached from the graph |
+
+You can easily check if the status is of one or more types by passing arguments, in which case `status()` will return `TRUE` if the status is any one of the types, `FALSE` otherwise:
+
+```php
+$entity_or_element->status(FluidGraph\Status::ATTACHED, ...)
+```
+
+### Is
+
+Determine whether or not an Entity or Element is the same as another-ish:
+
+```php
+$entity_or_element->is($entity_or_element_or_class);
+```
+
+This returns `TRUE` in given the following modes and outcomes:
+
+#### Entities share the same Element
+
+```php
+$entity->is($entity);
+```
+
+#### Entity expresses a given Element
+
+```php
+$entity->is($element);
+```
+
+#### Element is the same as another Element
+
+```php
+$element->is($element);
+```
+
+#### Entity's Element is Labeled as a Class
+
+```php
+$entity->is(Person::class);
+```
+
+#### Element is Labeled as a Class
+
+```php
+$element->is(Person::class);
+```
+
+Because Entities can express the same Element without the need for polymorphism you can, for example, have a totally different Node class, such as `Author` and check whether or not they are the same as a `Person`:
+
+```php
+if ($person->is(Author::class)) {
+	// Do things knowing the person is an author
+}
+```
+
+##### Like
+
+Available **for Nodes only** (as they can have more than one label), is the `like()` and `likeAny()` methods which will observe both classes as well as arbitrary labels that may be common:
+
+```php
+$entity->like(Person::class, Archivable::ARCHIVED);
+```
+
+It is strongly recommended that you use constants for labels.  How or where you implement them depends on how they are shared across Nodes.  In the example above we have a separate `Archivable` Trait which could be used by various classes.
+
+### As
+
+As mentioned before, different Entities can express the same Element.  This effectively means that you can transform one Entity into another (adding properties and relationships) in a dynamic an horizontal fashion.
+
+A person becomes an author:
+
+```php
+$book = new Book(name: 'FluidGraph for Fun and Profit');
+
+$person->as(Author::class, ['penName' => 'Hairy Poster'])->writings->set($book);
+```
+
+> NOTE: The `Person` object is not changed, rather, in this example a new `Author` object is created and the person/author share the same graph Node, the same Element (in FluidGraph).  When working with a `Person` you only have access to the properties and relationships of a `Person`.  The `as()` method allows you to gracefully change the Entity type.
+
+When using `as()` to create a new Entity expression of an existing Entity/Element, you need to pass any required arguments for instantiations (required by it's `__construct()` method) as the second parameter.  If no properties are required, this can be excluded. If the `Author` object is already fastened to the underlying Element, then you can simply switch between them:
+
+```php
+if ($person->is(Author::class)) {
+    $author = $person->as(Author::class);
+    
+    foreach ($author->writings->get(Book::class) as $book) {
+        // Do things with their books
+    }
+}
+```
 
 
 
