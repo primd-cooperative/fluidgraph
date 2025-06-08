@@ -1,16 +1,24 @@
 <?php
 
 use FluidGraph\Node;
+use FluidGraph\Relationship\ToMany;
 
 class Author extends Node
 {
-	public function __construct(
-		public protected(set) string $name,
-		public protected(set) int $age
-	) {}
+	public ToMany $writings;
 
-	public function setAge(int $years)
-	{
-		$this->age = $years;
+
+	public function __construct(
+		public string $penName
+	) {
+		$this->writings = new ToMany(
+			$this,
+			Wrote::class,
+			[
+				Book::class
+			]
+		);
+
+
 	}
 }

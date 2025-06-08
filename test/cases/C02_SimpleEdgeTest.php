@@ -11,45 +11,41 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 {
 	public function testLocalToOneRelations()
 	{
-		$book = static::$data->book = new Book('Hairy Poster', 328);
+		$book   = static::$data->book = new Book('The Cave of Blunder', 328);
+		$author = static::$data->person->as(Author::class);
 
-		assertFalse($book->authorship->contains(static::$data->author));
+		assertFalse($author->writings->contains($book));
 
-		$book->authorship->set(static::$data->author);
+		$author->writings->set($book);
 
-		assertTrue($book->authorship->contains(static::$data->author));
-
-		$book->authorship->unset();
-
-		assertFalse($book->authorship->contains(static::$data->author));
+		assertTrue($author->writings->contains($book));
 	}
 
 
 	public function testImplicitEdgeAttach()
 	{
-		$info   = [];
+		$info = [];
 		$book   = static::$data->book;
-		$author = static::$data->author;
+		$author = static::$data->person->as(Author::class);
 
-		$book->authorship->set($author);
-
-		static::$graph->attach($book)->queue->merge($info);
+		static::$graph->queue->merge($info);
 
 		assertCount(1, $info['nodes']['create']);
 		assertCount(1, $info['edges']['create']);
 
-		assertEquals(Status::INDUCTED, $book->authorship->of($author)->status());
+		assertEquals(Status::ATTACHED, $author->status());
+		assertEquals(Status::INDUCTED, $book->status());
+
 	}
 
 
 	public function testRelatedQueueRun()
 	{
+		$book   = static::$data->book;
+		$author = static::$data->person->as(Author::class);
+
 		static::$graph->queue->run();
 
-		$book   = static::$data->book;
-		$author = static::$data->author;
-
 		assertEquals(Status::ATTACHED, $book->status());
-		assertEquals(Status::ATTACHED, $book->authorship->of($author)->status());
 	}
 }

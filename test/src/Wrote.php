@@ -2,7 +2,7 @@
 
 use FluidGraph\Edge;
 
-class Authored extends Edge
+class Wrote extends Edge
 {
 
 }

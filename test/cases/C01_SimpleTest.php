@@ -12,21 +12,21 @@ class C01_SimpleTest extends C00_BaseTest
 {
 	public function testNodeCreation()
 	{
-		$author = static::$data->author = new Author('Cynthia Bullwork', 37);
+		$person = static::$data->person = new Person(name: 'Cynthia Bullwork', age: 37);
 
-		assertTrue($author->is($author));
-		assertTrue($author->is(Author::class));
-		assertTrue($author->is($author->__element__));
-		assertEquals(Status::FASTENED, $author->status());
+		assertTrue($person->is($person));
+		assertTrue($person->is(Person::class));
+		assertTrue($person->is($person->__element__));
+		assertEquals(Status::FASTENED, $person->status());
 	}
 
 	public function testNodeAttach()
 	{
-		$author = static::$data->author;
+		$person = static::$data->person;
 
-		static::$graph->attach($author);
+		static::$graph->attach($person);
 
-		assertEquals(Status::INDUCTED, $author->status());
+		assertEquals(Status::INDUCTED, $person->status());
 	}
 
 	public function testNodeMerge()
@@ -43,50 +43,56 @@ class C01_SimpleTest extends C00_BaseTest
 
 	public function testQueueRun()
 	{
-		$author = static::$data->author;
+		$person = static::$data->person;
 
 		static::$graph->queue->run();
 
-		assertEquals(Status::ATTACHED, $author->status());
+		assertEquals(Status::ATTACHED, $person->status());
 	}
 
 	public function testMatchOne()
 	{
-		$author = static::$data->author;
+		$person = static::$graph->query->matchOne(Person::class, ['name' => 'Cynthia Bullwork']);
 
-		static::$graph->attach($author)->queue->merge()->run();
-
-		$author = static::$graph->query->matchOne(Author::class, ['name' => 'Cynthia Bullwork']);
-
-		assertNotEmpty($author);
-		assertSame($author, static::$data->author);
+		assertNotEmpty($person);
+		assertSame($person, static::$data->person);
 	}
 
 	public function testMatchOneForeignUpdate()
 	{
 		static::$graph
-			->run("MATCH (a:Author {name: 'Cynthia Bullwork'}) SET a.age = 38")
+			->run("MATCH (a:Person {name: 'Cynthia Bullwork'}) SET a.age = 38")
 			->pull()
 		;
 
-		$author = static::$graph->query->matchOne(Author::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->query->matchOne(Person::class, ['name' => 'Cynthia Bullwork']);
 
-		assertSame(38, $author->age);
+		assertSame(38, $person->age);
 	}
 
 	public function testMatchOneForeignUpdateConflict()
 	{
-		$author = static::$graph->query->matchOne(Author::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->query->matchOne(Person::class, ['name' => 'Cynthia Bullwork']);
 
-		$author->setAge(40);
+		$person->setAge(40);
 
 		static::$graph
-			->run("MATCH (a:Author {name: 'Cynthia Bullwork'}) SET a.age = 39")
+			->run("MATCH (a:Person {name: 'Cynthia Bullwork'}) SET a.age = 39")
 			->pull()
 		;
 
-		$author = static::$graph->query->matchOne(Author::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->query->matchOne(Person::class, ['name' => 'Cynthia Bullwork']);
 
-		assertSame(40, $author->age);
+		assertSame($person, static::$data->person);
+		assertSame(40, $person->age);
+	}
+
+	public function testAsEntity()
+	{
+		$person = static::$data->person;
+
+		$person->as(Author::class, ['penName' => 'Hairy Poster']);
+
+		assertTrue($person->is(Author::class));
 	}
 }
