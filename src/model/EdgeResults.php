@@ -118,7 +118,7 @@ class EdgeResults extends Entity\Results
 	 */
 	public function using(Method ...$methods): static
 	{
-		$this->$methods = $methods;
+		$this->methods = $methods;
 
 		return $this;
 	}
