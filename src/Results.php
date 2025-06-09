@@ -3,9 +3,10 @@
 namespace FluidGraph;
 
 use ArrayObject;
+use InvalidArgumentException;
 
 /**
- * @template T
+ * @template T of Element|Entity
  * @extends ArrayObject<T>
  */
 class Results extends ArrayObject
@@ -14,38 +15,32 @@ class Results extends ArrayObject
 	 * Get the element results as an array of entities of a particular class.
 	 *
 	 *
-	 * @param class-string<Entity> $class The entity class to instantiate as.
+	 * @template E of Entity
+	 * @param class-string<E> $class The entity class to instantiate as.
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
-	 * @return Results<T>
+	 * @return NodeResults<E>|EntityResults<E>
 	 */
 	public function as(string $class, array $defaults = []): static
 	{
-		return new self(array_map(
-			fn($result) =>
-				$result->as($class, $defaults),
-			$this->getArrayCopy()
-		));
-	}
+		switch (TRUE) {
+			case is_subclass_of($class, Node::class, TRUE):
+				return new NodeResults(array_map(
+					fn($result) => $result->as($class, $defaults),
+					$this->getArrayCopy()
+				));
 
+			case is_subclass_of($class, Edge::class, TRUE):
+				return new EdgeResults(array_map(
+					fn($result) => $result->as($class, $defaults),
+					$this->getArrayCopy()
+				));
 
-	/**
-	 *
-	 */
-	public function by(string|callable $index): static
-	{
-		$results = [];
-
-		if (is_string($index)) {
-			$index = function($result) use ($index) {
-				return $result->$index;
-			};
+			default:
+				throw new InvalidArgumentException(sprintf(
+					'Cannot treat results as "%s", not a Node or Edge class',
+					$class
+				));
 		}
-
-		foreach ($this as $result) {
-			$results[$index($result)] = $result;
-		}
-
-		return new Results($results);
 	}
 
 
@@ -54,19 +49,7 @@ class Results extends ArrayObject
 	 */
 	public function is(Element|Entity|string $class): static
 	{
-		return $this->filter(fn($result) => $result->is($class));
-	}
-
-
-	/**
-	 *
-	 */
-	public function filter(callable $condition): static
-	{
-		return new Results(array_filter(
-			$this->getArrayCopy(),
-			$condition
-		));
+		return $this->where(fn($result) => $result->is($class));
 	}
 
 
@@ -77,6 +60,18 @@ class Results extends ArrayObject
 	{
 		array_unshift($statuses, $status);
 
-		return $this->filter(fn($result) => $result->status($statuses));
+		return $this->where(fn($result) => $result->status($statuses));
+	}
+
+
+	/**
+	 *
+	 */
+	public function where(callable $condition): static
+	{
+		return new static(array_filter(
+			$this->getArrayCopy(),
+			$condition
+		));
 	}
 }

@@ -145,7 +145,7 @@ abstract class Relationship
 	{
 		foreach ($nodes as $node) {
 			foreach ($this->active as $edge) {
-				if ($edge->of($node, $this->method)) {
+				if ($edge->for($node, $this->method)) {
 					$edge->assign($data);
 				}
 			}
@@ -307,13 +307,15 @@ abstract class Relationship
 
 	/**
 	 * Determine, by index, whether or not a node is included in the current relationship.
+	 *
+	 * Note, this will only return the first index, it's possible that a node exists more than once.
 	 */
 	protected function index(Element\Node|Node|string $node, Index $index = Index::ACTIVE): string|false
 	{
 		$index = $index->value;
 
 		foreach ($this->$index as $i => $edge) {
-			if ($edge->of($node, $this->method)) {
+			if ($edge->for($node, $this->method)) {
 				return $i;
 			}
 		}

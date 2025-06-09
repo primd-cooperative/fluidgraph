@@ -176,12 +176,14 @@ abstract class Entity
 	/**
 	 * Instantiate an entity as another type of entity
 	 *
-	 * If an existing entity expressing this element exists, it will be returned.  If not a new
+	 * If an existing entity expressing the same element exists, it will be returned.  If not a new
 	 * one will be created using the active element properties for construction with a fallback
 	 * to defaults provided.
 	 *
-	 * @param class-string<Entity> $class The entity class to instantiate as
+	 * @template E of Entity
+	 * @param class-string<E> $class The entity class to instantiate as
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
+	 * @return E
 	 */
 	public function as(string $class, array $defaults = []): Entity
 	{
@@ -235,11 +237,9 @@ abstract class Entity
 
 
 	/**
-	 * Get the status of the element or check if status is one of...
-	 *
-	 * A null implies that the element has not been attached to the graph yet.
+	 * Get the status (no arguments) of the entity or check if status is one of...
 	 */
-	public function status(Status ...$statuses): Status|bool|null
+	public function status(Status ...$statuses): Status|bool
 	{
 		return $this->__element__->status(...$statuses);
 	}

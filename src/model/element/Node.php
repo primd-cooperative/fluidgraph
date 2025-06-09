@@ -4,6 +4,7 @@ namespace FluidGraph\Element;
 
 use FluidGraph;
 use FluidGraph\Status;
+
 use InvalidArgumentException;
 
 /**
@@ -73,36 +74,17 @@ class Node extends FluidGraph\Element
 
 
 	/**
+	 * Determine whether or not this element is an expression of another entity, element, or a label
 	 *
+	 * @param FluidGraph\Node|Node|class-string|string $essence
 	 */
-	public function like(string $label, string ...$labels): bool
+	public function like(FluidGraph\Node|Node|string $essence): bool
 	{
-		array_unshift($labels, $label);
-
-		$intersection = array_intersect($labels, self::labels($this));
-
-		if (count($intersection) == count($labels)) {
-			return TRUE;
-		}
-
-		return FALSE;
-	}
-
-
-	/**
-	 *
-	 */
-	public function likeAny(string $label, string ...$labels): bool
-	{
-		array_unshift($labels, $label);
-
-		$intersection = array_intersect($labels, self::labels($this));
-
-		if (count($intersection)) {
-			return TRUE;
-		}
-
-		return FALSE;
+		return match(TRUE) {
+			$essence instanceof Node            => $this === $essence,
+			$essence instanceof FluidGraph\Node => $this === $essence->__element__,
+			default => in_array($essence, self::classes($this))
+		};
 	}
 
 

@@ -69,36 +69,19 @@ class Edge extends FluidGraph\Element
 	public function for(FluidGraph\Node|Node|string $node, Method ...$methods): bool
 	{
 		foreach ($methods ?: [Method::FROM, Method::TO] as $method) {
+			/**
+			 * @var Node
+			 */
 			$element = match(TRUE) {
 				$method == Method::TO   => $this->target,
 				$method == Method::FROM => $this->source
 			};
 
-			if ($element->is($node, TRUE)) {
-				return TRUE;
+			if (!$element->like($node)) {
+				return FALSE;
 			}
 		}
 
-		return FALSE;
-	}
-
-
-	/**
-	 *
-	 */
-	public function of(FluidGraph\Node|Node|string $node, Method ...$methods): bool
-	{
-		foreach ($methods ?: [Method::FROM, Method::TO] as $method) {
-			$element = match(TRUE) {
-				$method == Method::TO   => $this->target,
-				$method == Method::FROM => $this->source
-			};
-
-			if ($element->is($node)) {
-				return TRUE;
-			}
-		}
-
-		return FALSE;
+		return TRUE;
 	}
 }

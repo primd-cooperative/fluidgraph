@@ -28,7 +28,7 @@ abstract class Edge extends Entity
 	 */
 	public function from(Element\Node|Node|string $node): bool
 	{
-		return $this->of($node, Method::FROM);
+		return $this->for($node, Method::FROM);
 	}
 
 
@@ -44,17 +44,8 @@ abstract class Edge extends Entity
 	/**
 	 *
 	 */
-	public function of(Element\Node|Node|string $node, Method ...$methods): bool
-	{
-		return $this->__element__->of($node, ...$methods);
-	}
-
-
-	/**
-	 *
-	 */
 	public function to(Element\Node|Node|string $node): bool
 	{
-		return $this->of($node, Method::TO);
+		return $this->for($node, Method::TO);
 	}
 }

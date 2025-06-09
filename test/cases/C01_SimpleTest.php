@@ -89,10 +89,13 @@ class C01_SimpleTest extends C00_BaseTest
 
 	public function testAsEntity()
 	{
+		/**
+		 * @var Person
+		 */
 		$person = static::$data->person;
-
-		$person->as(Author::class, ['penName' => 'Hairy Poster']);
+		$author = $person->as(Author::class, ['penName' => 'Hairy Poster']);
 
 		assertTrue($person->is(Author::class));
+		assertTrue($author->is(Person::class));
 	}
 }

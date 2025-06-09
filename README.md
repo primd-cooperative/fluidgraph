@@ -215,39 +215,189 @@ if ($person->is(Author::class)) {
 
 ##### Like
 
-Available **for Nodes only** (as they can have more than one label), is the `like()` and `likeAny()` methods which will observe both classes as well as arbitrary labels that may be common:
+Available **for Nodes only** (as they can have more than one label), is the `like()` methods which will observe both classes as well as arbitrary labels that may be common.  Like will also accept Nodes and Node Elements:
 
 ```php
-$entity->like(Person::class, Archivable::ARCHIVED);
+$entity->like(Archivable::ARCHIVED);
 ```
 
 It is strongly recommended that you use constants for labels.  How or where you implement them depends on how they are shared across Nodes.  In the example above we have a separate `Archivable` Trait which could be used by various classes.
 
 ### As
 
-As mentioned before, different Entities can express the same Element.  This effectively means that you can transform one Entity into another (adding properties and relationships) in a dynamic an horizontal fashion.
+As mentioned before, different Entities can express the same Element.  Because Nodes can carry multiple distinct labels, this effectively means that you can transform one Node into another (adding properties and relationships) in a dynamic an horizontal fashion.
 
 A person becomes an author:
 
 ```php
-$book = new Book(name: 'FluidGraph for Fun and Profit');
+$author = $person->as(Author::class, ['penName' => 'Hairy Poster']);
 
-$person->as(Author::class, ['penName' => 'Hairy Poster'])->writings->set($book);
+$author->is(Person::class); // TRUE
+$person->is(Author::class); // TRUE
 ```
 
 > NOTE: The `Person` object is not changed, rather, in this example a new `Author` object is created and the person/author share the same graph Node, the same Element (in FluidGraph).  When working with a `Person` you only have access to the properties and relationships of a `Person`.  The `as()` method allows you to gracefully change the Entity type.
 
-When using `as()` to create a new Entity expression of an existing Entity/Element, you need to pass any required arguments for instantiations (required by it's `__construct()` method) as the second parameter.  If no properties are required, this can be excluded. If the `Author` object is already fastened to the underlying Element, then you can simply switch between them:
+When using `as()` to create a new expression of an existing Node, you need to pass any required arguments for instantiations (required by it's `__construct()` method) as the second parameter.  If no properties are required, this can be excluded. If the `Author` object is already fastened to the underlying Node Element, then you can simply switch between them.
+
+A subsequent merge/run of the queue will persist the `Author` Label as well as the properties to the database, assuming the original `$person` is already attached:
 
 ```php
-if ($person->is(Author::class)) {
-    $author = $person->as(Author::class);
-    
-    foreach ($author->writings->get(Book::class) as $book) {
-        // Do things with their books
-    }
+$graph->queue->merge()->run();
+```
+
+> NOTE: At present `as()` exists on Edges as well, however, edges cannot have more than one Label, so the behavior is not particularly defined.  On approach that may be taken is to allow an `$edge->as()` call to create a new type of Edge between the same source and target Entities.  Another would be to change the type entirely.
+
+### Working with Relationships
+
+Relationships are collections of Edges.  To understand these better, we'll give a bit more definition to our `Author` class:
+
+```php
+<?php
+
+class Author extends FluidGraph\Node
+{
+	public FluidGraph\Relationship\ToMany $writings;
+
+	public function __construct(
+		public string $penName
+	) {
+		$this->writings = new FluidGraph\Relationship\ToMany(
+			$this,
+			Wrote::class,
+			[
+				Book::class
+			]
+		);
+	}
+}
+
+```
+
+Relationships have a subject (the Node from which they originate, `$this` when defined), a kind (the class of their Edge Entities), and a list of concerns (the classes of their related Node Entities).
+
+In order to add this relationship, we need to define our Edge Entity `Wrote`.  Edges can have their own properties, but in this case we'll keep it simple:
+
+```php
+<?php
+
+use FluidGraph\Edge;
+
+class Wrote extends FluidGraph\Edge {}
+```
+
+We can add our corresponding `Book` node, as well:
+
+```php
+class Book extends FluidGraph\Node
+{
+	public function __construct(
+		public string $name,
+		public int $pages
+	) { }
 }
 ```
 
+With these options in place, we can now define books on our `Author`:
+
+```php
+$book = new Book(name: 'The Cave of Blunder', pages: 13527);
+
+$author->writings->set($book);
+```
+
+If our Edge had properties, we could define those properties when we set the `$book`:
+
+```php
+$author->writings->set($book, [
+    'dateStarted'  => new DateTime('September 17th, 1537'),
+    'dateFinished' => new DateTime('June 1st, 1804')
+]);
+```
+
+Similar to using `as()`, when we set an Entity on a given relationship, any arguments required to `__construct()` the edge would need to be passed.  You can update the existing edge using the same method.
+
+To get Nodes out of a relationship you use the corresponding `get()` method.  For example, to get every `Book` written by an `Author`:
+
+```php
+foreach($author->writings->get(Book::class) as $book) {
+    // Do things with Books
+}
+```
+
+When you `unset()` on a relationship the corresponding Edge is Released (and if the relationship is an owning relationship, related Nodes can be Released automatically):
+
+```php
+$author->writings->unset($book);
+```
+
+If the Relationship is a `ToOne` the Entity argument is excluded.
+
+> NOTE: It's possible to have multiple Edges to/from the same nodes.  While not yet supported, there would be additional methods for releasing individual edges. Which leads us to our next subject...
 
 
+
+#### Getting Edges
+
+Because Edges can have their own properties and/or you may need to remove a specific Edge from a relationship without destroying all relationships between two Nodes you occasionally may need to be able to obtain the edges themselves.  In our running example these would be the `Wrote` object(s).
+
+If you need to get all Edge Entities from a `ToMany` or `FromMany` relationships you can use the `all()` method:
+
+```php
+foreach($author->writings->all() as $wrote) {
+    // Do things with $wrote
+}
+```
+
+> NOTE: the return value of `all()` is a `FluidGraph\Result` objects, which has additional filtering and other abilities, but generally speaking operates like an array by extending `ArrayObject`.
+
+To get the Edge Entity from a `ToOne` or `FromOne` relationship you can use the `any()` method which will return either the Edge Entity or `NULL` if there is no relationship.
+
+```php
+if ($edge = $entity->relationship->any()) {
+	// Do things with the $edge
+}
+```
+
+In order to discover the Edges associated only with specific Nodes, Node Types, and Labels, you can use the `of()` and `for()` method.  Both take multiple arguments of either Node Entities, Node Elements, or strings and collected the Edges that correspond to Nodes `like()` the argument.  The only distinctions are as follows:
+
+1. The `of()` method only returns Edges whose Node corresponds to **all** arguments.
+2. The `for()` method returns Edges whose Node corresponds to **any** arguments.
+
+Accordingly, for a single argument, these methods are effectively equivalent.
+
+Finding Edges for a specific `$person`:
+
+```php
+foreach($person->friendships->of($person) as $friends_with) {
+	// Working with an Edge to a specific friend
+}
+```
+
+Finding Edges to all friends who are of type `Author`:
+
+```php
+foreach($person->friendships->of(Author::class) as $friends_with) {
+    // Working with an Edge to a friend who's like() an Author
+}
+```
+
+> Note: No validation is done against the relationships concerns, because even though it will allow setting Nodes of the supported types, different Nodes Entities can share a common Node Element.
+
+Finding Edges to all friends who are of type `Author` **and** labeled as `Archived` using `of()`:
+
+```php
+foreach($person->friendships->of(Author::class, Archivable::ARCHIVED) as $friends_with) {
+    // Working with an edge to friend who's like() an Author AND like() ARCHIVED
+}
+```
+
+Using the same argument with `for()` would result in finding Edges to all friends who are of type `Author` **or** labeled as `Archived`:
+
+```php
+foreach($person->friendships->for(Author::class, Archivable::ARCHIVED) as $friends_with) {
+    // Working with an edge to friend who's like() an Author OR like() ARCHIVED
+}
+```
+
+Generally speaking, `of()` is likely what you want most of the time.

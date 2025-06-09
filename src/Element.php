@@ -295,8 +295,10 @@ abstract class Element
 	 * one will be created using the active element properties for construction with a fallback
 	 * to defaults provided.
 	 *
-	 * @param class-string<Entity> $class The entity class to instantiate as
+	 * @template E of Entity
+	 * @param class-string<E> $class The entity class to instantiate as
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
+	 * @return E
 	 */
 	public function as(string $class, array $defaults = []): Entity
 	{
@@ -340,7 +342,7 @@ abstract class Element
 
 
 	/**
-	 * Determine whether or not this element is an expression of another entity, element, or label
+	 * Determine whether or not this element is an expression of another entity, element, or a class
 	 *
 	 * @param Entity|Element|class-string $essence
 	 */
@@ -355,9 +357,9 @@ abstract class Element
 
 
 	/**
-	 * Get the status for, or whether or not a status matches, this element
-	 */
-	public function status(Status ...$statuses): Status|bool|null
+	 * Get the status (no arguments) of the element or check if status is one of...
+	 **/
+	public function status(Status ...$statuses): Status|bool
 	{
 		if (count($statuses) == 1) {
 			return $this->status === $statuses[0];
