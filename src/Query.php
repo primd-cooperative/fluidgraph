@@ -285,6 +285,8 @@ class Query
 	{
 		return implode("\n", array_map(
 			function($statement) {
+				$statement = str_replace('\\', '_', $statement);
+
 				if (preg_match_all(static::REGEX_EXPANSION, $statement, $matches, PREG_SET_ORDER)) {
 					foreach ($matches as $match) {
 						$expansion = $match[0];

@@ -1,5 +1,7 @@
 <?php
 
+namespace FluidGraph\Testing;
+
 use FluidGraph\Status;
 
 use function PHPUnit\Framework\assertCount;

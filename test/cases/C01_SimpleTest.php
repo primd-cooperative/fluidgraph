@@ -1,5 +1,7 @@
 <?php
 
+namespace FluidGraph\Testing;
+
 use FluidGraph\Status;
 
 use function PHPUnit\Framework\assertCount;
@@ -61,7 +63,7 @@ class C01_SimpleTest extends C00_BaseTest
 	public function testMatchOneForeignUpdate()
 	{
 		static::$graph
-			->run("MATCH (a:Person {name: 'Cynthia Bullwork'}) SET a.age = 38")
+			->run("MATCH (a:%s {name: 'Cynthia Bullwork'}) SET a.age = 38", Person::class)
 			->pull()
 		;
 
@@ -77,7 +79,7 @@ class C01_SimpleTest extends C00_BaseTest
 		$person->setAge(40);
 
 		static::$graph
-			->run("MATCH (a:Person {name: 'Cynthia Bullwork'}) SET a.age = 39")
+			->run("MATCH (a:%s {name: 'Cynthia Bullwork'}) SET a.age = 39", Person::class)
 			->pull()
 		;
 

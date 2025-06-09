@@ -1,5 +1,7 @@
 <?php
 
+namespace FluidGraph\Testing;
+
 use FluidGraph\Node;
 
 class Publisher extends Node

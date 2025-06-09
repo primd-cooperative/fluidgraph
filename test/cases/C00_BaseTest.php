@@ -1,14 +1,16 @@
 <?php
 
-use PHPUnit\Framework\TestCase;
+namespace FluidGraph\Testing;
+
+use stdClass;
 
 use FluidGraph\Graph;
-use FluidGraph\Query;
-use FluidGraph\Queue;
 
 use Bolt\Bolt;
 use Bolt\connection\StreamSocket;
 use Bolt\protocol\V5_2;
+
+use PHPUnit\Framework\TestCase;
 
 use function PHPUnit\Framework\assertInstanceOf;
 

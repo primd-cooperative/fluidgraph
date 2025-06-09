@@ -269,7 +269,7 @@ class Graph
 		}
 
 		foreach ($labels as $label) {
-			$element->labels[$label] = Status::ATTACHED;
+			$element->labels[str_replace('_', '\\', $label)] = Status::ATTACHED;
 		}
 
 		foreach ($structure->properties as $property => $value) {
