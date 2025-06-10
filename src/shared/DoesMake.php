@@ -48,9 +48,11 @@ trait DoesMake
 
 			if (!array_key_exists($name, $data)) {
 				$missing[] = $name;
-			}
 
-			$required[$name] = $data[$name];
+			} else {
+				$required[$name] = $data[$name];
+
+			}
 		}
 
 		if (count($missing)) {
@@ -60,6 +62,7 @@ trait DoesMake
 				implode(', ', $missing)
 			));
 		}
+
 
 		if ($flags & static::MAKE_ASSIGN) {
 			return new static(...$required)->assign(array_filter(
