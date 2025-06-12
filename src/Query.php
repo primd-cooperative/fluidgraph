@@ -73,6 +73,72 @@ class Query
 	/**
 	 *
 	 */
+	public function compile(): string
+	{
+		return implode(" ", array_map(
+			function($statement) {
+				$statement = str_replace('\\', '_', $statement);
+
+				if (preg_match_all(static::REGEX_EXPANSION, $statement, $matches, PREG_SET_ORDER)) {
+					foreach ($matches as $match) {
+						$expansion = $match[0];
+						$parameter = $match[1];
+						$prefix    = $match[2] ?? NULL;
+
+						if (!isset($this->parameters[$parameter])) {
+							throw new InvalidArgumentException(sprintf(
+								'Parameter %s cannot be expanded with @, does not exist',
+								$parameter
+							));
+						}
+
+						if (is_scalar($this->parameters[$parameter])) {
+							throw new InvalidArgumentException(sprintf(
+								'Parameter %s cannot be expanded with @, is not array or object',
+								$parameter
+							));
+						}
+
+						$statement = str_replace(
+							$expansion,
+							sprintf(
+								'%s',
+								implode(',', array_map(
+									function($property) use ($prefix, $parameter) {
+										if (!$prefix) {
+											return sprintf(
+												'%s:$%s.%s',
+												$property,
+												$parameter,
+												$property
+											);
+										} else {
+											return sprintf(
+												'%s=$%s.%s',
+												$prefix . '.' . $property,
+												$parameter,
+												$property
+											);
+										}
+									},
+									array_keys($this->parameters[$parameter])
+								))
+							),
+							$statement
+						);
+					}
+				}
+
+				return $statement;
+			},
+			$this->statements
+		));
+	}
+
+
+	/**
+	 *
+	 */
 	public function expand()
 	{
 		return [
@@ -219,6 +285,14 @@ class Query
 						$cypher
 					));
 				}
+
+				if ($response->signature == Signature::IGNORED) {
+					throw new InvalidArgumentException(sprintf(
+						'%s in "%s"',
+						$response->content['message'] ?? 'Unknown Error',
+						$cypher
+					));
+				}
 			}
 		}
 
@@ -281,72 +355,6 @@ class Query
 	/**
 	 *
 	 */
-	protected function compile(): string
-	{
-		return implode("\n", array_map(
-			function($statement) {
-				$statement = str_replace('\\', '_', $statement);
-
-				if (preg_match_all(static::REGEX_EXPANSION, $statement, $matches, PREG_SET_ORDER)) {
-					foreach ($matches as $match) {
-						$expansion = $match[0];
-						$parameter = $match[1];
-						$prefix    = $match[2] ?? NULL;
-
-						if (!isset($this->parameters[$parameter])) {
-							throw new InvalidArgumentException(sprintf(
-								'Parameter %s cannot be expanded with @, does not exist',
-								$parameter
-							));
-						}
-
-						if (is_scalar($this->parameters[$parameter])) {
-							throw new InvalidArgumentException(sprintf(
-								'Parameter %s cannot be expanded with @, is not array or object',
-								$parameter
-							));
-						}
-
-						$statement = str_replace(
-							$expansion,
-							sprintf(
-								'%s',
-								implode(',', array_map(
-									function($property) use ($prefix, $parameter) {
-										if (!$prefix) {
-											return sprintf(
-												'%s:$%s.%s',
-												$property,
-												$parameter,
-												$property
-											);
-										} else {
-											return sprintf(
-												'%s=$%s.%s',
-												$prefix . '.' . $property,
-												$parameter,
-												$property
-											);
-										}
-									},
-									array_keys($this->parameters[$parameter])
-								))
-							),
-							$statement
-						);
-					}
-				}
-
-				return $statement;
-			},
-			$this->statements
-		));
-	}
-
-
-	/**
-	 *
-	 */
 	protected function prepare(mixed $property): mixed
 	{
 		if (is_array($property)) {
@@ -368,7 +376,7 @@ class Query
 	/**
 	 *
 	 */
-	protected function unwind(Response|IStructure|array ...$items): array
+	protected function unwind(mixed ...$items): array
 	{
 		$records = [];
 

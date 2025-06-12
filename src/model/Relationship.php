@@ -2,6 +2,7 @@
 
 namespace FluidGraph;
 
+use Bolt\enum\Signature;
 use FluidGraph\Node;
 use FluidGraph\Edge;
 use FluidGraph\Status;
@@ -12,13 +13,16 @@ use FluidGraph\Relationship\Index;
 use FluidGraph\Relationship\Method;
 
 use InvalidArgumentException;
+use Countable;
 use DateTime;
 use Closure;
+use FluidGraph\Relationship\Direction;
+use FluidGraph\Relationship\Order;
 
 /**
  * @template E of Edge
  */
-abstract class Relationship
+abstract class Relationship implements Countable
 {
 	use HasGraph;
 
@@ -55,15 +59,15 @@ abstract class Relationship
 
 
 	/**
-	 *
-	 */
-	protected Graph $loadGraph;
-
-
-	/**
 	 * When the relationship was loaded
 	 */
 	protected DateTime $loadTime;
+
+
+	/**
+	 *
+	 */
+	protected int $limit = 0;
 
 
 	/**
@@ -73,40 +77,28 @@ abstract class Relationship
 
 
 	/**
-	 * The edge type that defines the relationship
 	 *
-	 * @var class-string<E>
 	 */
-	public protected(set) string $kind;
+	protected int $offset = 0;
 
 
 	/**
-	 * The subject for this relationship.
 	 *
-	 * This can be used when resolving relationships or determining merge effects.  For example
-	 * If the subject node was released, a specific type of relationship could detach target nodes.
 	 */
-	public protected(set) Node $subject;
-
-
-
+	protected array $ordering = [];
 
 
 	/**
 	 * Construct a new Relationship
 	 *
-	 * @param class-string<E> $kind
-	 * @param array<class-string<Node>> $targets
+	 * @param Node $subject The subject for this relationship.
+	 * @param class-string<E> $kind The edge type that defines the relationship
+	 * @param array<class-string<Node>> $concerns
 	 */
 	public function __construct(
-		Node $subject,
-		string $kind,
-		/**
-         * The Node entity which this relationship is concerned with, if empty, any type is supported.
-         *
-         * @var array<class-string>
-         */
-        public protected(set) array $concerns = [],
+		public protected(set) Node $subject,
+		public protected(set) string $kind,
+		public protected(set) array $concerns = [],
 		public protected(set) Mode $mode = Mode::LAZY
 	) {
 		if (!is_subclass_of($kind, Edge::class, TRUE)) {
@@ -171,6 +163,71 @@ abstract class Relationship
 
 
 	/**
+	 *
+	 */
+	public function count(string ...$concerns): int
+	{
+		$use_graph = $this->subject->identity() && (
+			$this->mode == Mode::MANUAL || ($this->mode == Mode::LAZY && !$this->loadTime)
+		);
+
+		if ($use_graph) {
+			return $this->getGraphCount(...$concerns);
+		} else {
+			if ($concerns) {
+				$count = 0;
+
+				foreach ($this->active as $edge) {
+					foreach ($concerns as $concern) {
+						if ($edge->for($concern)) {
+							$count++;
+							break;
+						}
+					}
+				}
+
+				return $count;
+
+			} else {
+				return count($this->active);
+
+			}
+		}
+	}
+
+
+	protected function getGraphQuery(string ...$concerns)
+	{
+		return $this->graph
+			->run(
+				match ($this->method) {
+					Method::TO   => 'MATCH (s:%s)-[r:%s]->(c:%s)',
+					Method::FROM => 'MATCH (s:%s)<-[r:%s]-(c:%s)'
+				},
+				$this->subject::class,
+				$this->kind,
+				implode(
+					'|',
+					$concerns ?: $this->concerns
+				)
+			)
+			->run('WHERE id(s) = $subject')
+			->set('subject', $this->subject->identity())
+		;
+	}
+
+
+	protected function getGraphCount(string ...$concerns): int
+	{
+		return (int) $this
+			->getGraphQuery(...$concerns)
+			->run('RETURN COUNT(r) AS total')
+			->pull(Signature::RECORD)[0]
+		;
+	}
+
+
+	/**
 	 * Determine whether or not the relationship contains all of a set of nodes or node types.
 	 */
 	public function contains(Node|Element\Node|string ...$nodes): bool
@@ -200,6 +257,14 @@ abstract class Relationship
 	}
 
 
+	public function limit(int $limit): static
+	{
+		$this->limit = $limit;
+
+		return $this;
+	}
+
+
 	/**
 	 * Load the edges/nodes for the relationship.
 	 *
@@ -208,50 +273,72 @@ abstract class Relationship
 	 *
 	 * Called from Element::as() -- for Node elements only, Edge elements do not have relationships.
 	 */
-	public function load(Graph $graph): static
+	public function load(string ...$concerns): static
 	{
-		if (!isset($this->graph)) {
-			$this->graph = $graph;
+		if (!$this->subject->identity()) {
+			return $this;
 		}
 
-		if ($this->subject->identity() && !isset($this->loadTime)) {
-			$this->loader = function() use ($graph) {
+		if ($this->mode == Mode::MANUAL && !func_num_args()) {
+			return $this;
+		}
+
+		if (!isset($this->loadTime)) {
+			$this->loader = function() use ($concerns) {
 				unset($this->loader);
 
-				$concerns  = implode('|', $this->concerns);
-				$subject   = $this->subject::class;
+				$query = $this->getGraphQuery(...$concerns)->run('RETURN s, c, r');
 
-				if ($this->method == Method::TO) {
-					$match = 'MATCH (n1:%s)-[r:%s]->(n2:%s)';
-				} else {
-					$match = 'MATCH (n1:%s)<-[r:%s]-(n2:%s)';
+				if (count($this->ordering)) {
+					$ordering = [];
+
+					foreach ($this->ordering as $order) {
+						$ordering[] = sprintf(
+							'%s.%s %s',
+							match ($order[0]) {
+								Order::SUBJECT => 's',
+								Order::CONCERN => 'c',
+							},
+							$order[2],
+							$order[1]->value
+						);
+					}
+
+					$query->run('ORDER BY %s', implode(',', $ordering));
 				}
 
-				$edges  = $graph
-					->run($match, $subject, $this->kind, $concerns)
-					->run('WHERE id(n1) = $subject')
-					->run('RETURN n1, n2, r')
-					->set('subject', $this->subject->identity())
-					->get()
-					->is($this->kind)
-					->as($this->kind)
-				;
+				if ($this->offset) {
+					$query->run('SKIP %s', $this->offset);
+				}
 
-				$this->loaded    = [];
-				$this->loadGraph = $graph;
+				if ($this->limit) {
+					$query->run('LIMIT %s', $this->limit);
+				}
 
-				foreach ($edges as $edge) {
+				$this->loaded = [];
+
+				foreach ($query->get()->is($this->kind)->as($this->kind) as $edge) {
 					$hash = spl_object_hash($edge->__element__);
 
 					$this->loaded[$hash] = $edge;
 					$this->active[$hash] = $edge;
+
+					if ($this->mode == Mode::MANUAL) {
+						$this->offset++;
+					}
 				}
 
 				return new DateTime();
 			};
 
-			if ($this->mode == Mode::EAGER) {
-				$this->loadTime = call_user_func($this->loader);
+			switch ($this->mode) {
+				case Mode::EAGER:
+					$this->loadTime = call_user_func($this->loader);
+					break;
+
+				case Mode::MANUAL:
+					call_user_func($this->loader);
+					break;
 			}
 		}
 
@@ -286,19 +373,35 @@ abstract class Relationship
 	}
 
 
+	public function offset(int $offset): static
+	{
+		$this->offset = $offset;
+
+		return $this;
+	}
+
+
+
 	/**
 	 *
 	 */
-	public function reload(): static
+	public function orderBy(Order $order, Direction $direction, string $property): static
 	{
-		if (isset($this->graph)) {
+		$this->ordering[] = func_get_args();
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function reload()
+	{
+		if (isset($this->loadTime)) {
 			unset($this->loadTime);
 
-			$this->load($this->graph);
-
-			if (isset($this->loader)) {
-				$this->loadTime = call_user_func($this->loader);
-			}
+			$this->load();
 		}
 
 		return $this;

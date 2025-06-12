@@ -304,11 +304,11 @@ abstract class Element
 	{
 		if (!isset($this->entities[$class])) {
 			self::fasten($this, $class::make($this->active + $defaults));
-		}
 
-		if ($this instanceof Element\Node) {
-			foreach (Element\Node::relationships($this) as $relationship) {
-				$relationship->load($this->graph);
+			if ($this instanceof Element\Node) {
+				foreach (Element\Node::relationships($this) as $relationship) {
+					$relationship->on($this->graph)->load();
+				}
 			}
 		}
 
