@@ -266,11 +266,15 @@ abstract class Relationship implements Countable
 						return $eq($count, count($nodes));
 					}))
 				;
+
 			} else {
 				$query->run('RETURN %s', $query->where->scope('c', function($gte, $count) {
 					return $gte($count, 1);
 				}));
+
 			}
+
+			return $query->pull(Signature::RECORD)[0];
 
 		} else {
 			foreach ($nodes as $node) {
@@ -291,10 +295,37 @@ abstract class Relationship implements Countable
 	{
 		array_unshift($nodes, $node);
 
-		foreach ($nodes as $node) {
-			if ($this->index($node) !== FALSE) {
-				return TRUE;
+		if ($this->mode == Mode::MANUAL) {
+			$concerns = array_filter($nodes, fn($node) => is_string($node));
+			$nodes    = array_filter($nodes, fn($node) => !is_string($node));
+			$query    = $this->getGraphQuery(Operation::ANY, ...$concerns);
+
+			if (count($nodes)) {
+				$query
+					->run('AND %s', $query->where->scope('c', function($any, $id) use ($nodes) {
+						return $any(...array_map($id, $nodes));
+					}))
+					->run('RETURN %s', $query->where->scope('c', function($count, $gte) use ($nodes) {
+						return $gte($count, 1);
+					}))
+				;
+
+			} else {
+				$query->run('RETURN %s', $query->where->scope('c', function($gte, $count) {
+					return $gte($count, 1);
+				}));
+
 			}
+
+			return $query->pull(Signature::RECORD)[0];
+
+		} else {
+			foreach ($nodes as $node) {
+				if ($this->index($node) !== FALSE) {
+					return TRUE;
+				}
+			}
+
 		}
 
 		return FALSE;
