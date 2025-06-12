@@ -172,14 +172,14 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function count(?Operation $operation = NULL, string ...$concerns): int
+	public function count(Operation|string $operation_or_concern = '', string ...$concerns): int
 	{
 		$use_graph = $this->subject->identity() && (
 			$this->mode == Mode::MANUAL || ($this->mode == Mode::LAZY && !isset($this->loadTime))
 		);
 
 		if ($use_graph) {
-			return $this->getGraphCount($operation, ...$concerns);
+			return $this->getGraphCount($operation_or_concern, ...$concerns);
 		} else {
 			if ($concerns) {
 				$count = 0;
@@ -203,10 +203,16 @@ abstract class Relationship implements Countable
 	}
 
 
-	protected function getGraphQuery(?Operation $operation = NULL, string ...$concerns)
+	protected function getGraphQuery(Operation|string $operation_or_concern = '', string ...$concerns)
 	{
-		if (!$operation) {
+		if (!$operation_or_concern instanceof Operation) {
 			$operation = Operation::ANY;
+		} else {
+			$operation = $operation_or_concern;
+
+			if ($operation_or_concern) {
+				array_unshift($concerns, $operation_or_concern);
+			}
 		}
 
 		return $this->graph
@@ -228,10 +234,10 @@ abstract class Relationship implements Countable
 	}
 
 
-	protected function getGraphCount(?Operation $operation = NULL, string ...$concerns): int
+	protected function getGraphCount(Operation|string $operation_or_concern = '', string ...$concerns): int
 	{
 		return (int) $this
-			->getGraphQuery($operation, ...$concerns)
+			->getGraphQuery($operation_or_concern, ...$concerns)
 			->run('RETURN COUNT(r) AS total')
 			->pull(Signature::RECORD)[0]
 		;
@@ -310,7 +316,7 @@ abstract class Relationship implements Countable
 	 *
 	 * Called from Element::as() -- for Node elements only, Edge elements do not have relationships.
 	 */
-	public function load(?Operation $operation = NULL, string ...$concerns): static
+	public function load(Operation|string $operation_or_concern = '', string ...$concerns): static
 	{
 		if (!isset($this->graph)) {
 			return $this;
@@ -321,10 +327,10 @@ abstract class Relationship implements Countable
 		}
 
 		if (!isset($this->loadTime)) {
-			$this->loader = function() use ($operation, $concerns) {
+			$this->loader = function() use ($operation_or_concern, $concerns) {
 				unset($this->loader);
 
-				$query = $this->getGraphQuery($operation, ...$concerns);
+				$query = $this->getGraphQuery($operation_or_concern, ...$concerns);
 
 				if ($this->where) {
 					$query->run('AND (%s)', $query->where->scope('r', $this->where));
