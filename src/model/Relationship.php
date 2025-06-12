@@ -174,7 +174,7 @@ abstract class Relationship implements Countable
 	 */
 	public function count(Operation|string $operation_or_concern = '', string ...$concerns): int
 	{
-		$use_graph = $this->subject->identity() && (
+		$use_graph = !is_null($this->subject->identity()) && (
 			$this->mode == Mode::MANUAL || ($this->mode == Mode::LAZY && !isset($this->loadTime))
 		);
 
@@ -354,7 +354,7 @@ abstract class Relationship implements Countable
 			return $this;
 		}
 
-		if (!$this->subject->identity()) {
+		if (is_null($this->subject->identity())) {
 			return $this;
 		}
 
