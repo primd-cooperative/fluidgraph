@@ -207,12 +207,13 @@ abstract class Relationship implements Countable
 	{
 		if (!$operation_or_concern instanceof Operation) {
 			$operation = Operation::ANY;
-		} else {
-			$operation = $operation_or_concern;
 
 			if ($operation_or_concern) {
 				array_unshift($concerns, $operation_or_concern);
 			}
+
+		} else {
+			$operation = $operation_or_concern;
 		}
 
 		return $this->graph
