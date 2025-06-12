@@ -3,9 +3,18 @@
 namespace FluidGraph;
 
 use DateTime;
+use InvalidArgumentException;
+use ReflectionClass;
+use ReflectionMethod;
+use ReflectionFunction;
 
 class Where
 {
+	/**
+	 * @var array<string, ReflectionMethod>
+	 */
+	static protected $methods = [];
+
 	protected string $alias;
 
 	protected int $index = 0;
@@ -31,14 +40,22 @@ class Where
 		return fn() => '(' . implode(' OR ', array_map(fn($part) => $part(), $parts)) . ')';
 	}
 
-
-	public function dateTime(DateTime|string $date)
+	public function count(?string $term = NULL): callable
 	{
-		if ($date instanceof DateTime) {
-			$date = $date->format('c');
+		if (!func_num_args()) {
+			return fn() => sprintf('count(%s)', $this->alias);
 		}
 
-		return $this->wrap('dateTime', $date);
+		return $this->wrap(__FUNCTION__, $term);
+	}
+
+	public function dateTime(DateTime|string $term)
+	{
+		if ($term instanceof DateTime) {
+			$term = $term->format('c');
+		}
+
+		return $this->wrap(__FUNCTION__, $term);
 	}
 
 	public function eq(array|string|callable $condition, mixed $value = NULL): callable|array
@@ -51,33 +68,33 @@ class Where
 		return $this->expand(__FUNCTION__, '>=', $condition, $value);
 	}
 
-	public function id(int $term): callable
+	public function id(Node|Element\Node|int $node): callable|string
 	{
-		return fn() => sprintf('id(%s) = %s', $this->alias, $this->param($term));
+		return fn() => sprintf('id(%s) = %s', $this->alias, $this->param($node));
 	}
 
 
-	public function md5(string|callable $property): callable
+	public function md5(string|callable $term): callable
 	{
-		return $this->wrap('util_module.md5', $property);
+		return $this->wrap('util_module.md5', $term);
 	}
 
 
-	public function sourceNode(Node $node): callable
+	public function sourceNode(Node|Element\Node|int $node): callable
 	{
-		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node->identity()));
+		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node));
 	}
 
 
-	public function targetNode(Node $node): callable
+	public function targetNode(Node|Element\Node|int $node): callable
 	{
-		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node->identity()));
+		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node));
 	}
 
 
-	public function upper(string|callable $property): callable
+	public function upper(string|callable $term): callable
 	{
-		return $this->wrap('toupper', $property);
+		return $this->wrap('toupper', $term);
 	}
 
 
@@ -89,27 +106,68 @@ class Where
 	}
 
 
-	public function var(string $alias): static
+	public function scope(string $alias, ?callable $scope): callable
 	{
-		$this->alias = $alias;
+		if (!count(static::$methods)) {
+			$methods = new ReflectionClass($this)->getMethods();
 
-		return $this;
+			foreach ($methods as $method) {
+				if ($method->isPublic()) {
+					static::$methods[strtolower($method->getName())] = $method;
+				}
+			}
+		}
+
+		return function() use ($alias, $scope) {
+			$ref = NULL;
+
+			if (isset($this->alias)) {
+				$ref = $this->alias;
+			}
+
+			$this->alias = $alias;
+
+			$parameters = new ReflectionFunction($scope)->getParameters();
+			$arguments  = [];
+
+			foreach ($parameters as $parameter) {
+				$param  = $parameter->getName();
+				$method = strtolower($param);
+
+				if (!isset(static::$methods[$method])) {
+					throw new InvalidArgumentException(sprintf(
+						'Cannot scope closure with method "%s", not available',
+						$param
+					));
+				}
+
+				$arguments[$param] = static::$methods[$method]->getClosure($this);
+			}
+
+			return $scope(...$arguments)();
+
+			if ($ref) {
+				$this->alias = $ref;
+			} else {
+				unset($this->alias);
+			}
+		};
 	}
 
 
 	protected function expand(string $function, string $operator, array|string|callable $condition, mixed $value = NULL): callable|array
 	{
 		if (is_array($condition)) {
-			$hooks = [];
+			$parts = [];
 
 			foreach ($condition as $condition => $value) {
-				$hooks[] = $this->$function($condition, $value);
+				$parts[] = $this->$function($condition, $value);
 			}
 
-			return $hooks;
+			return $parts;
 
 		} else {
-			return function() use ($operator, $condition, $value) {
+			return function() use ($function, $operator, $condition, $value) {
 				if (is_callable($value)) {
 					$value = $value(TRUE);
 				} else {
@@ -117,9 +175,15 @@ class Where
 				}
 
 				if (is_callable($condition)) {
-					return sprintf('%s %s %s', $condition(), $operator, $value);
+					while (is_callable($condition)) {
+						$condition = $condition();
+					}
+
+					return sprintf('%s %s %s', $condition, $operator, $value);
+
 				} else {
 					return sprintf('%s.%s %s %s', $this->alias, $condition, $operator, $value);
+
 				}
 			};
 		}
@@ -129,7 +193,7 @@ class Where
 	{
 		return function($is_param = FALSE) use ($function, $property) {
 			if (is_callable($property)) {
-				return sprintf($function . '(%s)', $property());
+				return sprintf($function . '(%s)', $property($is_param));
 			} else {
 				if ($is_param) {
 					return sprintf($function . '(%s)', $this->param($property));
@@ -147,6 +211,10 @@ class Where
 			return '$p' . $this->index;
 
 		} else {
+			if ($value instanceof Node || $value instanceof Element\Node) {
+				$value = $value->identity();
+			}
+
 			$this->index++;
 			$this->query->set('p' . $this->index, $value);
 

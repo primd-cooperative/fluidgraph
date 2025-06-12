@@ -17,6 +17,7 @@ use Countable;
 use DateTime;
 use Closure;
 use FluidGraph\Relationship\Direction;
+use FluidGraph\Relationship\Operation;
 use FluidGraph\Relationship\Order;
 
 /**
@@ -171,14 +172,14 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function count(string ...$concerns): int
+	public function count(?Operation $operation = NULL, string ...$concerns): int
 	{
 		$use_graph = $this->subject->identity() && (
 			$this->mode == Mode::MANUAL || ($this->mode == Mode::LAZY && !isset($this->loadTime))
 		);
 
 		if ($use_graph) {
-			return $this->getGraphCount(...$concerns);
+			return $this->getGraphCount($operation, ...$concerns);
 		} else {
 			if ($concerns) {
 				$count = 0;
@@ -202,8 +203,12 @@ abstract class Relationship implements Countable
 	}
 
 
-	protected function getGraphQuery(string ...$concerns)
+	protected function getGraphQuery(?Operation $operation = NULL, string ...$concerns)
 	{
+		if (!$operation) {
+			$operation = Operation::ANY;
+		}
+
 		return $this->graph
 			->run(
 				match ($this->method) {
@@ -213,7 +218,7 @@ abstract class Relationship implements Countable
 				$this->subject::class,
 				$this->kind,
 				implode(
-					'|',
+					$operation->value,
 					$concerns ?: $this->concerns
 				)
 			)
@@ -223,10 +228,10 @@ abstract class Relationship implements Countable
 	}
 
 
-	protected function getGraphCount(string ...$concerns): int
+	protected function getGraphCount(?Operation $operation = NULL, string ...$concerns): int
 	{
 		return (int) $this
-			->getGraphQuery(...$concerns)
+			->getGraphQuery($operation, ...$concerns)
 			->run('RETURN COUNT(r) AS total')
 			->pull(Signature::RECORD)[0]
 		;
@@ -236,11 +241,35 @@ abstract class Relationship implements Countable
 	/**
 	 * Determine whether or not the relationship contains all of a set of nodes or node types.
 	 */
-	public function contains(Node|Element\Node|string ...$nodes): bool
+	public function contains(Node|Element\Node|string $node, Node|Element\Node|string ...$nodes): bool
 	{
-		foreach ($nodes as $node) {
-			if ($this->index($node) === FALSE) {
-				return FALSE;
+		array_unshift($nodes, $node);
+
+		if ($this->mode == Mode::MANUAL) {
+			$concerns = array_filter($nodes, fn($node) => is_string($node));
+			$nodes    = array_filter($nodes, fn($node) => !is_string($node));
+			$query    = $this->getGraphQuery(Operation::ALL, ...$concerns);
+
+			if (count($nodes)) {
+				$query
+					->run('AND %s', $query->where->scope('c', function($any, $id) use ($nodes) {
+						return $any(...array_map($id, $nodes));
+					}))
+					->run('RETURN %s', $query->where->scope('c', function($count, $eq) use ($nodes) {
+						return $eq($count, count($nodes));
+					}))
+				;
+			} else {
+				$query->run('RETURN %s', $query->where->scope('c', function($gte, $count) {
+					return $gte($count, 1);
+				}));
+			}
+
+		} else {
+			foreach ($nodes as $node) {
+				if ($this->index($node) === FALSE) {
+					return FALSE;
+				}
 			}
 		}
 
@@ -251,8 +280,10 @@ abstract class Relationship implements Countable
 	/**
 	 * Determine whether or not the relationship contains any of a set of nodes or node types.
 	 */
-	public function containsAny(Node|Element\Node|string ...$nodes): bool
+	public function containsAny(Node|Element\Node|string $node, Node|Element\Node|string ...$nodes): bool
 	{
+		array_unshift($nodes, $node);
+
 		foreach ($nodes as $node) {
 			if ($this->index($node) !== FALSE) {
 				return TRUE;
@@ -279,7 +310,7 @@ abstract class Relationship implements Countable
 	 *
 	 * Called from Element::as() -- for Node elements only, Edge elements do not have relationships.
 	 */
-	public function load(string ...$concerns): static
+	public function load(?Operation $operation = NULL, string ...$concerns): static
 	{
 		if (!isset($this->graph)) {
 			return $this;
@@ -290,16 +321,17 @@ abstract class Relationship implements Countable
 		}
 
 		if (!isset($this->loadTime)) {
-			$this->loader = function() use ($concerns) {
+			$this->loader = function() use ($operation, $concerns) {
 				unset($this->loader);
 
-				$query = $this->getGraphQuery(...$concerns);
+				$query = $this->getGraphQuery($operation, ...$concerns);
 
 				if ($this->where) {
-					$query->run('AND (%s)', call_user_func($this->where, $query->where->var('r'))());
+					$query->run('AND (%s)', $query->where->scope('r', $this->where));
 				}
 
 				$query->run('RETURN s, c, r');
+
 				if (count($this->ordering)) {
 					$ordering = [];
 

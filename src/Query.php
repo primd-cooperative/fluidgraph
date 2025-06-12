@@ -7,6 +7,7 @@ use Bolt\enum\Signature;
 use Bolt\protocol\IStructure;
 use Bolt\protocol\Response;
 use Bolt\protocol\v5\structures\DateTimeZoneId;
+use Closure;
 use InvalidArgumentException;
 use RuntimeException;
 use DateTime;
@@ -192,7 +193,7 @@ class Query
 		if (is_int($terms)) {
 			return $this->match(
 				$class,
-				fn($where) => $where->id($terms),
+				fn($id) => $id($terms),
 				$order,
 				$limit,
 				$skip
@@ -201,26 +202,22 @@ class Query
 		} elseif (is_array($terms)) {
 			return $this->match(
 				$class,
-				fn($where) => $where->all(...$where->eq($terms)),
+				fn($all, $eq) => $all(...$eq($terms)),
 				$order,
 				$limit,
 				$skip
 			);
 
 		} else {
-			$apply = $terms($this->where->var('i'));
-
 			match(TRUE) {
 				is_subclass_of($class, Node::class, TRUE) => $this->run('MATCH (i:%s)', $class),
 				is_subclass_of($class, Edge::class, TRUE) => $this->run('MATCH (n1)-[i:%s]->(n2)', $class),
 			};
 
-			if ($apply) {
-				$conditions = $apply();
+			$conditions = $this->where->scope('i', $terms);
 
-				if ($conditions) {
-					$this->run('WHERE %s', $conditions);
-				}
+			if ($conditions) {
+				$this->run('WHERE %s', $conditions);
 			}
 
 			$this->run('RETURN i');
@@ -324,7 +321,10 @@ class Query
 	 */
 	public function run(string $statement, mixed ...$args): static
 	{
-		$this->statements[] = sprintf($statement, ...$args);
+		$this->statements[] = sprintf($statement, ...array_map(
+			fn($arg) => $arg instanceof Closure ? $arg() : $arg,
+			$args
+		));
 
 		return $this;
 	}

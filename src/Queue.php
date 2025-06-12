@@ -294,17 +294,15 @@ class Queue
 
 	protected function doEdgeDeletes(): void
 	{
-		$matchers   = [];
-		$identities = $this->edgeOperations[static::DELETE];
 		$query      = $this->graph->query;
-		$where      = $query->where->var('e');
-
-		foreach ($identities as $identity) {
-			$matchers[] = $where->id($identity);
-		}
-
-		$responses = $query
-			->run('MATCH (n1)-[e]->(n2) WHERE %s DELETE e', $where->any(...$matchers)())
+		$identities = $this->edgeOperations[static::DELETE];
+		$responses  = $query
+			->run(
+				'MATCH (n1)-[e]->(n2) WHERE %s DELETE e',
+				$query->where->scope('e', function($any, $id) use ($identities) {
+					return $any(...array_map($id, $identities));
+				})
+			)
 			->pull(Signature::SUCCESS)
 		;
 
@@ -421,17 +419,15 @@ class Queue
 
 	protected function doNodeDeletes(): void
 	{
-		$matchers   = [];
-		$identities = $this->nodeOperations[static::DELETE];
 		$query      = $this->graph->query;
-		$where      = $query->where->var('n');
-
-		foreach ($identities as $identity) {
-			$matchers[] = $where->id($identity);
-		}
-
-		$responses = $query
-			->run('MATCH (n) WHERE %s DETACH DELETE n', $where->any(...$matchers)())
+		$identities = $this->nodeOperations[static::DELETE];
+		$responses  = $query
+			->run(
+				'MATCH (n) WHERE %s DETACH DELETE n',
+				$query->where->scope('n', function($any, $id) use ($identities) {
+					return $any(...array_map($id, $identities));
+				})
+			)
 			->pull(Signature::SUCCESS)
 		;
 
