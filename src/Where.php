@@ -129,7 +129,7 @@ class Where
 	{
 		return function($is_param = FALSE) use ($function, $property) {
 			if (is_callable($property)) {
-				return sprintf($function . '(%s)', $property(TRUE));
+				return sprintf($function . '(%s)', $property());
 			} else {
 				if ($is_param) {
 					return sprintf($function . '(%s)', $this->param($property));
