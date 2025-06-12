@@ -2,6 +2,8 @@
 
 namespace FluidGraph;
 
+use FluidGraph\Relationship\Mode;
+
 /**
  * The content base provides the common properties for edge and node contents.
  *
@@ -307,7 +309,11 @@ abstract class Element
 
 			if ($this instanceof Element\Node) {
 				foreach (Element\Node::relationships($this) as $relationship) {
-					$relationship->on($this->graph)->load();
+					$relationship->on($this->graph);
+
+					if ($relationship->mode != Mode::MANUAL) {
+						$relationship->load();
+					}
 				}
 			}
 		}

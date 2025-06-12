@@ -89,6 +89,12 @@ abstract class Relationship implements Countable
 
 
 	/**
+	 *
+	 */
+	protected ?Closure $where = NULL;
+
+
+	/**
 	 * Construct a new Relationship
 	 *
 	 * @param Node $subject The subject for this relationship.
@@ -168,7 +174,7 @@ abstract class Relationship implements Countable
 	public function count(string ...$concerns): int
 	{
 		$use_graph = $this->subject->identity() && (
-			$this->mode == Mode::MANUAL || ($this->mode == Mode::LAZY && !$this->loadTime)
+			$this->mode == Mode::MANUAL || ($this->mode == Mode::LAZY && !isset($this->loadTime))
 		);
 
 		if ($use_graph) {
@@ -275,11 +281,11 @@ abstract class Relationship implements Countable
 	 */
 	public function load(string ...$concerns): static
 	{
-		if (!$this->subject->identity()) {
+		if (!isset($this->graph)) {
 			return $this;
 		}
 
-		if ($this->mode == Mode::MANUAL && !func_num_args()) {
+		if (!$this->subject->identity()) {
 			return $this;
 		}
 
@@ -287,8 +293,13 @@ abstract class Relationship implements Countable
 			$this->loader = function() use ($concerns) {
 				unset($this->loader);
 
-				$query = $this->getGraphQuery(...$concerns)->run('RETURN s, c, r');
+				$query = $this->getGraphQuery(...$concerns);
 
+				if ($this->where) {
+					$query->run('AND (%s)', call_user_func($this->where, $query->where->var('r'))());
+				}
+
+				$query->run('RETURN s, c, r');
 				if (count($this->ordering)) {
 					$ordering = [];
 
@@ -396,13 +407,24 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function reload()
+	public function reload(): static
 	{
 		if (isset($this->loadTime)) {
 			unset($this->loadTime);
 
 			$this->load();
 		}
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function where(?Closure $conditions): static
+	{
+		$this->where = $conditions;
 
 		return $this;
 	}

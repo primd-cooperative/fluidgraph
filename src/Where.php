@@ -2,6 +2,8 @@
 
 namespace FluidGraph;
 
+use DateTime;
+
 class Where
 {
 	protected string $alias;
@@ -30,26 +32,23 @@ class Where
 	}
 
 
+	public function dateTime(DateTime|string $date)
+	{
+		if ($date instanceof DateTime) {
+			$date = $date->format('c');
+		}
+
+		return $this->wrap('dateTime', $date);
+	}
+
 	public function eq(array|string|callable $condition, mixed $value = NULL): callable|array
 	{
-		if (is_array($condition)) {
-			$hooks = [];
+		return $this->expand(__FUNCTION__, '=', $condition, $value);
+	}
 
-			foreach ($condition as $condition => $value) {
-				$hooks[] = $this->eq($condition, $value);
-			}
-
-			return $hooks;
-
-		} else {
-			return function() use ($condition, $value) {
-				if (is_callable($condition)) {
-					return sprintf('%s = %s', $condition(), $this->param($value));
-				} else {
-					return sprintf('%s.%s = %s', $this->alias, $condition, $this->param($value));
-				}
-			};
-		}
+	public function gte(array|string|callable $condition, mixed $value = NULL): callable|array
+	{
+		return $this->expand(__FUNCTION__, '>=', $condition, $value);
 	}
 
 	public function id(int $term): callable
@@ -98,13 +97,45 @@ class Where
 	}
 
 
+	protected function expand(string $function, string $operator, array|string|callable $condition, mixed $value = NULL): callable|array
+	{
+		if (is_array($condition)) {
+			$hooks = [];
+
+			foreach ($condition as $condition => $value) {
+				$hooks[] = $this->$function($condition, $value);
+			}
+
+			return $hooks;
+
+		} else {
+			return function() use ($operator, $condition, $value) {
+				if (is_callable($value)) {
+					$value = $value(TRUE);
+				} else {
+					$value = $this->param($value);
+				}
+
+				if (is_callable($condition)) {
+					return sprintf('%s %s %s', $condition(), $operator, $value);
+				} else {
+					return sprintf('%s.%s %s %s', $this->alias, $condition, $operator, $value);
+				}
+			};
+		}
+	}
+
 	protected function wrap(string $function, string|callable $property): callable
 	{
-		return function() use ($function, $property) {
+		return function($is_param = FALSE) use ($function, $property) {
 			if (is_callable($property)) {
-				return sprintf($function . '(%s)', $property());
+				return sprintf($function . '(%s)', $property(TRUE));
 			} else {
-				return sprintf($function . '(%s.%s)', $this->alias, $property);
+				if ($is_param) {
+					return sprintf($function . '(%s)', $this->param($property));
+				} else {
+					return sprintf($function . '(%s.%s)', $this->alias, $property);
+				}
 			}
 		};
 	}
