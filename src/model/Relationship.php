@@ -343,8 +343,9 @@ abstract class Relationship implements Countable
 						$ordering[] = sprintf(
 							'%s.%s %s',
 							match ($order[0]) {
-								Order::SUBJECT => 's',
-								Order::CONCERN => 'c',
+								Order::SUBJECT  => 's',
+								Order::CONCERN  => 'c',
+								Order::RELATION => 'r',
 							},
 							$order[2],
 							$order[1]->value

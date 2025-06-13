@@ -6,4 +6,5 @@ enum Order
 {
 	case SUBJECT;
 	case CONCERN;
+	case RELATION;
 }
