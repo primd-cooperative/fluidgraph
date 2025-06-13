@@ -80,13 +80,13 @@ class Where
 	}
 
 
-	public function sourceNode(Node|Element\Node|int $node): callable
+	public function source(Node|Element\Node|int $node): callable
 	{
 		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node));
 	}
 
 
-	public function targetNode(Node|Element\Node|int $node): callable
+	public function target(Node|Element\Node|int $node): callable
 	{
 		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node));
 	}

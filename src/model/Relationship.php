@@ -3,22 +3,18 @@
 namespace FluidGraph;
 
 use Bolt\enum\Signature;
-use FluidGraph\Node;
-use FluidGraph\Edge;
-use FluidGraph\Status;
-use FluidGraph\Element;
-use FluidGraph\Graph;
+
 use FluidGraph\Relationship\Mode;
 use FluidGraph\Relationship\Index;
 use FluidGraph\Relationship\Method;
+use FluidGraph\Relationship\Direction;
+use FluidGraph\Relationship\Operation;
+use FluidGraph\Relationship\Order;
 
 use InvalidArgumentException;
 use Countable;
 use DateTime;
 use Closure;
-use FluidGraph\Relationship\Direction;
-use FluidGraph\Relationship\Operation;
-use FluidGraph\Relationship\Order;
 
 /**
  * @template E of Edge
@@ -203,46 +199,7 @@ abstract class Relationship implements Countable
 	}
 
 
-	protected function getGraphQuery(Operation|string $operation_or_concern = '', string ...$concerns)
-	{
-		if (!$operation_or_concern instanceof Operation) {
-			$operation = Operation::ANY;
 
-			if ($operation_or_concern) {
-				array_unshift($concerns, $operation_or_concern);
-			}
-
-		} else {
-			$operation = $operation_or_concern;
-		}
-
-		return $this->graph
-			->run(
-				match ($this->method) {
-					Method::TO   => 'MATCH (s:%s)-[r:%s]->(c:%s)',
-					Method::FROM => 'MATCH (s:%s)<-[r:%s]-(c:%s)'
-				},
-				$this->subject::class,
-				$this->kind,
-				implode(
-					$operation->value,
-					$concerns ?: $this->concerns
-				)
-			)
-			->run('WHERE id(s) = $subject')
-			->set('subject', $this->subject->identity())
-		;
-	}
-
-
-	protected function getGraphCount(Operation|string $operation_or_concern = '', string ...$concerns): int
-	{
-		return (int) $this
-			->getGraphQuery($operation_or_concern, ...$concerns)
-			->run('RETURN COUNT(r) AS total')
-			->pull(Signature::RECORD)[0]
-		;
-	}
 
 
 	/**
@@ -332,6 +289,18 @@ abstract class Relationship implements Countable
 	}
 
 
+	public function fetch(Closure $conditions): static
+	{
+		$this->where = $conditions;
+
+		$this->load();
+
+		$this->where = NULL;
+
+		return $this;
+	}
+
+
 	public function limit(int $limit): static
 	{
 		$this->limit = $limit;
@@ -342,9 +311,6 @@ abstract class Relationship implements Countable
 
 	/**
 	 * Load the edges/nodes for the relationship.
-	 *
-	 * This method should be implemented by a concrete relationship implementation which can
-	 * choose to implement more advanced loading features such as Eager and Lazy loading.
 	 *
 	 * Called from Element::as() -- for Node elements only, Edge elements do not have relationships.
 	 */
@@ -462,7 +428,6 @@ abstract class Relationship implements Countable
 	}
 
 
-
 	/**
 	 *
 	 */
@@ -497,6 +462,48 @@ abstract class Relationship implements Countable
 		$this->where = $conditions;
 
 		return $this;
+	}
+
+
+	protected function getGraphQuery(Operation|string $operation_or_concern = '', string ...$concerns)
+	{
+		if (!$operation_or_concern instanceof Operation) {
+			$operation = Operation::ANY;
+
+			if ($operation_or_concern) {
+				array_unshift($concerns, $operation_or_concern);
+			}
+
+		} else {
+			$operation = $operation_or_concern;
+		}
+
+		return $this->graph
+			->run(
+				match ($this->method) {
+					Method::TO   => 'MATCH (s:%s)-[r:%s]->(c:%s)',
+					Method::FROM => 'MATCH (s:%s)<-[r:%s]-(c:%s)'
+				},
+				$this->subject::class,
+				$this->kind,
+				implode(
+					$operation->value,
+					$concerns ?: $this->concerns
+				)
+			)
+			->run('WHERE id(s) = $subject')
+			->set('subject', $this->subject->identity())
+		;
+	}
+
+
+	protected function getGraphCount(Operation|string $operation_or_concern = '', string ...$concerns): int
+	{
+		return (int) $this
+			->getGraphQuery($operation_or_concern, ...$concerns)
+			->run('RETURN COUNT(r) AS total')
+			->pull(Signature::RECORD)[0]
+		;
 	}
 
 
