@@ -52,7 +52,7 @@ class EdgeResults extends Entity\Results
 	 * @param Element\Node|Node|class-string $nodes
 	 * @return static<T>
 	 */
-	public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function ofAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
 	{
 		$edges = [];
 

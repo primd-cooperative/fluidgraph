@@ -346,7 +346,7 @@ abstract class Relationship implements Countable
 
 				$this->loaded = [];
 
-				foreach ($query->get()->is($this->kind)->as($this->kind) as $edge) {
+				foreach ($query->get()->as($this->kind) as $edge) {
 					$hash = spl_object_hash($edge->__element__);
 
 					$this->loaded[$hash] = $edge;

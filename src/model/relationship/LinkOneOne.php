@@ -55,7 +55,7 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 	 * @param Element\Node|Node|class-string $nodes
 	 * @return E
 	 */
-	public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): ?Edge
+	public function ofAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): ?Edge
 	{
 		$edge = $this->any();
 

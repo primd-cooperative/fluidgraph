@@ -76,21 +76,6 @@ class Node extends FluidGraph\Element
 
 
 	/**
-	 * Determine whether or not this element is an expression of another entity, element, or a label
-	 *
-	 * @param FluidGraph\Node|Node|class-string|string $essence
-	 */
-	public function like(FluidGraph\Node|Node|string $essence): bool
-	{
-		return match(TRUE) {
-			$essence instanceof Node            => $this === $essence,
-			$essence instanceof FluidGraph\Node => $this === $essence->__element__,
-			default => in_array($essence, self::classes($this))
-		};
-	}
-
-
-	/**
 	 * Remove all or multiple labels from the node element
 	 */
 	public function unlabel(string ...$labels): static

@@ -80,7 +80,7 @@ class Edge extends FluidGraph\Element
 				$type == Link::from => $this->source
 			};
 
-			if (!$element->like($node)) {
+			if (!$element->is($node)) {
 				return FALSE;
 			}
 		}

@@ -372,7 +372,7 @@ abstract class Element implements Countable
 		return match(TRUE) {
 			$essence instanceof Element => $this === $essence,
 			$essence instanceof Entity  => $this === $essence->__element__,
-			default => in_array($essence, self::classes($this))
+			default => in_array($essence, self::labels($this))
 		};
 	}
 

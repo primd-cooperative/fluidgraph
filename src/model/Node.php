@@ -33,15 +33,6 @@ abstract class Node extends Entity
 
 
 	/**
-	 *
-	 */
-	public function like(string $label, string ...$labels): bool
-	{
-		return $this->__element__->like($label, ...$labels);
-	}
-
-
-	/**
 	 * Remove one or more labels from the element
 	 */
 	public function unlabel(string ...$labels): static

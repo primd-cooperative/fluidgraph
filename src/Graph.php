@@ -380,4 +380,15 @@ class Graph
 	{
 		return $this->query->run($statement, ...$args);
 	}
+
+
+	/**
+	 *
+	 */
+	public function save(): static
+	{
+		$this->queue->merge()->run();
+
+		return $this;
+	}
 }

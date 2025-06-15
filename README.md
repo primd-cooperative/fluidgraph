@@ -59,7 +59,7 @@ class Person extends Node
 }
 ```
 
-Traits are used to provide built-in common functionality and usually represent hooks.  The example above uses the `Uuid7` trait to identify the entity.  This will provide a key of `id` and automatically generate the UUID `onCreate`.
+Traits are used to provide built-in common functionality and usually represent hooks.  The example above uses the `Uuid7` trait to identify the entity.  This will provide a property of `id` and automatically generate the UUID `onCreate`.
 
 Create an Edge class:
 
@@ -75,6 +75,8 @@ class FriendsWith extends Edge
 	public string $description;
 }
 ```
+
+Similar to above, the `DateCreated` hook trait adds a property of `dateCreated` set `onCreate` and the `DateModified` hook trait adds a property of `dateModified` when an edge property changes `onUpdate`.
 
 Add a relationship between people:
 
@@ -109,7 +111,7 @@ class Person extends Node
 }
 ```
 
-> Note: All properties on your entities MUST be publicly readable.  They can have `protected(set)` or `private(set)`, however, note that you CANNOT use property hooks.  FluidGraph avoids reflection where possible, but due to how it uses per-property references, hooks are not viable.
+> Note: All properties on your entities **MUST** be publicly readable.  They can have `protected(set)` or `private(set)`, however, note that you **CANNOT** use property hooks.  FluidGraph avoids reflection where possible, but due to its use of per-property references, property hooks are not available.
 
 Instantiate nodes:
 
@@ -129,7 +131,7 @@ $matt->friendships->set($jill, [
 Attach, merge changes into the queue, and execute it:
 
 ```php
-$graph->attach($matt)->queue->merge()->run();
+$graph->attach($matt)->save();
 ```
 
 > Note: There is no need to attach `$jill` or the `FriendsWith` edge, as these are cascaded from `$matt` being attached.  Without the relationship, `$jill` would need to be attached separately to persist.
@@ -143,7 +145,7 @@ $matt = $graph->findOne(Person::class, ['firstName' => 'Matt']);
 Get their friends:
 
 ```php
-$friends = $matt->friendships->get(Person::class);
+$friends = $matt->friendships->get();
 ```
 
 Get the friendships (The actual `FriendsWith` edges):
@@ -177,7 +179,9 @@ Status types:
 You can easily check if the status is of one or more types by passing arguments, in which case `status()` will return `TRUE` if the status is any one of the types, `FALSE` otherwise:
 
 ```php
-$entity_or_element->status(FluidGraph\Status::attached, ...)
+use FluidGraph\Status;
+
+$entity_or_element->status(Status::attached, ...)
 ```
 
 ### Is
@@ -208,13 +212,13 @@ $entity->is($element);
 $element->is($element);
 ```
 
-#### Entity's Element is Labeled as a Class
+#### Entity's Element is Labeled
 
 ```php
 $entity->is(Person::class);
 ```
 
-#### Element is Labeled as a Class
+#### Element is Labeled
 
 ```php
 $element->is(Person::class);
@@ -227,16 +231,6 @@ if ($person->is(Author::class)) {
 	// Do things knowing the person is an author
 }
 ```
-
-##### Like
-
-Available **for Nodes only** (as they can have more than one label), is the `like()` methods which will observe both classes as well as arbitrary labels that may be common.  Like will also accept Nodes and Node Elements:
-
-```php
-$entity->like(Archivable::archived);
-```
-
-It is strongly recommended that you use constants for labels.  How or where you implement them depends on how they are shared across Nodes.  In the example above we have a separate `Archivable` Trait which could be used by various classes.
 
 ### As
 
@@ -255,10 +249,10 @@ $person->is(Author::class); // TRUE
 
 When using `as()` to create a new instance of an existing Node Element, you need to pass any required arguments for instantiation (required by it's `__construct()` method) as the second parameter.  If no properties are required, this can be excluded. If the `Author` object is already fastened to the underlying Node Element, then you can simply switch between them.
 
-A subsequent merge/run of the queue will persist the `Author` Label as well as the related properties to the database.
+A subsequent save of the graph will persist the `Author` Label as well as the related properties to the database.
 
 ```php
-$graph->queue->merge()->run();
+$graph->save();
 ```
 
 > NOTE: At present `as()` exists on Edges as well, however, edges cannot have more than one Label, so the behavior is not particularly defined.  One approach that may be taken is to allow an `$edge->as()` call to create a new type of Edge between the same source and target Nodes.  Another would be to change the type/label entirely.
@@ -300,7 +294,14 @@ class Author extends Node
 
 ```
 
-Relationships have a subject (the Node from which they originate, `$this` when defined), a kind (the class of their Edge Entities and the label for the Edge Element), and a list of concerns (the classes of their related Node Entities).
+To create a new relationship you need to use the `having()` method on the appropriate class.  The class determines the behavior of the relationship (such linking to one or many Nodes, whether or not those Nodes are considered owned, as well as whether or not each Entity can have more than one Edge linking it).  Relationships also have a number of properties that describe them.  In order of arguments above:
+
+1. A subject (the Node from which they originate, `$this` when defined)
+2. A kind (the class of their Edge Entities and the label for the Edge Element)
+3. A type (either `to` or `from` as expressed by the `Link` enum), this will determine the edge direction of the relationship in the graph.
+4. A method (either `any` or `all` as expressed by the `Like` enum).  This will determine whether or not the related entities must express any or all of the concerns.
+5. A list of concerns (the labels of the related Node Entities).
+6. A mode (one of `lazy`, `eager`, or `manual` as expressed by the `Mode` enum).  This will determine how Edges and Nodes for this relationship are loaded.
 
 In order to add this relationship, we need to define our Edge Entity `Wrote`.  Edges can have their own properties, but in this case we'll keep it simple:
 
@@ -324,7 +325,7 @@ class Book extends FluidGraph\Node
 }
 ```
 
-With these options in place, we can now define books on our `Author`:
+With these classes in place, we can now define books on our `Author`:
 
 ```php
 $book = new Book(name: 'The Cave of Blunder', pages: 13527);
@@ -361,8 +362,6 @@ If the Relationship is a `ToOne` the Entity argument is excluded.
 
 > NOTE: It's possible to have multiple Edges to/from the same nodes.  While not yet supported, there would be additional methods for releasing individual edges. Which leads us to our next subject...
 
-
-
 #### Getting Edges
 
 Because Edges can have their own properties and/or you may need to remove a specific Edge from a relationship without destroying all relationships between two Nodes you occasionally may need to be able to obtain the edges themselves.  In our running example these would be the `Wrote` object(s).
@@ -385,12 +384,12 @@ if ($edge = $entity->relationship->any()) {
 }
 ```
 
-In order to discover the Edges associated only with specific Nodes, Node Types, and Labels, you can use the `of()` and `for()` method.  Both take multiple arguments of either Node Entities, Node Elements, or strings and collected the Edges that correspond to Nodes `like()` the argument.  The only distinctions are as follows:
+In order to discover the Edges associated only with specific Nodes, Node Types, and Labels, you can use the `of()` and `ofAny()` methods.  Both take multiple arguments of either Node Entities, Node Elements, or strings and collected the Edges that correspond to Nodes `is()` the argument.  The only distinction is:
 
 1. The `of()` method only returns Edges whose Node corresponds to **all** arguments.
-2. The `for()` method returns Edges whose Node corresponds to **any** arguments.
+2. The `ofAny()` method returns Edges whose Node corresponds to **any** arguments.
 
-Accordingly, for a single argument, these methods are effectively equivalent.
+Accordingly, for a single argument, these methods are effectively equivalent and using multiple Node or Node Element arguments for `of()` will effectively return no results.
 
 Finding Edges for a specific `$person`:
 
@@ -404,7 +403,7 @@ Finding Edges to all friends who are of type `Author`:
 
 ```php
 foreach($person->friendships->of(Author::class) as $friends_with) {
-    // Working with an Edge to a friend who's like() an Author
+    // Working with an Edge to a friend which is() an Author
 }
 ```
 
@@ -414,19 +413,17 @@ Finding Edges to all friends who are of type `Author` **and** labeled as `Archiv
 
 ```php
 foreach($person->friendships->of(Author::class, Archivable::archived) as $friends_with) {
-    // Working with an edge to friend who's like() an Author AND like() 'Archived'
+    // Working with an edge to friend which is() an Author AND is() 'Archived'
 }
 ```
 
-Using the same argument with `for()` would result in finding Edges to all friends who are of type `Author` **or** labeled as `Archived`:
+Using the same argument with `ofAny()` would result in finding Edges to all friends who are of type `Author` **or** labeled as `Archived`: 
 
 ```php
-foreach($person->friendships->for(Author::class, Archivable::archived) as $friends_with) {
-    // Working with an edge to friend who's like() an Author OR like() 'Archived'
+foreach($person->friendships->ofAny(Author::class, Archivable::archived) as $friends_with) {
+    // Working with an edge to friend which is() an Author OR is() 'Archived'
 }
 ```
-
-Generally speaking, `of()` is likely what you want most of the time.
 
 ### Advanced Querying
 
@@ -534,7 +531,7 @@ $friends_named_matt = $person
       });  
     })
     ->load()
-    ->get(Person::class)
+    ->get()
 ;
 ```
 

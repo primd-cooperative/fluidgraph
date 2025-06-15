@@ -45,9 +45,9 @@ abstract class LinkManyOne extends Relationship
 	 * @param Element\Node|Node|class-string $nodes
 	 * @return EdgeResults<E>
 	 */
-	public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function ofAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
 	{
-		return $this->all()->for($node, ...$nodes);
+		return $this->all()->ofAny($node, ...$nodes);
 	}
 
 
