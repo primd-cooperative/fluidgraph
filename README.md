@@ -472,7 +472,7 @@ $person = $graph->findOne(Person::class, function($all, $eq) {
 The above conditions translate to:
 
 ```sql
-WHERE i.email = 'mattsah' OR (i.firstName = 'Matthew' AND i.lastName = 'Sahagian')
+WHERE c.email = 'mattsah' OR (c.firstName = 'Matthew' AND c.lastName = 'Sahagian')
 ```
 
 Using `findOne` will automatically use no ordering, limit the results to `2`, skip `0`and throw an exception if more than one result is returned, hence, you should be ensuring that your queries when using it provide for uniqueness.
@@ -511,7 +511,6 @@ $people = $graph->query
     ->limit(10)
     ->skip(10)
 	->get()
-    ->as(Person::class)
 ;
 ```
 

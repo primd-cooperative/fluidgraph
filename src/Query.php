@@ -20,7 +20,12 @@ class Query
 	/**
 	 *
 	 */
-	public protected(set) string $concern;
+	public protected(set) array $concerns;
+
+	/**
+	 *
+	 */
+	public protected(set) string $issue;
 
 	/**
 	 *
@@ -98,13 +103,33 @@ class Query
 
 
 	/**
+	 * @template N of Node
+	 * @param ?class-string<N> $class
+	 * @return NodeResults<N>
+	 */
+	public function get(?string $class = NULL, int ...$index): NodeResults
+	{
+		if (is_null($class) && isset($this->concerns)) {
+			foreach ($this->concerns as $concern) {
+				if (is_a($concern, Entity::class, TRUE)) {
+					$class = $concern;
+					break;
+				}
+			}
+		}
+
+		return $this->getRaw(...$index)->as($class);
+	}
+
+
+	/**
 	 *
 	 */
-	public function get(int ...$index): Results|Element
+	public function getRaw(int ...$index): Results|Element
 	{
 		if (!isset($this->results)) {
-			if (isset($this->concern)) {
-				$this->run('MATCH %s', $this->concern);
+			if (isset($this->concerns)) {
+				$this->run('MATCH %s', $this->issue);
 
 				if (isset($this->terms) && $conditions = call_user_func($this->terms)) {
 					$this->run('WHERE %s', $conditions);
@@ -387,6 +412,12 @@ class Query
 	 */
 	protected function init(Like $method, string ...$concerns): static
 	{
+		if (isset($this->issue)) {
+			throw new RuntimeException(sprintf(
+				'Cannot re-initialize existing query'
+			));
+		}
+
 		if (count($concerns)) {
 			$has_nodes = FALSE;
 			$has_edges = FALSE;
@@ -417,7 +448,7 @@ class Query
 			}
 
 			if ($has_edges) {
-				$this->concern = sprintf(
+				$this->issue = sprintf(
 					'(n1)-[%s]-(n2)',
 					count($concerns)
 						? Scope::concern->value . ':' . implode($method->value, $concerns)
@@ -425,7 +456,7 @@ class Query
 				);
 
 			} else {
-				$this->concern = sprintf(
+				$this->issue = sprintf(
 					'(%s)',
 					count($concerns)
 						? Scope::concern->value . ':' . implode($method->value, $concerns)
@@ -435,9 +466,11 @@ class Query
 			}
 
 		} else {
-			$this->concern = sprintf('(%s)', Scope::concern->value);
+			$this->issue = sprintf('(%s)', Scope::concern->value);
 
 		}
+
+		$this->concerns = $concerns;
 
 		return $this;
 	}

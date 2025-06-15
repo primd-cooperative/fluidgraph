@@ -346,7 +346,7 @@ abstract class Relationship implements Countable
 
 				$this->loaded = [];
 
-				foreach ($query->get()->as($this->kind) as $edge) {
+				foreach ($query->getRaw()->as($this->kind) as $edge) {
 					$hash = spl_object_hash($edge->__element__);
 
 					$this->loaded[$hash] = $edge;
@@ -534,7 +534,6 @@ abstract class Relationship implements Countable
 	protected function getClone(string $function, array $concerns): static
 	{
 		$this->validateApex($function);
-		$this->validateConcerns($concerns);
 
 		$clone = clone $this;
 
@@ -561,20 +560,44 @@ abstract class Relationship implements Countable
 			$like = $like_or_concern;
 		}
 
+		$concern_query = implode(
+			match ($like) {
+				Like::any => ' OR ',
+				Like::all => ' AND '
+			},
+			array_map(
+				fn($concern) => 'c:' . $concern,
+				$concerns ?: $this->concerns
+			)
+		);
+
+		if (isset($this->apex)) {
+			$concern_query = sprintf(
+				'%s AND (%s)',
+				implode(
+					match ($this->apex->rule) {
+						Like::any => ' OR ',
+						Like::all => ' AND '
+					},
+					array_map(
+						fn($concern) => 'c:' . $concern,
+						$this->apex->concerns
+					)
+				),
+				$concern_query
+			);
+		}
+
 		return $this->graph
 			->run(
 				match ($this->type) {
-					Link::to   => 'MATCH (s:%s)-[r:%s]->(c:%s)',
-					Link::from => 'MATCH (s:%s)<-[r:%s]-(c:%s)'
+					Link::to   => 'MATCH (s:%s)-[r:%s]->(c)',
+					Link::from => 'MATCH (s:%s)<-[r:%s]-(c)'
 				},
 				$this->subject::class,
 				$this->kind,
-				implode(
-					$like->value,
-					$concerns ?: $this->concerns
-				)
 			)
-			->run('WHERE id(s) = $subject')
+			->run('WHERE id(s) = $subject AND (%s)', $concern_query)
 			->set('subject', $this->subject->identity())
 		;
 	}
@@ -653,17 +676,6 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	protected function validateConcerns(array $concerns)
-	{
-		$diff = array_diff($concerns, $this->concerns);
-
-		// TODO: Implement
-	}
-
-
-	/**
-	 *
-	 */
 	protected function validateApex(string $function): void
 	{
 		if (isset($this->apex)) {
@@ -681,9 +693,9 @@ abstract class Relationship implements Countable
 	 * - No Released or Detatched Targets
 	 * - No Targets of Unsupported Types
 	 */
-	protected function validateNode(Node $target): void
+	protected function validateNode(Node $target, $skip_status = FALSE): void
 	{
-		if ($target->status(Status::released, Status::detached)) {
+		if (!$skip_status && $target->status(Status::released, Status::detached)) {
 			throw new InvalidArgumentException(sprintf(
 				'Relationships cannot include released or detached target "%s" on "%s"',
 				$target::class,
@@ -691,12 +703,23 @@ abstract class Relationship implements Countable
 			));
 		}
 
-		if ($this->concerns && !array_intersect(Element::labels($target->__element__), $this->concerns)) {
-			throw new InvalidArgumentException(sprintf(
-				'Relationships cannot include a concern of class "%s" on "%s"',
-				$target::class,
-				static::class
-			));
+		if (count($this->concerns)) {
+			$intersect = array_intersect(Element::labels($target->__element__), $this->concerns);
+			$valid     = match ($this->rule) {
+				Like::all => count($intersect) == count($this->concerns),
+				Like::any => count($intersect) >= 1
+			};
+
+			if (isset($this->apex)) {
+				$valid = $valid & $this->apex->validateNode($target, TRUE);
+			}
+
+			if (!$valid) {
+				throw new InvalidArgumentException(sprintf(
+					'Relationship does not concern Node with insufficient concerns: %s',
+					implode(', ', $intersect)
+				));
+			}
 		}
 	}
 }

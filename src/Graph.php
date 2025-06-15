@@ -209,7 +209,7 @@ class Graph
 			$query->sort(...$orders);
 		}
 
-		return $query->get()->as($class);
+		return $query->getRaw()->as($class);
 	}
 
 

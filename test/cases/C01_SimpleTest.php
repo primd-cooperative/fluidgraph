@@ -63,7 +63,7 @@ class C01_SimpleTest extends C00_BaseTest
 			])
 			->take(1)
 			->skip(0)
-			->get(0);
+			->getRaw(0);
 
 		assertEquals(1, count($node));
 		assertEquals(Element\Node::class, $node::class);
