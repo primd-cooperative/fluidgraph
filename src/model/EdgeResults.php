@@ -79,10 +79,10 @@ class EdgeResults extends Entity\Results
 	 * If related node entities exist but do not match the class, an empty array will be returned.
 	 *
 	 * @template N of Node
-	 * @param ?class-string<N> $class
+	 * @param null|class-string<N> $class
 	 * @return NodeResults<N>
 	 */
-	public function get(?string $class = NULL): NodeResults
+	public function get(null|string $class = NULL): NodeResults
 	{
 		$nodes = [];
 		$index = [];
@@ -90,10 +90,15 @@ class EdgeResults extends Entity\Results
 		foreach ($this as $edge) {
 			foreach ($this->types as $type) {
 				$node = match ($type) {
-					Link::to   => $edge->__element__->target->as($class),
-					Link::from => $edge->__element__->soruce->as($class)
+					Link::to   => $edge->__element__->target,
+					Link::from => $edge->__element__->source
 				};
 
+				if (!is_null($class) && $node->is($class)) {
+					break 2;
+				}
+
+				$node = $node->as($class);
 				$hash = spl_object_hash($node);
 
 				if (!isset($index[$hash])) {

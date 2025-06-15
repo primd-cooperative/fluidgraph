@@ -66,10 +66,26 @@ abstract class LinkManyOne extends Relationship
 		$edge = reset($this->active);
 
 		if ($edge) {
-			return match ($this->type) {
-				Link::to   => $edge->__element__->target->as($class),
-				Link::from => $edge->__element__->source->as($class)
+			$node = match ($this->type) {
+				Link::to   => $edge->__element__->target,
+				Link::from => $edge->__element__->source
 			};
+
+			if (!is_null($class)) {
+				if (!$node->is($class)) {
+					return NULL;
+				}
+
+			} else {
+				$class = $this->concerns;
+
+				if (isset($this->apex)) {
+					$class = array_merge($class, $this->apex->concerns);
+				}
+
+			}
+
+			return $node->as($class);
 		}
 
 		return NULL;

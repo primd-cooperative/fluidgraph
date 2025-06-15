@@ -25,11 +25,6 @@ class Query
 	/**
 	 *
 	 */
-	public protected(set) string $issue;
-
-	/**
-	 *
-	 */
 	public protected(set) int $limit = -1;
 
 	/**
@@ -41,6 +36,11 @@ class Query
 	 *
 	 */
 	public protected(set) array $orders = [];
+
+	/**
+	 *
+	 */
+	public protected(set) string $pattern;
 
 	/**
 	 *
@@ -104,18 +104,13 @@ class Query
 
 	/**
 	 * @template N of Node
-	 * @param ?class-string<N> $class
-	 * @return NodeResults<N>
+	 * @param null|class-string<N> $class
+	 * @return NodeResults<N>|EdgeResult<N>|N
 	 */
-	public function get(?string $class = NULL, int ...$index): NodeResults
+	public function get(null|string $class = NULL, int ...$index): NodeResults|Node|EdgeResults|Edge
 	{
-		if (is_null($class) && isset($this->concerns)) {
-			foreach ($this->concerns as $concern) {
-				if (is_a($concern, Entity::class, TRUE)) {
-					$class = $concern;
-					break;
-				}
-			}
+		if (is_null($class)) {
+			$class = $this->concerns;
 		}
 
 		return $this->getRaw(...$index)->as($class);
@@ -129,13 +124,26 @@ class Query
 	{
 		if (!isset($this->results)) {
 			if (isset($this->concerns)) {
-				$this->run('MATCH %s', $this->issue);
+				// TODO: Where and Order will be broken below for combined Node/Edge searches
+				if (isset($this->pattern)) {
+					$this->run('MATCH %s', $this->pattern);
+				} else {
+					$this->run(
+						'(%s1),(n1)-[%s2]-(n2)',
+						Scope::concern->value,
+						Scope::concern->value
+					);
+				}
 
 				if (isset($this->terms) && $conditions = call_user_func($this->terms)) {
 					$this->run('WHERE %s', $conditions);
 				}
 
-				$this->run('RETURN *');
+				if (isset($this->pattern)) {
+					$this->run('RETURN %s', Scope::concern->value);
+				} else {
+					$this->run('RETURN %s1,%s2', Scope::concern->value, Scope::concern->value);
+				}
 
 				if ($this->orders) {
 					$orders = [];
@@ -412,7 +420,7 @@ class Query
 	 */
 	protected function init(Like $method, string ...$concerns): static
 	{
-		if (isset($this->issue)) {
+		if (isset($this->concerns)) {
 			throw new RuntimeException(sprintf(
 				'Cannot re-initialize existing query'
 			));
@@ -448,7 +456,7 @@ class Query
 			}
 
 			if ($has_edges) {
-				$this->issue = sprintf(
+				$this->pattern = sprintf(
 					'(n1)-[%s]-(n2)',
 					count($concerns)
 						? Scope::concern->value . ':' . implode($method->value, $concerns)
@@ -456,7 +464,7 @@ class Query
 				);
 
 			} else {
-				$this->issue = sprintf(
+				$this->pattern = sprintf(
 					'(%s)',
 					count($concerns)
 						? Scope::concern->value . ':' . implode($method->value, $concerns)
@@ -464,10 +472,6 @@ class Query
 				);
 
 			}
-
-		} else {
-			$this->issue = sprintf('(%s)', Scope::concern->value);
-
 		}
 
 		$this->concerns = $concerns;

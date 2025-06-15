@@ -479,16 +479,19 @@ Using `findOne` will automatically use no ordering, limit the results to `2`, sk
 
 #### Matching Multiple Entities
 
-If you want to find multiple nodes or edges you can simply use the `find()` method.  In addition to the where conditions you can provide `$order`, `$limit` and `$skip` parameters:
+If you want to find multiple nodes or edges you can simply use the `find()` method.  In addition to the where conditions you can provide `$orders`, `$limit` and `$skip` parameters:
 
 ```php
+use FluidGraph\Order;
+use FluidGraph\Direction;
+
 $people = $graph->find(
     Person::class,
     function ($eq) {
     	return $eq('firstName', 'Matthew');
     },
     [
-        'lastName' => FluidGraph\Direction::asc
+        Order::by('lastName', Direction::asc)
     ],
     10,
     10
@@ -498,18 +501,21 @@ $people = $graph->find(
 An alternative way of defining this would be as follows:
 
 ```php
+use FluidGraph\Order;
+use FluidGraph\Direction;
+
 $people = $graph->query
     ->match(Person::class)
     ->where(
         function ($eq) {
-            return $eq('firstName', 'Matthew');
+            return $eq('firstName', 'Matt');
         }    
     )
-    ->order([
-        'lastName' => FluidGraph\Direction::asc
+    ->sort(
+    	Order::by('lastName', Direction::asc)
     ])
-    ->limit(10)
     ->skip(10)
+    ->take(10)
 	->get()
 ;
 ```
@@ -521,12 +527,12 @@ Now that we've introduced a bit of querying, let's talk about more advanced rela
 This mode requires you to establish the various query parameters and manually load in the Edges/Nodes you're working with:
 
 ```php
-$friends_named_matt = $person
+$friendships_with_matt = $person
     ->friendships
     ->match(Person::class)
     ->where(function($scope) {
       return $scope(FluidGraph\Scope::concern, function($eq) {
-          return $eq('firstName', 'Matthew');
+          return $eq('firstName', 'Matt');
       });  
     })
     ->load()

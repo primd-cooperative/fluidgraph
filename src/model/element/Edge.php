@@ -40,13 +40,13 @@ class Edge extends FluidGraph\Element
 
 	/**
 	 * @type T of FluidGraph\Edge
-	 * @param ?class-string<T>
+	 * @param null|array|class-string<T>
 	 * @param array<string, mixed> $data
 	 * @return T
 	 */
-	public function as(?string $class = NULL, array $data = []): FluidGraph\Edge
+	public function as(null|array|string $class = NULL, array $data = []): FluidGraph\Edge
 	{
-		if (!is_null($class)) {
+		if (is_string($class)) {
 			if (!class_exists($class)) {
 				throw new InvalidArgumentException(sprintf(
 					'Cannot make "%s," no such class exists',

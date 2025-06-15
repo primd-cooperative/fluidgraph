@@ -63,31 +63,31 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	private static $apex;
+	protected private(set) self $apex;
 
 
 	/**
 	 *
 	 */
-	private int $limit = 0;
+	protected private(set) int $limit = 0;
 
 
 	/**
 	 *
 	 */
-	private int $offset = 0;
+	protected private(set) int $offset = 0;
 
 
 	/**
 	 * @param array<Order>
 	 */
-	private array $orders = [];
+	protected private(set) array $orders = [];
 
 
 	/**
 	 *
 	 */
-	private ?Closure $terms = NULL;
+	protected private(set) ?Closure $terms = NULL;
 
 
 	static public function having(

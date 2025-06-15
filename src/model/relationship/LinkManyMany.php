@@ -63,7 +63,10 @@ abstract class LinkManyMany extends FluidGraph\Relationship
 	 */
 	public function get(?string $class = NULL): NodeResults
 	{
-		return $this->of($class)->get($class);
+		return is_null($class)
+			? $this->all()->get($class)
+			: $this->of($class)->get($class)
+		;
 	}
 
 

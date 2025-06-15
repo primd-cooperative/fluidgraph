@@ -300,14 +300,14 @@ abstract class Element implements Countable
 	 * to defaults provided.
 	 *
 	 * @template E of Entity
-	 * @param ?class-string<E> $class The entity class to instantiate as
+	 * @param null|array|class-string<E> $class The entity class to instantiate as
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
 	 * @return E
 	 */
-	public function as(?string $class = NULL, array $defaults = []): Entity
+	public function as(null|array|string $class = NULL, array $defaults = []): Entity
 	{
-		if (is_null($class)) {
-			$class = $this->getPrimaryClass();
+		if (!is_string($class)) {
+			$class = $this->getPreferredClass($class);
 		}
 
 		if (!isset($this->entities[$class])) {
@@ -397,12 +397,25 @@ abstract class Element implements Countable
 	/**
 	 *
 	 */
-	protected function getPrimaryClass($allow_empty = FALSE): ?string
+	protected function getPreferredClass(?array $concerns): ?string
 	{
+		$class   = NULL;
 		$classes = static::classes($this);
-		$class   =  $classes[0] ?? NULL;
 
-		if (!$class && !$allow_empty) {
+		if (empty($concerns)) {
+			$class = $classes[0] ?? NULL;
+
+		} else {
+			foreach (array_unique(array_filter($concerns, 'class_exists')) as $concern) {
+				if ($this->is($concern)) {
+					$class = $concern;
+					break;
+				}
+			}
+
+		}
+
+		if (!$class) {
 			throw new InvalidArgumentException(sprintf(
 				'Cannot get implied class, must specify from: %s',
 				implode(', ', $classes)
