@@ -62,7 +62,6 @@ class Query
 	 */
 	protected array $responses;
 
-
 	/**
 	 *
 	 */
