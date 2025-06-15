@@ -59,12 +59,12 @@ class Node extends FluidGraph\Element
 
 		foreach ($labels as $label) {
 			if (!isset($this->labels[$label])) {
-				$this->labels[$label] = Status::FASTENED;
+				$this->labels[$label] = Status::fastened;
 				continue;
 			}
 
-			if ($this->labels[$label] == Status::RELEASED) {
-				$this->labels[$label] = Status::ATTACHED;
+			if ($this->labels[$label] == Status::released) {
+				$this->labels[$label] = Status::attached;
 				continue;
 			}
 		}
@@ -102,12 +102,12 @@ class Node extends FluidGraph\Element
 				continue;
 			}
 
-			if ($this->labels[$labels] == Status::ATTACHED) {
-				$this->labels[$labels] = Status::RELEASED;
+			if ($this->labels[$labels] == Status::attached) {
+				$this->labels[$labels] = Status::released;
 				continue;
 			}
 
-			if (in_array($this->labels[$labels], [Status::FASTENED, Status::INDUCTED])) {
+			if (in_array($this->labels[$labels], [Status::fastened, Status::inducted])) {
 				unset($this->labels[$labels]);
 				continue;
 			}

@@ -8,10 +8,8 @@ namespace FluidGraph\Relationship;
  * When the source node is attached, so are the target nodes.
  * When the source node is detached, so are the target nodes.
  */
-class ToOwnedMany extends LinkOneMany
+class OwnedMany extends LinkOneMany
 {
-	protected Method $method = Method::TO;
-
 	use AttachIncluded;
 	use DetachExcluded;
 	use DetachRelated;

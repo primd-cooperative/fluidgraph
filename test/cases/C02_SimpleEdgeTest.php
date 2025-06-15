@@ -35,8 +35,8 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 		assertCount(1, $info['nodes']['create']);
 		assertCount(1, $info['edges']['create']);
 
-		assertEquals(Status::ATTACHED, $author->status());
-		assertEquals(Status::INDUCTED, $book->status());
+		assertEquals(Status::attached, $author->status());
+		assertEquals(Status::inducted, $book->status());
 
 	}
 
@@ -48,6 +48,6 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 
 		static::$graph->queue->run();
 
-		assertEquals(Status::ATTACHED, $book->status());
+		assertEquals(Status::attached, $book->status());
 	}
 }

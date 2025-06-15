@@ -2,7 +2,6 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph\Graph;
 use FluidGraph\Status;
 
 /**
@@ -15,28 +14,28 @@ trait DetachExcluded
 	/**
 	 *
 	 */
-	public function mergeDetachExcluded(Graph $graph): void
+	public function mergeDetachExcluded(): void
 	{
 		$valid_subject = $this->subject->__element__->status(
-			Status::INDUCTED,
-			Status::ATTACHED
+			Status::inducted,
+			Status::attached
 		);
 
 		foreach ($this->loaded as $hash => $edge) {
-			if ($this->method == Method::TO) {
+			if ($this->type == Link::to) {
 				$valid_concern = !$edge->__element__->target->status(
-					Status::RELEASED,
-					Status::DETACHED
+					Status::released,
+					Status::detached
 				);
 			} else {
 				$valid_concern = !$edge->__element__->source->status(
-					Status::RELEASED,
-					Status::DETACHED
+					Status::released,
+					Status::detached
 				);
 			}
 
 			if ($valid_subject && $valid_concern && !isset($this->active[$hash])) {
-				$graph->detach($edge);
+				$this->graph->detach($edge);
 			}
 		}
 	}

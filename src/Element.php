@@ -130,12 +130,12 @@ abstract class Element
 			);
 
 			if (!isset($element->status)) {
-				$element->status = Status::FASTENED;
+				$element->status = Status::fastened;
 			}
 
 			if ($entity instanceof Edge) {
 				if (!isset($element->labels[$entity::class])) {
-					$element->labels[$entity::class] = Status::FASTENED;
+					$element->labels[$entity::class] = Status::fastened;
 				}
 
 			} else {
@@ -145,7 +145,7 @@ abstract class Element
 					$class = get_parent_class($class)
 				) {
 					if (!isset($element->labels[$class]) && !$entity::getClass($class)->isAbstract()) {
-						$element->labels[$class] = Status::FASTENED;
+						$element->labels[$class] = Status::fastened;
 					}
 				}
 			}
@@ -217,7 +217,7 @@ abstract class Element
 	static public function labels(self $element, Status ...$statuses): array
 	{
 		if (!count($statuses)) {
-			$statuses = [Status::FASTENED, Status::ATTACHED];
+			$statuses = [Status::fastened, Status::attached];
 		}
 
 		return array_keys(
@@ -249,7 +249,7 @@ abstract class Element
 	static public function signature(self $element, Status ...$statuses): string
 	{
 		if (!count($statuses)) {
-			$statuses = [Status::ATTACHED, Status::RELEASED];
+			$statuses = [Status::attached, Status::released];
 		}
 
 		return implode(':', self::labels($element, ...$statuses));
@@ -311,7 +311,7 @@ abstract class Element
 				foreach (Element\Node::relationships($this) as $relationship) {
 					$relationship->on($this->graph);
 
-					if ($relationship->mode != Mode::MANUAL) {
+					if ($relationship->mode != Mode::manual) {
 						$relationship->load();
 					}
 				}

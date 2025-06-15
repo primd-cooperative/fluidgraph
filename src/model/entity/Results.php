@@ -13,6 +13,19 @@ abstract class Results extends FluidGraph\Results
 	/**
 	 *
 	 */
+	public function assign(array $data): static
+	{
+		foreach ($this as $entity) {
+			$entity->assign($data);
+		}
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
 	public function by(string|callable $indexer): static
 	{
 		$results = [];

@@ -82,7 +82,7 @@ class Queue
 				$node = $this->nodes[$identity];
 
 				foreach (Element\Node::relationships($node) as $relationship) {
-					$relationship->merge($this->graph);
+					$relationship->on($this->graph)->merge();
 				}
 			}
 
@@ -109,9 +109,9 @@ class Queue
 
 		foreach ($this->nodes as $identity => $node) {
 			$operation = match ($node->status) {
-				Status::INDUCTED => static::CREATE,
-				Status::ATTACHED => static::UPDATE,
-				Status::RELEASED => static::DELETE,
+				Status::inducted => static::CREATE,
+				Status::attached => static::UPDATE,
+				Status::released => static::DELETE,
 			};
 
 			$this->nodeOperations[$operation][] = $identity;
@@ -119,9 +119,9 @@ class Queue
 
 		foreach ($this->edges as $identity => $edge) {
 			$operation = match ($edge->status) {
-				Status::INDUCTED => static::CREATE,
-				Status::ATTACHED => static::UPDATE,
-				Status::RELEASED => static::DELETE,
+				Status::inducted => static::CREATE,
+				Status::attached => static::UPDATE,
+				Status::released => static::DELETE,
 			};
 
 			$this->edgeOperations[$operation][] = $identity;
@@ -247,7 +247,7 @@ class Queue
 
 			if ($key = Element::key($edge)) {
 				$query
-					->run('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::FASTENED), "k$i", "t$i")
+					->run('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::fastened), "k$i", "t$i")
 					->set("k$i", $key)
 					->run('ON CREATE SET @%s(%s)', "c$i", "i$i")
 					->run('ON MATCH SET @%s(%s)', "m$i", "i$i")
@@ -257,7 +257,7 @@ class Queue
 
 			} else {
 				$query
-					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::FASTENED), "d$i", "t$i")
+					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::fastened), "d$i", "t$i")
 					->set("d$i", Element::properties($edge))
 				;
 
@@ -307,7 +307,7 @@ class Queue
 		;
 
 		foreach ($identities as $identity) {
-			$this->edges[$identity]->status = Status::DETACHED;
+			$this->edges[$identity]->status = Status::detached;
 
 			unset($this->edges[$identity]);
 		}
@@ -373,7 +373,7 @@ class Queue
 
 			if ($key = Element::key($node)) {
 				$query
-					->run('MERGE (%s:%s {@%s})', "i$i", Element::signature($node, Status::FASTENED), "k$i")
+					->run('MERGE (%s:%s {@%s})', "i$i", Element::signature($node, Status::fastened), "k$i")
 					->set("k$i", $key)
 					->run('ON CREATE SET @%s(%s)', "c$i", "i$i")
 					->run('ON MATCH SET @%s(%s)', "m$i", "i$i")
@@ -382,7 +382,7 @@ class Queue
 				;
 			} else {
 				$query
-					->run('CREATE (%s:%s {@%s})', "i$i", Element::signature($node, Status::FASTENED), "d$i")
+					->run('CREATE (%s:%s {@%s})', "i$i", Element::signature($node, Status::fastened), "d$i")
 					->set("d$i", Element::properties($node))
 				;
 			}
@@ -432,7 +432,7 @@ class Queue
 		;
 
 		foreach ($identities as $identity) {
-			$this->nodes[$identity]->status = Status::DETACHED;
+			$this->nodes[$identity]->status = Status::detached;
 
 			unset($this->nodes[$identity]);
 		}
@@ -461,11 +461,11 @@ class Queue
 				->set("d$i", Element::changes($node))
 			;
 
-			if ($plus_signature = Element::signature($node, Status::FASTENED)) {
+			if ($plus_signature = Element::signature($node, Status::fastened)) {
 				$query->run('SET %s:%s', "i$i", $plus_signature);
 			}
 
-			if ($less_signature = Element::signature($node, Status::RELEASED)) {
+			if ($less_signature = Element::signature($node, Status::released)) {
 				$query->run('REMOVE %s:%s', "i$i", $less_signature);
 			}
 
@@ -481,7 +481,7 @@ class Queue
 			$element = $this->graph->resolve($record);
 
 			foreach ($element->labels as $label => $status) {
-				if ($status != Status::ATTACHED) {
+				if ($status != Status::attached) {
 					unset($element->labels[$label]);
 				}
 			}

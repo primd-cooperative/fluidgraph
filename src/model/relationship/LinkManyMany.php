@@ -21,7 +21,7 @@ abstract class LinkManyMany extends FluidGraph\Relationship
 	 */
 	public function all(): EdgeResults
 	{
-		return new EdgeResults(array_values($this->active))->using($this->method);
+		return new EdgeResults(array_values($this->active))->using($this->type);
 	}
 
 
@@ -72,9 +72,9 @@ abstract class LinkManyMany extends FluidGraph\Relationship
 	 */
 	public function set(Node $node, array $data = []): static
 	{
-		$this->validate($node);
+		$this->validateNode($node);
 
-		$hash = $this->realize($node, $data);
+		$hash = $this->resolveEdge($node, $data);
 
 		$this->active[$hash]->assign($data);
 

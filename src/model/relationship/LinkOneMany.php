@@ -20,7 +20,7 @@ abstract class LinkOneMany extends FluidGraph\Relationship
 	 */
 	public function all(): EdgeResults
 	{
-		return new EdgeResults(array_values($this->active))->using($this->method);
+		return new EdgeResults(array_values($this->active))->using($this->type);
 	}
 
 
@@ -71,12 +71,12 @@ abstract class LinkOneMany extends FluidGraph\Relationship
 	 */
 	public function set(Node $node, array $data = []): static
 	{
-		$this->validate($node);
+		$this->validateNode($node);
 
-		$hash = $this->index($node);
+		$hash = $this->getIndex($node);
 
 		if (!$hash) {
-			$hash = $this->realize($node, $data);
+			$hash = $this->resolveEdge($node, $data);
 		}
 
 		$this->active[$hash]->assign($data);
@@ -90,7 +90,7 @@ abstract class LinkOneMany extends FluidGraph\Relationship
 	 */
 	public function unset(Node $node): static
 	{
-		unset($this->active[$this->index($node)]);
+		unset($this->active[$this->getIndex($node)]);
 
 		return $this;
 	}

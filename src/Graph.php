@@ -108,7 +108,7 @@ class Graph
 			}
 
 			switch ($element->status) {
-				case Status::FASTENED:
+				case Status::fastened:
 					$identity = spl_object_hash($element);
 
 					if ($element instanceof Element\Node) {
@@ -127,14 +127,14 @@ class Graph
 					}
 
 					$target[$identity] = $element->on($this);
-					$element->status   = Status::INDUCTED;
+					$element->status   = Status::inducted;
 					break;
 
-				case Status::RELEASED:
-					$element->status = Status::ATTACHED;
+				case Status::released:
+					$element->status = Status::attached;
 					break;
 
-				case Status::DETACHED:
+				case Status::detached:
 					throw new InvalidArgumentException(sprintf(
 						'Cannot attached already detached element: %s',
 						$element->identity
@@ -157,25 +157,91 @@ class Graph
 			}
 
 			switch ($element->status) {
-				case Status::INDUCTED:
+				case Status::inducted:
 					$identity = spl_object_hash($element);
 					$target   = match(TRUE) {
 						$element instanceof Element\Node => $this->nodes,
 						$element instanceof Element\Edge => $this->edges,
 					};
 
-					$element->status = Status::FASTENED;
+					$element->status = Status::fastened;
 
 					unset($target[$identity]);
 
 					break;
 
-				case Status::ATTACHED:
-					$element->status = Status::RELEASED;
+				case Status::attached:
+					$element->status = Status::released;
 			}
 		}
 
 		return $this;
+	}
+
+
+	/**
+	 * Match multiple nodes or edges and have them returned as an instance of a given class.
+	 *
+	 * The type of elements (node or edge) being matched is determined by the class.
+	 *
+	 * @template T of Entity
+	 * @param class-string<T> $class
+	 * @return Results<T>
+	 */
+	public function find(string $class, callable|array $terms = [], ?array $order = NULL, ?int $limit = NULL, ?int $offset = NULL): Results
+	{
+		if (is_array($terms)) {
+			$terms = fn($all, $eq) => $all(...$eq($terms));
+		}
+
+		$query = $this->query->match($class);
+
+		if (!empty($terms)) {
+			$query->where($terms);
+		}
+
+		if (!is_null($order)) {
+			$query->sort($order);
+		}
+
+		if (!is_null($limit)) {
+			$query->take($limit);
+		}
+
+		if (!is_null($offset)) {
+			$query->skip($offset);
+		}
+
+		return $query->get()->as($class);
+	}
+
+
+	/**
+	 * Find a single node or edge and have it returned as an instance of a given class.
+	 *
+	 * The type of element (node or edge) being matched is determined by the class.
+	 *
+	 * @template T of Entity
+	 * @param class-string<T> $class
+	 * @return ?T
+	 */
+	public function findOne(string $class, callable|array|int $terms): ?Entity
+	{
+		if (is_int($terms)) {
+			$terms = function($id) use ($terms) {
+				return $id($terms);
+			};
+		}
+
+		$results = $this->find($class, $terms, [], 2, 0);
+
+		if (count($results) > 1) {
+			throw new RuntimeException(sprintf(
+				'Trying to match a unique result returned more than one result'
+			));
+		}
+
+		return $results[0] ?? NULL;
 	}
 
 
@@ -264,12 +330,12 @@ class Graph
 			$element->identity = $identity;
 		}
 
-		if ($element->status != Status::RELEASED) {
-			$element->status = Status::ATTACHED;
+		if ($element->status != Status::released) {
+			$element->status = Status::attached;
 		}
 
 		foreach ($labels as $label) {
-			$element->labels[str_replace('_', '\\', $label)] = Status::ATTACHED;
+			$element->labels[str_replace('_', '\\', $label)] = Status::attached;
 		}
 
 		foreach ($structure->properties as $property => $value) {

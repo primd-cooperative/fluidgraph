@@ -45,9 +45,12 @@ $graph = new FluidGraph\Graph(
 Create a Node class:
 
 ```php
-class Person extends FluidGraph\Node
+use FluidGraph\Node;
+use FluidGraph\Entity
+
+class Person extends Node
 {
-	use FluidGraph\Entity\Id\Uuid7;
+	use Entity\Id\Uuid7;
 
 	public function __construct(
 		public ?string $firstName = NULL,
@@ -61,10 +64,13 @@ Traits are used to provide built-in common functionality and usually represent h
 Create an Edge class:
 
 ```php
-class FriendsWith extends FluidGraph\Edge
+use FluidGraph\Edge;
+use FluidGraph\Entity;
+
+class FriendsWith extends Edge
 {
-	use FluidGraph\Entity\DateCreated;
-	use FluidGraph\Entity\DateModified;
+	use Entity\DateCreated;
+	use Entity\DateModified;
 
 	public string $description;
 }
@@ -73,21 +79,30 @@ class FriendsWith extends FluidGraph\Edge
 Add a relationship between people:
 
 ```php
-class Person extends FluidGraph\Node
-{
-	use FluidGraph\Entity\Id\Uuid7;
+use FluidGraph\Node;
+use FluidGraph\Like;
+use FluidGraph\Entity;
 
-    public protected(set) FluidGraph\Relationship\ToMany $friends;
+use FluidGraph\Relationship\Many;
+use FluidGraph\Relationship\Link;
+
+class Person extends Node
+{
+	use Entity\Id\Uuid7;
+
+    public protected(set) Many $friends;
 
 	public function __construct(
 		public ?string $firstName = NULL,
 		public ?string $lastName = NULL,
 	) {
-		$this->friendships = new FluidGraph\Relationship\ToMany(
+		$this->friendships = Many::having(
 			$this,
 			FriendsWith::class,
+            Link::to,
+            Like::any,
 			[
-				self::class
+				Person::class
 			]
 		);
 	}
@@ -122,7 +137,7 @@ $graph->attach($matt)->queue->merge()->run();
 Find a person:
 
 ```php
-$matt = $graph->query->matchOne(Person::class, ['firstName' => 'Matt']);
+$matt = $graph->findOne(Person::class, ['firstName' => 'Matt']);
 ```
 
 Get their friends:
@@ -153,16 +168,16 @@ Status types:
 
 | FluidGraph\Status::* | Description                                                  |
 | -------------------- | ------------------------------------------------------------ |
-| FASTENED             | The entity or element is bound to its other half, that's it. |
-| INDUCTED             | The entity or element is ready and waiting to be merged with the graph. |
-| ATTACHED             | The entity or element has been merged with and is attached to the graph |
-| RELEASED             | The entity or element is ready and waiting to be removed from the graph. |
-| DETACHED             | The entity or element has been merged with and is detached from the graph |
+| fastened             | The entity or element is bound to its other half, that's it. |
+| inducted             | The entity or element is ready and waiting to be merged with the graph. |
+| attached             | The entity or element has been merged with and is attached to the graph |
+| released             | The entity or element is ready and waiting to be removed from the graph. |
+| detached             | The entity or element has been merged with and is detached from the graph |
 
 You can easily check if the status is of one or more types by passing arguments, in which case `status()` will return `TRUE` if the status is any one of the types, `FALSE` otherwise:
 
 ```php
-$entity_or_element->status(FluidGraph\Status::ATTACHED, ...)
+$entity_or_element->status(FluidGraph\Status::attached, ...)
 ```
 
 ### Is
@@ -218,7 +233,7 @@ if ($person->is(Author::class)) {
 Available **for Nodes only** (as they can have more than one label), is the `like()` methods which will observe both classes as well as arbitrary labels that may be common.  Like will also accept Nodes and Node Elements:
 
 ```php
-$entity->like(Archivable::ARCHIVED);
+$entity->like(Archivable::archived);
 ```
 
 It is strongly recommended that you use constants for labels.  How or where you implement them depends on how they are shared across Nodes.  In the example above we have a separate `Archivable` Trait which could be used by various classes.
@@ -236,17 +251,17 @@ $author->is(Person::class); // TRUE
 $person->is(Author::class); // TRUE
 ```
 
-> NOTE: The `Person` object is not changed, rather, in this example a new `Author` object is created and the person/author share the same graph Node, the same Element (in FluidGraph).  When working with a `Person` you only have access to the properties and relationships of a `Person`.  The `as()` method allows you to gracefully change the Entity type.
+> NOTE: The `Person` object is not changed, rather, in this example a new `Author` object is created and the person/author share the same graph Node, the same Element (in FluidGraph).  When working with a `Person` you only have access to the properties and relationships of a `Person`.  The `as()` method allows you to gracefully cast the Entity type to access other properties and relationships.
 
-When using `as()` to create a new expression of an existing Node, you need to pass any required arguments for instantiations (required by it's `__construct()` method) as the second parameter.  If no properties are required, this can be excluded. If the `Author` object is already fastened to the underlying Node Element, then you can simply switch between them.
+When using `as()` to create a new instance of an existing Node Element, you need to pass any required arguments for instantiation (required by it's `__construct()` method) as the second parameter.  If no properties are required, this can be excluded. If the `Author` object is already fastened to the underlying Node Element, then you can simply switch between them.
 
-A subsequent merge/run of the queue will persist the `Author` Label as well as the properties to the database, assuming the original `$person` is already attached:
+A subsequent merge/run of the queue will persist the `Author` Label as well as the related properties to the database.
 
 ```php
 $graph->queue->merge()->run();
 ```
 
-> NOTE: At present `as()` exists on Edges as well, however, edges cannot have more than one Label, so the behavior is not particularly defined.  On approach that may be taken is to allow an `$edge->as()` call to create a new type of Edge between the same source and target Entities.  Another would be to change the type entirely.
+> NOTE: At present `as()` exists on Edges as well, however, edges cannot have more than one Label, so the behavior is not particularly defined.  One approach that may be taken is to allow an `$edge->as()` call to create a new type of Edge between the same source and target Nodes.  Another would be to change the type/label entirely.
 
 ### Working with Relationships
 
@@ -255,26 +270,37 @@ Relationships are collections of Edges.  To understand these better, we'll give 
 ```php
 <?php
 
-class Author extends FluidGraph\Node
+use FluidGraph\Node;
+use FluidGraph\Like;
+use FluidGraph\Mode;
+
+use FluidGraph\Relationship\Many;
+use FluidGraph\Relationship\Link;
+
+    
+class Author extends Node
 {
-	public FluidGraph\Relationship\ToMany $writings;
+	public Many $writings;
 
 	public function __construct(
 		public string $penName
 	) {
-		$this->writings = new FluidGraph\Relationship\ToMany(
+		$this->writings = Many::having(
 			$this,
 			Wrote::class,
+            Link::to,
+            Like::any,
 			[
 				Book::class
-			]
+			],
+            Mode::lazy
 		);
 	}
 }
 
 ```
 
-Relationships have a subject (the Node from which they originate, `$this` when defined), a kind (the class of their Edge Entities), and a list of concerns (the classes of their related Node Entities).
+Relationships have a subject (the Node from which they originate, `$this` when defined), a kind (the class of their Edge Entities and the label for the Edge Element), and a list of concerns (the classes of their related Node Entities).
 
 In order to add this relationship, we need to define our Edge Entity `Wrote`.  Edges can have their own properties, but in this case we'll keep it simple:
 
@@ -387,17 +413,128 @@ foreach($person->friendships->of(Author::class) as $friends_with) {
 Finding Edges to all friends who are of type `Author` **and** labeled as `Archived` using `of()`:
 
 ```php
-foreach($person->friendships->of(Author::class, Archivable::ARCHIVED) as $friends_with) {
-    // Working with an edge to friend who's like() an Author AND like() ARCHIVED
+foreach($person->friendships->of(Author::class, Archivable::archived) as $friends_with) {
+    // Working with an edge to friend who's like() an Author AND like() 'Archived'
 }
 ```
 
 Using the same argument with `for()` would result in finding Edges to all friends who are of type `Author` **or** labeled as `Archived`:
 
 ```php
-foreach($person->friendships->for(Author::class, Archivable::ARCHIVED) as $friends_with) {
-    // Working with an edge to friend who's like() an Author OR like() ARCHIVED
+foreach($person->friendships->for(Author::class, Archivable::archived) as $friends_with) {
+    // Working with an edge to friend who's like() an Author OR like() 'Archived'
 }
 ```
 
 Generally speaking, `of()` is likely what you want most of the time.
+
+### Advanced Querying
+
+Querying in FluidGraph ultimately uses the `Where` class to construct composite callbacks which resolve to the final query.  An instance of a `Where` is generated for every `Query` and an instance of a query is generated whenever the `query` property on the `Graph` object is access.  A similar query to the one we showed at the beginning would be as follows:
+
+```php
+$id = '01976f54-66b3-7744-a593-44259dce9651';
+
+$person = $graph->findOne(Person::class, function($eq) use ($id) {
+	return $eq('id', $id);
+});
+```
+
+The arguments to the callback are how you request the functions you intend to use and they correspond to the public instance methods available on the `Where` class.  In the example above, we're testing for equality, so we add `$eq` to request the `Where::eq()` method as a callback.
+
+This method has pitfalls as it relates to code completion and typing which may be resolved at a later date by doing something like the following:
+
+```php
+use FLuidGraph\Where\Eq;
+
+$person = $graph->findOne(Person::class, function(Eq $eq) use ($id) {
+	return $eq('id', $id);
+});
+```
+
+Furthermore, at present, we're adding methods as we need them. This includes methods that correspond to Memgraph MAGE functions:
+
+```php
+return $eq($upper($md5('id')), md5($id));
+```
+
+To build `AND` and `OR` conditions you can use the `$all` and `$any` callbacks respectively:
+
+```php
+$person = $graph->findOne(Person::class, function($all, $eq) {
+	return $any(
+        $eq('email', 'mattsah@example.com'),
+    	$all(
+        	$eq('firstName', 'Matthew'),
+            $eq('lastName', 'Sahagian')
+        ),
+    );
+})
+```
+
+The above conditions translate to:
+
+```sql
+WHERE i.email = 'mattsah' OR (i.firstName = 'Matthew' AND i.lastName = 'Sahagian')
+```
+
+Using `findOne` will automatically use no ordering, limit the results to `2`, skip `0`and throw an exception if more than one result is returned, hence, you should be ensuring that your queries when using it provide for uniqueness.
+
+#### Matching Multiple Entities
+
+If you want to find multiple nodes or edges you can simply use the `find()` method.  In addition to the where conditions you can provide `$order`, `$limit` and `$skip` parameters:
+
+```php
+$people = $graph->find(
+    Person::class,
+    function ($eq) {
+    	return $eq('firstName', 'Matthew');
+    },
+    [
+        'lastName' => FluidGraph\Direction::asc
+    ],
+    10,
+    10
+);
+```
+
+An alternative way of defining this would be as follows:
+
+```php
+$people = $graph->query
+    ->match(Person::class)
+    ->where(
+        function ($eq) {
+            return $eq('firstName', 'Matthew');
+        }    
+    )
+    ->order([
+        'lastName' => FluidGraph\Direction::asc
+    ])
+    ->limit(10)
+    ->skip(10)
+	->get()
+    ->as(Person::class)
+;
+```
+
+### Advanced Relationships
+
+Now that we've introduced a bit of querying, let's talk about more advanced relationships.  When creating a relationship you can specify a `FluidGraph\Relationship\Mode` of that relationship.  The `LAZY` and `EAGER` members of this enum are largely handled for you, and the only critical difference is whether or not the Edges and Nodes of that relationship are loaded immediately after the subject Node is realize or when the relationship is accessed in some way.  For finer control and large relationships, you will want to use the `MANUAL` mode.
+
+This mode requires you to establish the various query parameters and manually load in the Edges/Nodes you're working with:
+
+```php
+$friends_named_matt = $person
+    ->friendships
+    ->match(Person::class)
+    ->where(function($scope) {
+      return $scope(FluidGraph\Scope::concern, function($eq) {
+          return $eq('firstName', 'Matthew');
+      });  
+    })
+    ->load()
+    ->get()
+;
+```
+

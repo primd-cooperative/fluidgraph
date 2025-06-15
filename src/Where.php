@@ -15,12 +15,24 @@ class Where
 	 */
 	static protected $methods = [];
 
+	/**
+	 *
+	 */
 	protected string $alias;
 
+	/**
+	 *
+	 */
 	protected int $index = 0;
 
+	/**
+	 *
+	 */
 	protected Query $query;
 
+	/**
+	 *
+	 */
 	public function all(callable ...$parts): callable|null
 	{
 		if (!count($parts)) {
@@ -31,6 +43,9 @@ class Where
 	}
 
 
+	/**
+	 *
+	 */
 	public function any(callable ...$parts): callable|null
 	{
 		if (!count($parts)) {
@@ -40,6 +55,10 @@ class Where
 		return fn() => '(' . implode(' OR ', array_map(fn($part) => $part(), $parts)) . ')';
 	}
 
+
+	/**
+	 *
+	 */
 	public function count(?string $term = NULL): callable
 	{
 		if (!func_num_args()) {
@@ -49,6 +68,10 @@ class Where
 		return $this->wrap(__FUNCTION__, $term);
 	}
 
+
+	/**
+	 *
+	 */
 	public function dateTime(DateTime|string $term)
 	{
 		if ($term instanceof DateTime) {
@@ -58,46 +81,73 @@ class Where
 		return $this->wrap(__FUNCTION__, $term);
 	}
 
+
+	/**
+	 *
+	 */
 	public function eq(array|string|callable $condition, mixed $value = NULL): callable|array
 	{
 		return $this->expand(__FUNCTION__, '=', $condition, $value);
 	}
 
+
+	/**
+	 *
+	 */
 	public function gte(array|string|callable $condition, mixed $value = NULL): callable|array
 	{
 		return $this->expand(__FUNCTION__, '>=', $condition, $value);
 	}
 
+
+	/**
+	 *
+	 */
 	public function id(Node|Element\Node|int $node): callable|string
 	{
 		return fn() => sprintf('id(%s) = %s', $this->alias, $this->param($node));
 	}
 
 
+	/**
+	 *
+	 */
 	public function md5(string|callable $term): callable
 	{
 		return $this->wrap('util_module.md5', $term);
 	}
 
 
+	/**
+	 *
+	 */
 	public function source(Node|Element\Node|int $node): callable
 	{
 		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node));
 	}
 
 
+	/**
+	 *
+	 */
 	public function target(Node|Element\Node|int $node): callable
 	{
 		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node));
 	}
 
 
+	/**
+	 *
+	 */
 	public function upper(string|callable $term): callable
 	{
 		return $this->wrap('toupper', $term);
 	}
 
 
+	/**
+	 *
+	 */
 	public function uses(Query $query): static
 	{
 		$this->query = $query;
@@ -106,8 +156,15 @@ class Where
 	}
 
 
-	public function scope(string $alias, ?callable $scope): callable
+	/**
+	 *
+	 */
+	public function scope(Scope|string $alias, ?callable $scope): callable
 	{
+		if ($alias instanceof Scope) {
+			$alias = $scope->value;
+		}
+
 		if (!count(static::$methods)) {
 			$methods = new ReflectionClass($this)->getMethods();
 
@@ -155,6 +212,9 @@ class Where
 	}
 
 
+	/**
+	 *
+	 */
 	protected function expand(string $function, string $operator, array|string|callable $condition, mixed $value = NULL): callable|array
 	{
 		if (is_array($condition)) {
@@ -189,6 +249,9 @@ class Where
 		}
 	}
 
+	/**
+	 *
+	 */
 	protected function wrap(string $function, string|callable $property): callable
 	{
 		return function($is_param = FALSE) use ($function, $property) {
@@ -205,6 +268,9 @@ class Where
 	}
 
 
+	/**
+	 *
+	 */
 	protected function param(mixed $value = NULL): string
 	{
 		if (!func_num_args()) {

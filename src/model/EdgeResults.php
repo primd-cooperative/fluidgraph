@@ -2,7 +2,7 @@
 
 namespace FluidGraph;
 
-use FluidGraph\Relationship\Method;
+use FluidGraph\Relationship\Link;
 
 /**
  * @template T of Edge
@@ -11,9 +11,9 @@ use FluidGraph\Relationship\Method;
 class EdgeResults extends Entity\Results
 {
 	/**
-	 * @var array<Method>
+	 * @var array<Type>
 	 */
-	protected array $methods = [Method::TO, Method::FROM];
+	protected array $types = [Link::to, Link::from];
 
 
 	/**
@@ -32,7 +32,7 @@ class EdgeResults extends Entity\Results
 
 			foreach ($this as $edge) {
 				foreach ($nodes as $node) {
-					if (!$edge->for($node, ...$this->methods)) {
+					if (!$edge->for($node, ...$this->types)) {
 						continue 2;
 					}
 				}
@@ -41,7 +41,7 @@ class EdgeResults extends Entity\Results
 			}
 		}
 
-		return new static($edges)->using(...$this->methods);
+		return new static($edges)->using(...$this->types);
 	}
 
 
@@ -61,7 +61,7 @@ class EdgeResults extends Entity\Results
 
 			foreach ($nodes as $node) {
 				foreach ($this as $edge) {
-					if ($edge->for($node, ...$this->methods)) {
+					if ($edge->for($node, ...$this->types)) {
 						$edges[] = $edge;
 						continue 2;
 					}
@@ -69,7 +69,7 @@ class EdgeResults extends Entity\Results
 			}
 		}
 
-		return new static($edges)->using(...$this->methods);
+		return new static($edges)->using(...$this->types);
 	}
 
 
@@ -88,10 +88,10 @@ class EdgeResults extends Entity\Results
 		$index = [];
 
 		foreach ($this as $edge) {
-			foreach ($this->methods as $method) {
-				$node = match ($method) {
-					Method::TO   => $edge->__element__->target->as($class),
-					Method::FROM => $edge->__element__->soruce->as($class)
+			foreach ($this->types as $type) {
+				$node = match ($type) {
+					Link::to   => $edge->__element__->target->as($class),
+					Link::from => $edge->__element__->soruce->as($class)
 				};
 
 				$hash = spl_object_hash($node);
@@ -116,9 +116,9 @@ class EdgeResults extends Entity\Results
 	/**
 	 *
 	 */
-	public function using(Method ...$methods): static
+	public function using(Link ...$types): static
 	{
-		$this->methods = $methods;
+		$this->types = $types;
 
 		return $this;
 	}

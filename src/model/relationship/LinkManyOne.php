@@ -20,7 +20,7 @@ abstract class LinkManyOne extends Relationship
 	 */
 	public function all(): EdgeResults
 	{
-		return new EdgeResults(array_values($this->active))->using($this->method);
+		return new EdgeResults(array_values($this->active))->using($this->type);
 	}
 
 
@@ -70,9 +70,9 @@ abstract class LinkManyOne extends Relationship
 		$edge = reset($this->active);
 
 		if ($edge) {
-			return match ($this->method) {
-				Method::TO   => $edge->__element__->target->as($class),
-				Method::FROM => $edge->__element__->source->as($class)
+			return match ($this->type) {
+				Link::to   => $edge->__element__->target->as($class),
+				Link::from => $edge->__element__->source->as($class)
 			};
 		}
 
@@ -85,14 +85,14 @@ abstract class LinkManyOne extends Relationship
 	 */
 	public function set(Node $node, array $data = []): static
 	{
-		$this->validate($node);
+		$this->validateNode($node);
 
-		$hash = $this->index($node);
+		$hash = $this->getIndex($node);
 
 		if (!$hash) {
 			$this->unset();
 
-			$hash = $this->realize($node, $data);
+			$hash = $this->resolveEdge($node, $data);
 		}
 
 		$this->active[$hash]->assign($data);
@@ -110,7 +110,7 @@ abstract class LinkManyOne extends Relationship
 			unset($this->active[spl_object_hash($entity)]);
 
 		} else {
-			if (!$entity || $this->index($entity)) {
+			if (!$entity || $this->getIndex($entity)) {
 				$this->active = [];
 			}
 		}

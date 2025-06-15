@@ -19,7 +19,7 @@ class C01_SimpleTest extends C00_BaseTest
 		assertTrue($person->is($person));
 		assertTrue($person->is(Person::class));
 		assertTrue($person->is($person->__element__));
-		assertEquals(Status::FASTENED, $person->status());
+		assertEquals(Status::fastened, $person->status());
 	}
 
 	public function testNodeAttach()
@@ -28,7 +28,7 @@ class C01_SimpleTest extends C00_BaseTest
 
 		static::$graph->attach($person);
 
-		assertEquals(Status::INDUCTED, $person->status());
+		assertEquals(Status::inducted, $person->status());
 	}
 
 	public function testNodeMerge()
@@ -49,12 +49,12 @@ class C01_SimpleTest extends C00_BaseTest
 
 		static::$graph->queue->run();
 
-		assertEquals(Status::ATTACHED, $person->status());
+		assertEquals(Status::attached, $person->status());
 	}
 
 	public function testMatchOne()
 	{
-		$person = static::$graph->query->matchOne(Person::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
 
 		assertNotEmpty($person);
 		assertSame($person, static::$data->person);
@@ -67,14 +67,14 @@ class C01_SimpleTest extends C00_BaseTest
 			->pull()
 		;
 
-		$person = static::$graph->query->matchOne(Person::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
 
 		assertSame(38, $person->age);
 	}
 
 	public function testMatchOneForeignUpdateConflict()
 	{
-		$person = static::$graph->query->matchOne(Person::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
 
 		$person->setAge(40);
 
@@ -83,7 +83,7 @@ class C01_SimpleTest extends C00_BaseTest
 			->pull()
 		;
 
-		$person = static::$graph->query->matchOne(Person::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
 
 		assertSame($person, static::$data->person);
 		assertSame(40, $person->age);

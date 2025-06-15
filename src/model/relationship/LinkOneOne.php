@@ -2,15 +2,15 @@
 
 namespace FluidGraph\Relationship;
 
+use FluidGraph;
 use FluidGraph\Edge;
 use FluidGraph\Node;
 use FluidGraph\Element;
-use FluidGraph\Relationship;
 
 /**
  * A type of relationship that links to/from one node with one edge.
  */
-abstract class LinkOneOne extends Relationship
+abstract class LinkOneOne extends FluidGraph\Relationship
 {
 	/**
 	 * Get the edge entity for this relationship, regardless what it corresponds to.
@@ -36,7 +36,7 @@ abstract class LinkOneOne extends Relationship
 			array_unshift($nodes, $node);
 
 			foreach ($nodes as $node) {
-				if (!$edge->for($node, $this->method)) {
+				if (!$edge->for($node, $this->type)) {
 					return NULL;
 				}
 			}
@@ -63,7 +63,7 @@ abstract class LinkOneOne extends Relationship
 			array_unshift($nodes, $node);
 
 			foreach ($nodes as $node) {
-				if ($edge->for($node, $this->method)) {
+				if ($edge->for($node, $this->type)) {
 					return $edge;
 				}
 			}
@@ -88,9 +88,9 @@ abstract class LinkOneOne extends Relationship
 		$edge = $this->of($class);
 
 		if ($edge) {
-			return match ($this->method) {
-				Method::TO   => $edge->__element__->target->as($class),
-				Method::FROM => $edge->__element__->source->as($class)
+			return match ($this->type) {
+				Link::to   => $edge->__element__->target->as($class),
+				Link::from => $edge->__element__->source->as($class)
 			};
 		}
 
@@ -103,14 +103,14 @@ abstract class LinkOneOne extends Relationship
 	 */
 	public function set(Node $node, array $data = []): static
 	{
-		$this->validate($node);
+		$this->validateNode($node);
 
-		$hash = $this->index($node);
+		$hash = $this->getIndex($node);
 
 		if (!$hash) {
 			$this->unset();
 
-			$hash = $this->realize($node, $data);
+			$hash = $this->resolveEdge($node, $data);
 		}
 
 		$this->active[$hash]->assign($data);
@@ -124,7 +124,7 @@ abstract class LinkOneOne extends Relationship
 	 */
 	public function unset(?Node $node = NULL): static
 	{
-		if (!$node || $this->index($node)) {
+		if (!$node || $this->getIndex($node)) {
 			$this->active = [];
 		}
 

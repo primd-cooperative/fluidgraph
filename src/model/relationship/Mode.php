@@ -4,7 +4,7 @@ namespace FluidGraph\Relationship;
 
 enum Mode
 {
-	case LAZY;
-	case EAGER;
-	case MANUAL;
+	case lazy;
+	case eager;
+	case manual;
 }

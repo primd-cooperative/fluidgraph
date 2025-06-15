@@ -19,10 +19,39 @@ class Query
 	const REGEX_EXPANSION = '#@([a-zA-Z][a-zA-Z0-9]*)(?:\(([a-zA-Z][a-zA-Z0-9]*)\))?#';
 
 	/**
+	 *
+	 */
+	public protected(set) string $items;
+
+	/**
+	 *
+	 */
+	public protected(set) int $limit = -1;
+
+	/**
+	 *
+	 */
+	public protected(set) int $offset = 0;
+
+	/**
+	 *
+	 */
+	public protected(set) array $orders = [];
+
+	/**
+	 *
+	 */
+	public protected(set) Closure $terms;
+
+	/**
+	 * An instance of the base where clause builder to clone
+	 */
+	public protected(set) Where $where;
+
+	/**
 	 * @var array<Element>
 	 */
 	protected array $results;
-
 
 	/**
 	 * @var array
@@ -31,9 +60,13 @@ class Query
 
 
 	/**
-	 * An instance of the base where clause builder to clone
+	 *
 	 */
-	public protected(set) Where $where;
+	public function __clone()
+	{
+		$this->__construct();
+	}
+
 
 	/**
 	 *
@@ -41,13 +74,7 @@ class Query
 	public function __construct(
 		protected array $statements = [],
 		protected array $parameters = [],
-	) {}
-
-
-	/**
-	 *
-	 */
-	public function __clone() {
+	) {
 		$this->where = new Where()->uses($this);
 	}
 
@@ -72,80 +99,68 @@ class Query
 
 
 	/**
+	 * Match multiple nodes or edges and have them returned as an instance of a given class.
 	 *
+	 * The type of elements (node or edge) being matched is determined by the class.
+	 *
+	 * @template T of Entity
+	 * @param class-string<T> $class
+	 * @return Results<T>
 	 */
-	public function compile(): string
+	public function find(string $class, callable|array $terms = [], ?array $order = NULL, ?int $limit = NULL, ?int $offset = NULL): Results
 	{
-		return implode(" ", array_map(
-			function($statement) {
-				$statement = str_replace('\\', '_', $statement);
+		if (is_array($terms)) {
+			$terms = fn($all, $eq) => $all(...$eq($terms));
+		}
 
-				if (preg_match_all(static::REGEX_EXPANSION, $statement, $matches, PREG_SET_ORDER)) {
-					foreach ($matches as $match) {
-						$expansion = $match[0];
-						$parameter = $match[1];
-						$prefix    = $match[2] ?? NULL;
+		$query = new static()->on($this->graph)->match($class);
 
-						if (!isset($this->parameters[$parameter])) {
-							throw new InvalidArgumentException(sprintf(
-								'Parameter %s cannot be expanded with @, does not exist',
-								$parameter
-							));
-						}
+		if (!empty($terms)) {
+			$query->where($terms);
+		}
 
-						if (is_scalar($this->parameters[$parameter])) {
-							throw new InvalidArgumentException(sprintf(
-								'Parameter %s cannot be expanded with @, is not array or object',
-								$parameter
-							));
-						}
+		if (!is_null($order)) {
+			$query->sort($order);
+		}
 
-						$statement = str_replace(
-							$expansion,
-							sprintf(
-								'%s',
-								implode(',', array_map(
-									function($property) use ($prefix, $parameter) {
-										if (!$prefix) {
-											return sprintf(
-												'%s:$%s.%s',
-												$property,
-												$parameter,
-												$property
-											);
-										} else {
-											return sprintf(
-												'%s=$%s.%s',
-												$prefix . '.' . $property,
-												$parameter,
-												$property
-											);
-										}
-									},
-									array_keys($this->parameters[$parameter])
-								))
-							),
-							$statement
-						);
-					}
-				}
+		if (!is_null($limit)) {
+			$query->take($limit);
+		}
 
-				return $statement;
-			},
-			$this->statements
-		));
+		if (!is_null($offset)) {
+			$query->skip($offset);
+		}
+
+		return $query->get()->as($class);
 	}
 
 
 	/**
+	 * Find a single node or edge and have it returned as an instance of a given class.
 	 *
+	 * The type of element (node or edge) being matched is determined by the class.
+	 *
+	 * @template T of Entity
+	 * @param class-string<T> $class
+	 * @return ?T
 	 */
-	public function expand()
+	public function findOne(string $class, callable|array|int $query): ?Entity
 	{
-		return [
-			'cypher'     => $this->compile(),
-			'parameters' => $this->parameters
-		];
+		if (is_int($query)) {
+			$query = function($id) use ($query) {
+				return $id($query);
+			};
+		}
+
+		$results = $this->find($class, $query, [], 2, 0);
+
+		if (count($results) > 1) {
+			throw new RuntimeException(sprintf(
+				'Trying to match a unique result returned more than one result'
+			));
+		}
+
+		return $results[0] ?? NULL;
 	}
 
 
@@ -155,6 +170,28 @@ class Query
 	public function get(int ...$index): Results|Element
 	{
 		if (!isset($this->results)) {
+			if (isset($this->items)) {
+				$this->run('MATCH %s', $this->items);
+
+				if ($conditions = call_user_func($this->terms)) {
+					$this->run('WHERE %s', $conditions);
+				}
+
+				$this->run('RETURN *');
+
+				if ($this->orders) {
+					// TODO: order
+				}
+
+				if ($this->limit >= 0) {
+					$this->run('LIMIT %s', $this->limit);
+				}
+
+				if ($this->offset > 0) {
+					$this->run('SKIP %s', $this->offset);
+				}
+			}
+
 			$this->results = array_map(
 				$this->graph->resolve(...),
 				$this->pull(Signature::RECORD)
@@ -180,85 +217,32 @@ class Query
 
 
 	/**
-	 * Match multiple nodes or edges and have them returned as an instance of a given class.
 	 *
-	 * The type of elements (node or edge) being matched is determined by the class.
-	 *
-	 * @template T of Entity
-	 * @param class-string<T> $class
-	 * @return Results<T>
 	 */
-	public function match(string $class, callable|array|int $terms = [], ?array $order = NULL, int $limit = -1, int $skip = 0): Results
+	public function match(string ...$labels): static
 	{
-		if (is_int($terms)) {
-			return $this->match(
-				$class,
-				fn($id) => $id($terms),
-				$order,
-				$limit,
-				$skip
-			);
-
-		} elseif (is_array($terms)) {
-			return $this->match(
-				$class,
-				fn($all, $eq) => $all(...$eq($terms)),
-				$order,
-				$limit,
-				$skip
-			);
-
+		if (count($labels)) {
+			$this->items = sprintf('(i:%s)', implode(Like::all->value, $labels));
 		} else {
-			match(TRUE) {
-				is_subclass_of($class, Node::class, TRUE) => $this->run('MATCH (i:%s)', $class),
-				is_subclass_of($class, Edge::class, TRUE) => $this->run('MATCH (n1)-[i:%s]->(n2)', $class),
-			};
-
-			$conditions = $this->where->scope('i', $terms);
-
-			if ($conditions) {
-				$this->run('WHERE %s', $conditions);
-			}
-
-			$this->run('RETURN i');
-
-			if ($order) {
-				$this->run('ORDER BY');
-			}
-
-			if ($limit >= 0) {
-				$this->run('LIMIT %s', $limit);
-			}
-
-			if ($skip > 0) {
-				$this->run('SKIP %s', $skip);
-			}
-
-			return $this->get()->as($class);
+			$this->items = '(i)';
 		}
+
+		return $this;
 	}
 
 
 	/**
-	 * Match a single node or edge and have it returned as an instance of a given class.
 	 *
-	 * The type of element (node or edge) being matched is determined by the class.
-	 *
-	 * @template T of Entity
-	 * @param class-string<T> $class
-	 * @return ?T
 	 */
-	public function matchOne(string $class, callable|array|int $query): ?Entity
+	public function matchAny(string ...$labels): static
 	{
-		$results = $this->match($class, $query, [], 2, 0);
-
-		if (count($results) > 1) {
-			throw new RuntimeException(sprintf(
-				'Match returned more than one result'
-			));
+		if (count($labels)) {
+			$this->items = sprintf('(i:%s)', implode(Like::any->value, $labels));
+		} else {
+			$this->items = '(i)';
 		}
 
-		return $results[0] ?? NULL;
+		return $this;
 	}
 
 
@@ -349,6 +333,116 @@ class Query
 		$this->parameters = array_replace($this->parameters, $this->prepare($parameters));
 
 		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function skip(int $offset): static
+	{
+		$this->offset = $offset;
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function sort(array ...$orders): static
+	{
+		array_push($this->orders, ...$orders);
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function take(int $limit): static
+	{
+		$this->limit = $limit;
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function where(Closure $terms)
+	{
+		$this->terms = $this->where->scope('i', $terms);
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	protected function compile(): string
+	{
+		return implode(" ", array_map(
+			function($statement) {
+				$statement = str_replace('\\', '_', $statement);
+
+				if (preg_match_all(static::REGEX_EXPANSION, $statement, $matches, PREG_SET_ORDER)) {
+					foreach ($matches as $match) {
+						$expansion = $match[0];
+						$parameter = $match[1];
+						$prefix    = $match[2] ?? NULL;
+
+						if (!isset($this->parameters[$parameter])) {
+							throw new InvalidArgumentException(sprintf(
+								'Parameter %s cannot be expanded with @, does not exist',
+								$parameter
+							));
+						}
+
+						if (is_scalar($this->parameters[$parameter])) {
+							throw new InvalidArgumentException(sprintf(
+								'Parameter %s cannot be expanded with @, is not array or object',
+								$parameter
+							));
+						}
+
+						$statement = str_replace(
+							$expansion,
+							sprintf(
+								'%s',
+								implode(',', array_map(
+									function($property) use ($prefix, $parameter) {
+										if (!$prefix) {
+											return sprintf(
+												'%s:$%s.%s',
+												$property,
+												$parameter,
+												$property
+											);
+										} else {
+											return sprintf(
+												'%s=$%s.%s',
+												$prefix . '.' . $property,
+												$parameter,
+												$property
+											);
+										}
+									},
+									array_keys($this->parameters[$parameter])
+								))
+							),
+							$statement
+						);
+					}
+				}
+
+				return $statement;
+			},
+			$this->statements
+		));
 	}
 
 
