@@ -534,7 +534,7 @@ $friends_named_matt = $person
       });  
     })
     ->load()
-    ->get()
+    ->get(Person::class)
 ;
 ```
 

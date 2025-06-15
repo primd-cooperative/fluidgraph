@@ -2,15 +2,14 @@
 
 namespace FluidGraph;
 
-use ArrayObject;
 use Bolt\enum\Signature;
-use Bolt\protocol\IStructure;
 use Bolt\protocol\Response;
 use Bolt\protocol\v5\structures\DateTimeZoneId;
-use Closure;
+
 use InvalidArgumentException;
 use RuntimeException;
 use DateTime;
+use Closure;
 
 class Query
 {
@@ -21,7 +20,7 @@ class Query
 	/**
 	 *
 	 */
-	public protected(set) string $items;
+	public protected(set) string $concern;
 
 	/**
 	 *
@@ -99,88 +98,33 @@ class Query
 
 
 	/**
-	 * Match multiple nodes or edges and have them returned as an instance of a given class.
-	 *
-	 * The type of elements (node or edge) being matched is determined by the class.
-	 *
-	 * @template T of Entity
-	 * @param class-string<T> $class
-	 * @return Results<T>
-	 */
-	public function find(string $class, callable|array $terms = [], ?array $order = NULL, ?int $limit = NULL, ?int $offset = NULL): Results
-	{
-		if (is_array($terms)) {
-			$terms = fn($all, $eq) => $all(...$eq($terms));
-		}
-
-		$query = new static()->on($this->graph)->match($class);
-
-		if (!empty($terms)) {
-			$query->where($terms);
-		}
-
-		if (!is_null($order)) {
-			$query->sort($order);
-		}
-
-		if (!is_null($limit)) {
-			$query->take($limit);
-		}
-
-		if (!is_null($offset)) {
-			$query->skip($offset);
-		}
-
-		return $query->get()->as($class);
-	}
-
-
-	/**
-	 * Find a single node or edge and have it returned as an instance of a given class.
-	 *
-	 * The type of element (node or edge) being matched is determined by the class.
-	 *
-	 * @template T of Entity
-	 * @param class-string<T> $class
-	 * @return ?T
-	 */
-	public function findOne(string $class, callable|array|int $query): ?Entity
-	{
-		if (is_int($query)) {
-			$query = function($id) use ($query) {
-				return $id($query);
-			};
-		}
-
-		$results = $this->find($class, $query, [], 2, 0);
-
-		if (count($results) > 1) {
-			throw new RuntimeException(sprintf(
-				'Trying to match a unique result returned more than one result'
-			));
-		}
-
-		return $results[0] ?? NULL;
-	}
-
-
-	/**
 	 *
 	 */
 	public function get(int ...$index): Results|Element
 	{
 		if (!isset($this->results)) {
-			if (isset($this->items)) {
-				$this->run('MATCH %s', $this->items);
+			if (isset($this->concern)) {
+				$this->run('MATCH %s', $this->concern);
 
-				if ($conditions = call_user_func($this->terms)) {
+				if (isset($this->terms) && $conditions = call_user_func($this->terms)) {
 					$this->run('WHERE %s', $conditions);
 				}
 
 				$this->run('RETURN *');
 
 				if ($this->orders) {
-					// TODO: order
+					$orders = [];
+
+					foreach ($this->orders as $order) {
+						$orders[] = sprintf(
+							'%s.%s %s',
+							$order->alias,
+							$order->field,
+							$order->direction
+						);
+					}
+
+					$this->run('ORDER BY %s', implode(',', $orders));
 				}
 
 				if ($this->limit >= 0) {
@@ -219,30 +163,18 @@ class Query
 	/**
 	 *
 	 */
-	public function match(string ...$labels): static
+	public function match(string ...$concerns): static
 	{
-		if (count($labels)) {
-			$this->items = sprintf('(i:%s)', implode(Like::all->value, $labels));
-		} else {
-			$this->items = '(i)';
-		}
-
-		return $this;
+		return $this->init(Like::all, ...$concerns);
 	}
 
 
 	/**
 	 *
 	 */
-	public function matchAny(string ...$labels): static
+	public function matchAny(string ...$concerns): static
 	{
-		if (count($labels)) {
-			$this->items = sprintf('(i:%s)', implode(Like::any->value, $labels));
-		} else {
-			$this->items = '(i)';
-		}
-
-		return $this;
+		return $this->init(Like::any, ...$concerns);
 	}
 
 
@@ -350,9 +282,9 @@ class Query
 	/**
 	 *
 	 */
-	public function sort(array ...$orders): static
+	public function sort(Order ...$orders): static
 	{
-		array_push($this->orders, ...$orders);
+		$this->orders = $orders;
 
 		return $this;
 	}
@@ -372,9 +304,13 @@ class Query
 	/**
 	 *
 	 */
-	public function where(Closure $terms)
+	public function where(Closure|array $terms)
 	{
-		$this->terms = $this->where->scope('i', $terms);
+		if (is_array($terms)) {
+			$terms = fn($all, $eq) => $all(...$eq($terms));
+		}
+
+		$this->terms = $this->where->scope(Scope::concern->value, $terms);
 
 		return $this;
 	}
@@ -443,6 +379,67 @@ class Query
 			},
 			$this->statements
 		));
+	}
+
+
+	/**
+	 *
+	 */
+	protected function init(Like $method, string ...$concerns): static
+	{
+		if (count($concerns)) {
+			$has_nodes = FALSE;
+			$has_edges = FALSE;
+
+			foreach ($concerns as $i => $concern) {
+				if (class_exists($concern)) {
+					$has_nodes = $has_nodes | is_a($concern, Node::class, TRUE);
+					$has_edges = $has_edges | is_a($concern, Edge::class, TRUE);
+
+					if (!is_a($concern, Entity::class, TRUE)) {
+						throw new InvalidArgumentException(sprintf(
+							'Invalid class concern "%s" specifed, must extend Entity',
+							$concern
+						));
+					}
+
+					if (get_parent_class($concern) == Entity::class) {
+						unset($concerns[$i]);
+					}
+				}
+			}
+
+			if ($has_nodes && $has_edges) {
+				throw new InvalidArgumentException(sprintf(
+					'Cannot match mixed classes of Node and Edge from: %s',
+					implode(', ', $concerns)
+				));
+			}
+
+			if ($has_edges) {
+				$this->concern = sprintf(
+					'(n1)-[%s]-(n2)',
+					count($concerns)
+						? Scope::concern->value . ':' . implode($method->value, $concerns)
+						: Scope::concern->value
+				);
+
+			} else {
+				$this->concern = sprintf(
+					'(%s)',
+					count($concerns)
+						? Scope::concern->value . ':' . implode($method->value, $concerns)
+						: Scope::concern->value
+				);
+
+			}
+
+		} else {
+			$this->concern = sprintf('(%s)', Scope::concern->value);
+
+		}
+
+		return $this;
 	}
 
 

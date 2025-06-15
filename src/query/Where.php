@@ -159,12 +159,8 @@ class Where
 	/**
 	 *
 	 */
-	public function scope(Scope|string $alias, ?callable $scope): callable
+	public function scope(string $alias, ?callable $scope): callable
 	{
-		if ($alias instanceof Scope) {
-			$alias = $scope->value;
-		}
-
 		if (!count(static::$methods)) {
 			$methods = new ReflectionClass($this)->getMethods();
 

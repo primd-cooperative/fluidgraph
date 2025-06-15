@@ -7,6 +7,7 @@ use Bolt\enum\Signature;
 use FluidGraph\Relationship\Mode;
 use FluidGraph\Relationship\Link;
 use FluidGraph\Relationship\Index;
+use FluidGraph\Relationship\Order;
 
 use InvalidArgumentException;
 use RuntimeException;
@@ -78,7 +79,7 @@ abstract class Relationship implements Countable
 
 
 	/**
-	 *
+	 * @param array<Order>
 	 */
 	private array $orders = [];
 
@@ -98,6 +99,19 @@ abstract class Relationship implements Countable
 		Mode $mode = Mode::lazy
 	): static {
 		return new static(...func_get_args());
+	}
+
+
+	/**
+	 *
+	 */
+	public function __clone()
+	{
+		$this->active = [];
+		$this->loaded = [];
+
+		unset($this->loadTime);
+		unset($this->loader);
 	}
 
 
@@ -297,7 +311,7 @@ abstract class Relationship implements Countable
 				$query = $this->getGraphQuery($like_or_concern, ...$concerns);
 
 				if ($this->terms) {
-					$query->run('AND (%s)', $query->where->scope(Scope::concern, $this->terms));
+					$query->run('AND (%s)', $query->where->scope(Scope::concern->value, $this->terms));
 				}
 
 				$query->run(
@@ -313,9 +327,9 @@ abstract class Relationship implements Countable
 					foreach ($this->orders as $order) {
 						$orders[] = sprintf(
 							'%s.%s %s',
-							$order[0]->value,
-							$order[2],
-							$order[1]->value
+							$order->alias,
+							$order->field,
+							$order->direction
 						);
 					}
 
@@ -460,9 +474,9 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function sort(Scope $order, Direction $direction, string $property): static
+	public function sort(Order ...$orders): static
 	{
-		$this->orders[] = func_get_args();
+		$this->orders = $orders;
 
 		return $this;
 	}
@@ -487,19 +501,6 @@ abstract class Relationship implements Countable
 		$this->terms = $conditions;
 
 		return $this;
-	}
-
-
-	/**
-	 *
-	 */
-	protected function __clone()
-	{
-		$this->active = [];
-		$this->loaded = [];
-
-		unset($this->loadTime);
-		unset($this->loader);
 	}
 
 

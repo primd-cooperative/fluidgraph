@@ -79,10 +79,10 @@ class EdgeResults extends Entity\Results
 	 * If related node entities exist but do not match the class, an empty array will be returned.
 	 *
 	 * @template N of Node
-	 * @param class-string<N> $class
+	 * @param ?class-string<N> $class
 	 * @return NodeResults<N>
 	 */
-	public function get(string $class): NodeResults
+	public function get(?string $class = NULL): NodeResults
 	{
 		$nodes = [];
 		$index = [];

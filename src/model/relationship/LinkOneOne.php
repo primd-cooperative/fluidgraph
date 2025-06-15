@@ -79,11 +79,10 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 	 * If a related node entity exists but does not match the class, NULL will be returned.
 	 *
 	 * @template N of Node
-	 * @param class-string<N> $class
-	 * @param class-string<N> $classes
+	 * @param ?class-string<N> $class
 	 * @return ?N
 	 */
-	public function get(string $class): ?Node
+	public function get(?string $class): ?Node
 	{
 		$edge = $this->of($class);
 

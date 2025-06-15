@@ -186,23 +186,12 @@ class Graph
 	 *
 	 * @template T of Entity
 	 * @param class-string<T> $class
+	 * @param array<Order> $orders
 	 * @return Results<T>
 	 */
-	public function find(string $class, callable|array $terms = [], ?array $order = NULL, ?int $limit = NULL, ?int $offset = NULL): Results
+	public function find(string $class, ?int $limit = NULL, ?int $offset = NULL, callable|array $terms = [], ?array $orders = NULL): Results
 	{
-		if (is_array($terms)) {
-			$terms = fn($all, $eq) => $all(...$eq($terms));
-		}
-
 		$query = $this->query->match($class);
-
-		if (!empty($terms)) {
-			$query->where($terms);
-		}
-
-		if (!is_null($order)) {
-			$query->sort($order);
-		}
 
 		if (!is_null($limit)) {
 			$query->take($limit);
@@ -212,7 +201,24 @@ class Graph
 			$query->skip($offset);
 		}
 
+		if (!empty($terms)) {
+			$query->where($terms);
+		}
+
+		if (!is_null($orders)) {
+			$query->sort(...$orders);
+		}
+
 		return $query->get()->as($class);
+	}
+
+
+	/**
+	 *
+	 */
+	public function findAll(string $class, ?array $orders = NULL): Results
+	{
+		return $this->find($class, NULL, NULL, [], $orders);
 	}
 
 
@@ -233,7 +239,7 @@ class Graph
 			};
 		}
 
-		$results = $this->find($class, $terms, [], 2, 0);
+		$results = $this->find($class, 2, 0, $terms, []);
 
 		if (count($results) > 1) {
 			throw new RuntimeException(sprintf(

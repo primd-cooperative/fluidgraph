@@ -2,6 +2,8 @@
 
 namespace FluidGraph;
 
+use Countable;
+use InvalidArgumentException;
 use FluidGraph\Relationship\Mode;
 
 /**
@@ -10,7 +12,7 @@ use FluidGraph\Relationship\Mode;
  * Content can be thought of as the ontological "being" of an element.  The model edges / nodes
  * are simply expressions of this content, and map their properties to the content.
  */
-abstract class Element
+abstract class Element implements Countable
 {
 	use HasGraph;
 	use DoesWith;
@@ -298,12 +300,16 @@ abstract class Element
 	 * to defaults provided.
 	 *
 	 * @template E of Entity
-	 * @param class-string<E> $class The entity class to instantiate as
+	 * @param ?class-string<E> $class The entity class to instantiate as
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
 	 * @return E
 	 */
-	public function as(string $class, array $defaults = []): Entity
+	public function as(?string $class = NULL, array $defaults = []): Entity
 	{
+		if (is_null($class)) {
+			$class = $this->getPrimaryClass();
+		}
+
 		if (!isset($this->entities[$class])) {
 			self::fasten($this, $class::make($this->active + $defaults));
 
@@ -334,6 +340,15 @@ abstract class Element
 		}
 
 		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function count(): int
+	{
+		return 1;
 	}
 
 
@@ -376,5 +391,24 @@ abstract class Element
 		}
 
 		return $this->status;
+	}
+
+
+	/**
+	 *
+	 */
+	protected function getPrimaryClass($allow_empty = FALSE): ?string
+	{
+		$classes = static::classes($this);
+		$class   =  $classes[0] ?? NULL;
+
+		if (!$class && !$allow_empty) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot get implied class, must specify from: %s',
+				implode(', ', $classes)
+			));
+		}
+
+		return $class;
 	}
 }

@@ -2,6 +2,8 @@
 
 namespace FluidGraph\Testing;
 
+use FluidGraph\Element;
+use FluidGraph\Node;
 use FluidGraph\Status;
 
 use function PHPUnit\Framework\assertCount;
@@ -52,7 +54,24 @@ class C01_SimpleTest extends C00_BaseTest
 		assertEquals(Status::attached, $person->status());
 	}
 
-	public function testMatchOne()
+	public function testQuery()
+	{
+		$node = static::$graph->query
+			->match(Node::class)
+			->where([
+				'name' => 'Cynthia Bullwork'
+			])
+			->take(1)
+			->skip(0)
+			->get(0);
+
+		assertEquals(1, count($node));
+		assertEquals(Element\Node::class, $node::class);
+		assertEquals(TRUE, $node->is(Person::class));
+		assertEquals(Person::class, $node->as()::class);
+	}
+
+	public function testFindOne()
 	{
 		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
 

@@ -181,11 +181,11 @@ abstract class Entity
 	 * to defaults provided.
 	 *
 	 * @template E of Entity
-	 * @param class-string<E> $class The entity class to instantiate as
+	 * @param ?class-string<E> $class The entity class to instantiate as
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
 	 * @return E
 	 */
-	public function as(string $class, array $defaults = []): Entity
+	public function as(?string $class = NULL, array $defaults = []): Entity
 	{
 		return $this->__element__->as($class, $defaults);
 	}

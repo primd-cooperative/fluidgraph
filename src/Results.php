@@ -16,11 +16,11 @@ class Results extends ArrayObject
 	 *
 	 *
 	 * @template E of Entity
-	 * @param class-string<E> $class The entity class to instantiate as.
+	 * @param ?class-string<E> $class The entity class to instantiate as.
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
 	 * @return NodeResults<E>|EntityResults<E>
 	 */
-	public function as(string $class, array $defaults = []): static
+	public function as(?string $class = NULL, array $defaults = []): static
 	{
 		switch (TRUE) {
 			case is_subclass_of($class, Node::class, TRUE):

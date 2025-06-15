@@ -2,6 +2,7 @@
 
 namespace FluidGraph\Testing;
 
+use DateTime;
 use FluidGraph\Status;
 
 use function PHPUnit\Framework\assertCount;
@@ -18,7 +19,7 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 
 		assertFalse($author->writings->contains($book));
 
-		$author->writings->set($book);
+		$author->writings->set($book, ['date' => new DateTime('July 1st, 1982')]);
 
 		assertTrue($author->writings->contains($book));
 	}
