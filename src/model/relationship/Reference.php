@@ -2,7 +2,7 @@
 
 namespace FluidGraph\Relationship;
 
-enum Link: string
+enum Reference: string
 {
 	case to = 'to';
 	case from = 'from';

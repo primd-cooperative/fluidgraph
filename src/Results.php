@@ -3,6 +3,7 @@
 namespace FluidGraph;
 
 use ArrayObject;
+use Doctrine\Common\Cache\Psr6\InvalidArgument;
 use InvalidArgumentException;
 
 /**
@@ -18,29 +19,39 @@ class Results extends ArrayObject
 	 * @template E of Entity
 	 * @param null|array|class-string<E> $class The entity class to instantiate as.
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
-	 * @return NodeResults<E>|EntityResults<E>
+	 * @return NodeResults<E>|EntityResults<E>|Results<E>
 	 */
 	public function as(null|array|string $class, array $defaults = []): static
 	{
-		switch (TRUE) {
-			case is_subclass_of($class, Node::class, TRUE):
-				return new NodeResults(array_map(
-					fn($result) => $result->as($class, $defaults),
-					$this->getArrayCopy()
-				));
+		if (is_string($class)) {
+			return match(TRUE) {
+				is_subclass_of($class, Node::class, TRUE) => new NodeResults(
+					array_map(
+						fn($result) => $result->as($class, $defaults),
+						$this->getArrayCopy()
+					)
+				),
 
-			case is_subclass_of($class, Edge::class, TRUE):
-				return new EdgeResults(array_map(
-					fn($result) => $result->as($class, $defaults),
-					$this->getArrayCopy()
-				));
+				is_subclass_of($class, Edge::class, TRUE) => new EdgeResults(
+					array_map(
+						fn($result) => $result->as($class, $defaults),
+						$this->getArrayCopy()
+					)
+				),
 
-			default:
-				return new self(array_map(
-					fn($result) => $result->as($class, $defaults),
-					$this->getArrayCopy()
-				));
+				default => throw new InvalidArgumentException(sprintf(
+					'Cannot make results as "%s", must be Node or Edge class',
+					$class
+				))
+			};
 		}
+
+		return new self(
+			array_map(
+				fn($result) => $result->as($class, $defaults),
+				$this->getArrayCopy()
+			)
+		);
 	}
 
 

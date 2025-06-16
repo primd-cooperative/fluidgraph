@@ -22,7 +22,7 @@ trait AttachIncluded
 		);
 
 		foreach ($this->active as $edge) {
-			if ($this->type == Link::to) {
+			if ($this->type == Reference::to) {
 				$valid_concern = !$edge->__element__->target->status(
 					Status::released,
 					Status::detached

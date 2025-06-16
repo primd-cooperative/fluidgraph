@@ -2,7 +2,7 @@
 
 namespace FluidGraph;
 
-use FluidGraph\Relationship\Link;
+use FluidGraph\Relationship\Reference;
 
 /**
  * @template T of Edge
@@ -13,7 +13,7 @@ class EdgeResults extends Entity\Results
 	/**
 	 * @var array<Type>
 	 */
-	protected array $types = [Link::to, Link::from];
+	protected array $types = [Reference::to, Reference::from];
 
 
 	/**
@@ -90,8 +90,8 @@ class EdgeResults extends Entity\Results
 		foreach ($this as $edge) {
 			foreach ($this->types as $type) {
 				$node = match ($type) {
-					Link::to   => $edge->__element__->target,
-					Link::from => $edge->__element__->source
+					Reference::to   => $edge->__element__->target,
+					Reference::from => $edge->__element__->source
 				};
 
 				if (!is_null($class) && $node->is($class)) {

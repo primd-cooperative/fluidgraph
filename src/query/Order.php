@@ -11,9 +11,9 @@ class Order
 	/**
 	 *
 	 */
-	static public function by(string $field, Direction $direction): self
+	static public function by(Direction $direction, string $field): self
 	{
-		return new self(Scope::concern->value, $field, $direction->value);
+		return new self(Scope::concern->value, $direction->value, $field);
 	}
 
 
@@ -44,8 +44,8 @@ class Order
 	 */
 	protected function __construct(
 		public protected(set) string $alias,
-		public protected(set) string $field,
-		public protected(set) string $direction
+		public protected(set) string $direction,
+		public protected(set) string $field
 	)
 	{
 

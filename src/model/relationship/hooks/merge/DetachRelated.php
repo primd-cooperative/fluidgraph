@@ -24,7 +24,7 @@ trait DetachRelated
 				);
 
 				if ($invalid_edge) {
-					if ($this->type == Link::to) {
+					if ($this->type == Reference::to) {
 						$this->graph->detach($edge->__element__->target);
 					} else {
 						$this->graph->detach($edge->__element__->source);

@@ -3,7 +3,7 @@
 namespace FluidGraph\Element;
 
 use FluidGraph;
-use FluidGraph\Relationship\Link;
+use FluidGraph\Relationship\Reference;
 
 use InvalidArgumentException;
 
@@ -71,13 +71,13 @@ class Edge extends FluidGraph\Element
 	 */
 	public function for(FluidGraph\Node|Node|string $node, Link ...$types): bool
 	{
-		foreach ($types ?: [Link::from, Link::to] as $type) {
+		foreach ($types ?: [Reference::from, Reference::to] as $type) {
 			/**
 			 * @var Node
 			 */
 			$element = match(TRUE) {
-				$type == Link::to   => $this->target,
-				$type == Link::from => $this->source
+				$type == Reference::to   => $this->target,
+				$type == Reference::from => $this->source
 			};
 
 			if (!$element->is($node)) {

@@ -67,8 +67,8 @@ abstract class LinkManyOne extends Relationship
 
 		if ($edge) {
 			$node = match ($this->type) {
-				Link::to   => $edge->__element__->target,
-				Link::from => $edge->__element__->source
+				Reference::to   => $edge->__element__->target,
+				Reference::from => $edge->__element__->source
 			};
 
 			if (!is_null($class)) {

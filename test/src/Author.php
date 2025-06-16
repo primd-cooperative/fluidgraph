@@ -4,11 +4,11 @@ namespace FluidGraph\Testing;
 
 use FluidGraph\Direction;
 use FluidGraph\Relationship\Many;
-use FluidGraph\Relationship\Link;
+use FluidGraph\Relationship\Reference;
 use FluidGraph\Relationship\Mode;
 
 use FluidGraph\Node;
-use FluidGraph\Like;
+use FluidGraph\Matching;
 use FluidGraph\Relationship\One;
 use FluidGraph\Relationship\Order;
 use FluidGraph\Scope;
@@ -25,8 +25,8 @@ class Author extends Node
 		$this->publishedBy = One::having(
 			$this,
 			PublishedBy::class,
-			Link::to,
-			Like::all,
+			Reference::to,
+			Matching::all,
 			[
 				Publisher::class
 			],
@@ -36,8 +36,8 @@ class Author extends Node
 		$this->writings = Many::having(
 			$this,
 			Wrote::class,
-			Link::to,
-			Like::any,
+			Reference::to,
+			Matching::any,
 			[
 				Book::class
 			],

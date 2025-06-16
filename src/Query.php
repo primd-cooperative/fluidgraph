@@ -104,9 +104,9 @@ class Query
 	/**
 	 * @template N of Node
 	 * @param null|class-string<N> $class
-	 * @return NodeResults<N>|EdgeResult<N>|N
+	 * @return NodeResults<N>|EdgeResults<N>|Results<N>|N
 	 */
-	public function get(null|string $class = NULL, int ...$index): NodeResults|Node|EdgeResults|Edge
+	public function get(null|string $class = NULL, int ...$index): NodeResults|Node|EdgeResults|Edge|Results
 	{
 		if (is_null($class)) {
 			$class = $this->concerns;
@@ -136,7 +136,7 @@ class Query
 					$this->run('WHERE %s', $conditions);
 				}
 
-				$this->run('RETURN %s', Scope::concern->value);
+				$this->run('RETURN DISTINCT %s', Scope::concern->value);
 
 				if ($this->orders) {
 					$orders = [];
@@ -191,7 +191,7 @@ class Query
 	 */
 	public function match(string ...$concerns): static
 	{
-		return $this->init(Like::all, ...$concerns);
+		return $this->init(Matching::all, ...$concerns);
 	}
 
 
@@ -200,7 +200,7 @@ class Query
 	 */
 	public function matchAny(string ...$concerns): static
 	{
-		return $this->init(Like::any, ...$concerns);
+		return $this->init(Matching::any, ...$concerns);
 	}
 
 
@@ -411,7 +411,7 @@ class Query
 	/**
 	 *
 	 */
-	protected function init(Like $method, string ...$concerns): static
+	protected function init(Matching $method, string ...$concerns): static
 	{
 		if (isset($this->concerns)) {
 			throw new RuntimeException(sprintf(

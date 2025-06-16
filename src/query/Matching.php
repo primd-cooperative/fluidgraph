@@ -2,7 +2,7 @@
 
 namespace FluidGraph;
 
-enum Like: string
+enum Matching: string
 {
 	case any = '|';
 	case all = '&';

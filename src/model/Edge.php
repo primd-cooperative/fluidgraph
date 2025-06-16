@@ -2,7 +2,7 @@
 
 namespace FluidGraph;
 
-use FluidGraph\Relationship\Link;
+use FluidGraph\Relationship\Reference;
 
 /**
  *
@@ -40,7 +40,7 @@ abstract class Edge extends Entity
 	 */
 	public function from(Element\Node|Node|string $node): bool
 	{
-		return $this->for($node, Link::from);
+		return $this->for($node, Reference::from);
 	}
 
 
@@ -58,6 +58,6 @@ abstract class Edge extends Entity
 	 */
 	public function to(Element\Node|Node|string $node): bool
 	{
-		return $this->for($node, Link::to);
+		return $this->for($node, Reference::to);
 	}
 }

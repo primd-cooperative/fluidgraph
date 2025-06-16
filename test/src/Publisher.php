@@ -2,9 +2,9 @@
 
 namespace FluidGraph\Testing;
 
-use FluidGraph\Like;
+use FluidGraph\Matching;
 use FluidGraph\Node;
-use FluidGraph\Relationship\Link;
+use FluidGraph\Relationship\Reference;
 use FluidGraph\Relationship\Many;
 use FluidGraph\Relationship\Mode;
 
@@ -18,8 +18,8 @@ class Publisher extends Node
 		$this->publishing = Many::having(
 			$this,
 			PublishedBy::class,
-			Link::from,
-			Like::all,
+			Reference::from,
+			Matching::all,
 			[
 				Author::class
 			],

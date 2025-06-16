@@ -5,7 +5,7 @@ namespace FluidGraph;
 use Bolt\enum\Signature;
 
 use FluidGraph\Relationship\Mode;
-use FluidGraph\Relationship\Link;
+use FluidGraph\Relationship\Reference;
 use FluidGraph\Relationship\Index;
 use FluidGraph\Relationship\Order;
 
@@ -93,8 +93,8 @@ abstract class Relationship implements Countable
 	static public function having(
 		Node $subject,
 		string $kind,
-		Link $type,
-		Like $rule = Like::all,
+		Reference $type,
+		Matching $rule = Matching::all,
 		array $concerns = [],
 		Mode $mode = Mode::lazy
 	): static {
@@ -136,14 +136,14 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function count(Like|string $like_or_concern = '', string ...$concerns): int
+	public function count(Matching|string $rule_or_concern = '', string ...$concerns): int
 	{
 		$use_graph = !is_null($this->subject->identity()) && (
 			$this->mode == Mode::manual || ($this->mode == Mode::lazy && !isset($this->loadTime))
 		);
 
 		if ($use_graph) {
-			return $this->getGraphCount($like_or_concern, ...$concerns);
+			return $this->getGraphCount($rule_or_concern, ...$concerns);
 
 		} else {
 			if ($concerns) {
@@ -181,7 +181,7 @@ abstract class Relationship implements Countable
 		if ($this->mode == Mode::manual) {
 			$concerns = array_filter($nodes, fn($node) => is_string($node));
 			$nodes    = array_filter($nodes, fn($node) => !is_string($node));
-			$query    = $this->getGraphQuery(Like::all, ...$concerns);
+			$query    = $this->getGraphQuery(Matching::all, ...$concerns);
 			$alias    = Scope::concern->value;
 			$where    = $query->where;
 
@@ -226,7 +226,7 @@ abstract class Relationship implements Countable
 		if ($this->mode == Mode::manual) {
 			$concerns = array_filter($nodes, fn($node) => is_string($node));
 			$nodes    = array_filter($nodes, fn($node) => !is_string($node));
-			$query    = $this->getGraphQuery(Like::any, ...$concerns);
+			$query    = $this->getGraphQuery(Matching::any, ...$concerns);
 			$alias    = Scope::concern->value;
 			$where    = $query->where;
 
@@ -294,7 +294,7 @@ abstract class Relationship implements Countable
 	 *
 	 * Called from Element::as() -- for Node elements only, Edge elements do not have relationships.
 	 */
-	public function load(Like|string $like_or_concern = '', string ...$concerns): static
+	public function load(Matching|string $rule_or_concern = '', string ...$concerns): static
 	{
 		if (!isset($this->graph)) {
 			return $this;
@@ -305,10 +305,10 @@ abstract class Relationship implements Countable
 		}
 
 		if (!isset($this->loadTime)) {
-			$this->loader = function() use ($like_or_concern, $concerns) {
+			$this->loader = function() use ($rule_or_concern, $concerns) {
 				unset($this->loader);
 
-				$query = $this->getGraphQuery($like_or_concern, ...$concerns);
+				$query = $this->getGraphQuery($rule_or_concern, ...$concerns);
 
 				if ($this->terms) {
 					$query->run('AND (%s)', $query->where->scope(Scope::concern->value, $this->terms));
@@ -346,7 +346,12 @@ abstract class Relationship implements Countable
 
 				$this->loaded = [];
 
-				foreach ($query->getRaw()->as($this->kind) as $edge) {
+				foreach ($query->getRaw() as $result) {
+					if (!$result instanceof Element\Edge) {
+						continue;
+					}
+
+					$edge = $result->as($this->kind);
 					$hash = spl_object_hash($edge->__element__);
 
 					$this->loaded[$hash] = $edge;
@@ -382,7 +387,7 @@ abstract class Relationship implements Countable
 	{
 		$clone = $this->getClone(__FUNCTION__, $concerns);
 
-		$clone->rule = Like::all;
+		$clone->rule = Matching::all;
 
 		return $clone;
 	}
@@ -395,7 +400,7 @@ abstract class Relationship implements Countable
 	{
 		$clone = $this->getClone(__FUNCTION__, $concerns);
 
-		$clone->rule = Like::any;
+		$clone->rule = Matching::any;
 
 		return $clone;
 	}
@@ -514,8 +519,8 @@ abstract class Relationship implements Countable
 	protected function __construct(
 		public protected(set) Node $subject,
 		public protected(set) string $kind,
-		public protected(set) Link $type,
-		public protected(set) Like $rule = Like::all,
+		public protected(set) Reference $type,
+		public protected(set) Matching $rule = Matching::all,
 		public protected(set) array $concerns = [],
 		public protected(set) Mode $mode = Mode::lazy,
 	) {
@@ -547,23 +552,23 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	protected function getGraphQuery(Like|string $like_or_concern = '', string ...$concerns): Query
+	protected function getGraphQuery(Matching|string $rule_or_concern = '', string ...$concerns): Query
 	{
-		if (!$like_or_concern instanceof Like) {
-			$like = $this->rule;
+		if (!$rule_or_concern instanceof Matching) {
+			$rule = $this->rule;
 
-			if ($like_or_concern) {
-				array_unshift($concerns, $like_or_concern);
+			if ($rule_or_concern) {
+				array_unshift($concerns, $rule_or_concern);
 			}
 
 		} else {
-			$like = $like_or_concern;
+			$rule = $rule_or_concern;
 		}
 
 		$concern_query = implode(
-			match ($like) {
-				Like::any => ' OR ',
-				Like::all => ' AND '
+			match ($rule) {
+				Matching::any => ' OR ',
+				Matching::all => ' AND '
 			},
 			array_map(
 				fn($concern) => 'c:' . $concern,
@@ -576,8 +581,8 @@ abstract class Relationship implements Countable
 				'%s AND (%s)',
 				implode(
 					match ($this->apex->rule) {
-						Like::any => ' OR ',
-						Like::all => ' AND '
+						Matching::any => ' OR ',
+						Matching::all => ' AND '
 					},
 					array_map(
 						fn($concern) => 'c:' . $concern,
@@ -591,8 +596,8 @@ abstract class Relationship implements Countable
 		return $this->graph
 			->run(
 				match ($this->type) {
-					Link::to   => 'MATCH (s:%s)-[r:%s]->(c)',
-					Link::from => 'MATCH (s:%s)<-[r:%s]-(c)'
+					Reference::to   => 'MATCH (s:%s)-[r:%s]->(c)',
+					Reference::from => 'MATCH (s:%s)<-[r:%s]-(c)'
 				},
 				$this->subject::class,
 				$this->kind,
@@ -603,10 +608,10 @@ abstract class Relationship implements Countable
 	}
 
 
-	protected function getGraphCount(Like|string $like_or_concern = '', string ...$concerns): int
+	protected function getGraphCount(Matching|string $rule_or_concern = '', string ...$concerns): int
 	{
 		return (int) $this
-			->getGraphQuery($like_or_concern, ...$concerns)
+			->getGraphQuery($rule_or_concern, ...$concerns)
 			->run('RETURN COUNT(r) AS total')
 			->pull(Signature::RECORD)[0]
 		;
@@ -646,7 +651,7 @@ abstract class Relationship implements Countable
 			$edge = $this->kind::make($data, Entity::MAKE_ASSIGN);
 			$hash = spl_object_hash($edge);
 
-			if ($this->type == Link::to) {
+			if ($this->type == Reference::to) {
 				$source = $this->subject;
 				$target = $concern;
 			} else {
@@ -706,8 +711,8 @@ abstract class Relationship implements Countable
 		if (count($this->concerns)) {
 			$intersect = array_intersect(Element::labels($target->__element__), $this->concerns);
 			$valid     = match ($this->rule) {
-				Like::all => count($intersect) == count($this->concerns),
-				Like::any => count($intersect) >= 1
+				Matching::all => count($intersect) == count($this->concerns),
+				Matching::any => count($intersect) >= 1
 			};
 
 			if (isset($this->apex)) {

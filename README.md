@@ -82,7 +82,7 @@ Add a relationship between people:
 
 ```php
 use FluidGraph\Node;
-use FluidGraph\Like;
+use FluidGraph\Matching;
 use FluidGraph\Entity;
 
 use FluidGraph\Relationship\Many;
@@ -265,13 +265,13 @@ Relationships are collections of Edges.  To understand these better, we'll give 
 <?php
 
 use FluidGraph\Node;
-use FluidGraph\Like;
+use FluidGraph\Matching;
 use FluidGraph\Mode;
 
 use FluidGraph\Relationship\Many;
 use FluidGraph\Relationship\Link;
 
-    
+
 class Author extends Node
 {
 	public Many $writings;
@@ -417,7 +417,7 @@ foreach($person->friendships->of(Author::class, Archivable::archived) as $friend
 }
 ```
 
-Using the same argument with `ofAny()` would result in finding Edges to all friends who are of type `Author` **or** labeled as `Archived`: 
+Using the same argument with `ofAny()` would result in finding Edges to all friends who are of type `Author` **or** labeled as `Archived`:
 
 ```php
 foreach($person->friendships->ofAny(Author::class, Archivable::archived) as $friends_with) {
@@ -509,7 +509,7 @@ $people = $graph->query
     ->where(
         function ($eq) {
             return $eq('firstName', 'Matt');
-        }    
+        }
     )
     ->sort(
     	Order::by('lastName', Direction::asc)
@@ -533,7 +533,7 @@ $friendships_with_matt = $person
     ->where(function($scope) {
       return $scope(FluidGraph\Scope::concern, function($eq) {
           return $eq('firstName', 'Matt');
-      });  
+      });
     })
     ->load()
     ->get()
