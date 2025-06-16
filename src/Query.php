@@ -123,13 +123,11 @@ class Query
 	{
 		if (!isset($this->results)) {
 			if (isset($this->concerns)) {
-				// TODO: Where and Order will be broken below for combined Node/Edge searches
 				if (isset($this->pattern)) {
 					$this->run('MATCH %s', $this->pattern);
 				} else {
 					$this->run(
-						'(%s1),(n1)-[%s2]-(n2)',
-						Scope::concern->value,
+						'(%1$s1),()-[%1$s2]-() UNWIND [%1$s1,%1$s2] AS %1$s WITH %1$s',
 						Scope::concern->value
 					);
 				}
@@ -138,11 +136,7 @@ class Query
 					$this->run('WHERE %s', $conditions);
 				}
 
-				if (isset($this->pattern)) {
-					$this->run('RETURN %s', Scope::concern->value);
-				} else {
-					$this->run('RETURN %s1,%s2', Scope::concern->value, Scope::concern->value);
-				}
+				$this->run('RETURN %s', Scope::concern->value);
 
 				if ($this->orders) {
 					$orders = [];
