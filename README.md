@@ -82,11 +82,11 @@ Add a relationship between people:
 
 ```php
 use FluidGraph\Node;
-use FluidGraph\Matching;
 use FluidGraph\Entity;
+use FluidGraph\Matching;
 
 use FluidGraph\Relationship\Many;
-use FluidGraph\Relationship\Link;
+use FluidGraph\Relationship\Reference;
 
 class Person extends Node
 {
@@ -101,8 +101,8 @@ class Person extends Node
 		$this->friendships = Many::having(
 			$this,
 			FriendsWith::class,
-            Link::to,
-            Like::any,
+            Reference::to,
+            Matching::any,
 			[
 				Person::class
 			]
@@ -265,11 +265,11 @@ Relationships are collections of Edges.  To understand these better, we'll give 
 <?php
 
 use FluidGraph\Node;
-use FluidGraph\Matching;
 use FluidGraph\Mode;
+use FluidGraph\Matching;
 
 use FluidGraph\Relationship\Many;
-use FluidGraph\Relationship\Link;
+use FluidGraph\Relationship\Reference;
 
 
 class Author extends Node
@@ -281,9 +281,9 @@ class Author extends Node
 	) {
 		$this->writings = Many::having(
 			$this,
-			Wrote::class,
-            Link::to,
-            Like::any,
+			Wrote::class, 
+            Reference::to,
+            Matching::any,
 			[
 				Book::class
 			],
@@ -298,8 +298,8 @@ To create a new relationship you need to use the `having()` method on the approp
 
 1. A subject (the Node from which they originate, `$this` when defined)
 2. A kind (the class of their Edge Entities and the label for the Edge Element)
-3. A type (either `to` or `from` as expressed by the `Link` enum), this will determine the edge direction of the relationship in the graph.
-4. A method (either `any` or `all` as expressed by the `Like` enum).  This will determine whether or not the related entities must express any or all of the concerns.
+3. A type (either `to` or `from` as expressed by the `Reference` enum), this will determine the edge direction of the relationship in the graph.
+4. A method (either `any` or `all` as expressed by the `Matching` enum).  This will determine whether or not the related entities must express any or all of the concerns.
 5. A list of concerns (the labels of the related Node Entities).
 6. A mode (one of `lazy`, `eager`, or `manual` as expressed by the `Mode` enum).  This will determine how Edges and Nodes for this relationship are loaded.
 
