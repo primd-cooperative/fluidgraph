@@ -1,6 +1,6 @@
 # FluidGraph
 
-FluidGraph is an Object Graph Manager (OGM) for memgraph (though in principle could also work with Neo4j).  It borrows a lot of concepts from Doctrine (a PHP ORM for relational databases), but aims to "rethink" many of those concepts in the graph paradigm.
+FluidGraph is an Object Graph Manager (OGM) for memgraph (though in principle could also work with Neo4j with a bit of modification).  It borrows a lot of concepts from Doctrine (a PHP ORM for relational databases), but aims to "rethink" many of those concepts in the graph paradigm.
 
 This project is part of the Primd application stack and is copyright Primd Cooperative, licensed MIT. Primd Cooperative is a worker-owned start-up aiming to revolutionize hiring, learning, and work itself. For more information, or to support our work:
 
@@ -18,15 +18,15 @@ composer require primd/fluidgraph
 
 FluidGraph borrows a bit of a "spiritual ontology" in order to talk about its core concepts.  The **Entity** world is effectively the natural world.  These are your concrete models and the things you interact with.
 
-The **Element** world is the spiritual world.  Entities are fastened to an Element.  A single Element can be expressed in one or more Entities.  These are the underlying graph data and not generally meant to be interacted with (unless you're doing more advanced development).
+The **Element** world is the supernatural world.  Entities are the embodiment of an Element.  A single Element can be "fastened" to more than one Entity, such that a single graph node might be expressed as multiple different object classes.  Each possible expression constitutes a label (although you can add arbitrary labels as well).  The underlying elements are not generally meant to be interacted with (unless you're doing more advanced development).
 
-Both Entities and Elements have different forms, namely Nodes and Edges, i.e. there is a "Node Element" as well as a "Node Entity."
+Throughout this documentation we may refer to Nodes (generally) or use terms like "Node Entity" as opposed to "Node Element."
 
-> NOTE: FluidGraph is still **alpha** and is subject to fairly rapid changes, though we'll try not to break documented APIs.
+> NOTE: FluidGraph is still **alpha** and is subject to fairly rapid changes.  It should not be used in production and if you update, you should come back to check these docs frequently.
 
 ## Basic Usage
 
-Instantiating a graph:
+### Instantiating the Graph
 
 ```php
 use Bolt\Bolt;
@@ -42,7 +42,7 @@ $graph = new FluidGraph\Graph(
 );
 ```
 
-Create a Node class:
+### Creating a Node Entity
 
 ```php
 use FluidGraph\Node;
@@ -59,9 +59,9 @@ class Person extends Node
 }
 ```
 
-Traits are used to provide built-in common functionality and usually represent hooks.  The example above uses the `Uuid7` trait to identify the entity.  This will provide a property of `id` and automatically generate the UUID `onCreate`.
+Traits like `FluidGraph\Entity\Id\Uuid7` are used to provide built-in common functionality and usually represent hooks.  The example above uses the `Uuid7` trait provides an `id` property on the Node Entity and automatically generate the value `onCreate`.
 
-Create an Edge class:
+### Creating an Edge Entity
 
 ```php
 use FluidGraph\Edge;
@@ -78,7 +78,9 @@ class FriendsWith extends Edge
 
 Similar to above, the `DateCreated` hook trait adds a property of `dateCreated` set `onCreate` and the `DateModified` hook trait adds a property of `dateModified` when an edge property changes `onUpdate`.
 
-Add a relationship between people:
+### Adding Relationships
+
+Now that we have our edge, we can return to our `Person` entity and add a few lines (note the used namespaces).
 
 ```php
 use FluidGraph\Node;
@@ -92,12 +94,14 @@ class Person extends Node
 {
 	use Entity\Id\Uuid7;
 
-    public protected(set) Many $friends;
+    // ADDED:
+    public protected(set) Many $friendships;
 
 	public function __construct(
 		public ?string $firstName = NULL,
 		public ?string $lastName = NULL,
 	) {
+        // ADDED:
 		$this->friendships = Many::having(
 			$this,
 			FriendsWith::class,
@@ -111,9 +115,11 @@ class Person extends Node
 }
 ```
 
-> Note: All properties on your entities **MUST** be publicly readable.  They can have `protected(set)` or `private(set)`, however, note that you **CANNOT** use property hooks.  FluidGraph avoids reflection where possible, but due to its use of per-property references, property hooks are not available.
+All properties on your entities **MUST** be publicly readable.  They can have `protected(set)` or `private(set)`, however, note that you **CANNOT** use property hooks.  FluidGraph avoids reflection where possible, but due to its use of per-property references, property hooks are not available.
 
-Instantiate nodes:
+### Working with Nodes and Relationships
+
+You instantiate your nodes as you would any basic object.  Required arguments obviously depends on how you have defined your properties and your `__construct()` method, although we generally recommend getting in the habit of using named parameters here:
 
 ```php
 $matt = new Person(firstName: 'Matt');
@@ -128,33 +134,92 @@ $matt->friendships->set($jill, [
 ]);
 ```
 
-Attach, merge changes into the queue, and execute it:
+The `array` passed as the second argument to `set()` provides requisite construction parameters.  You can also add non-construction parameters to assign to the Edge Entity.
+
+### Persisting Changes
+
+In order to persist our changes we need to `attach()` entities to the graph and `save()` it.  In the example below, we only attach our first entity.  The corresponding Edge Entities and related Node Entities will have their persistence cascaded automatically.
 
 ```php
 $graph->attach($matt)->save();
 ```
 
-> Note: There is no need to attach `$jill` or the `FriendsWith` edge, as these are cascaded from `$matt` being attached.  Without the relationship, `$jill` would need to be attached separately to persist.
+If there was no relationship between these two, then `$jill` would need to be attached separately in order to be persisted.
 
-Find a person:
+### Simple Querying
+
+#### Find A Single Record
+
+A contrived example that works only because we only have a single person named "Matt."  Traditionally you'd want to use the `id` or some set of properties that provide uniqueness.  The `findOne()` method **WILL** throw an exception if the provided terms result in more than a single match.
 
 ```php
 $matt = $graph->findOne(Person::class, ['firstName' => 'Matt']);
 ```
 
-Get their friends:
+#### Find All Records
+
+```php
+use FluidGraph\Order;
+use FluidGraph\Direction;
+
+$people = $graph->findAll(Person::class, [
+	Order::by(Direction::asc, 'lastName')
+]);
+```
+
+#### Get Related Node Entities
+
+```php
+$friends = $matt->friendships->get(Person::class);
+```
+
+A simpler version of this would exclude the class argument on `get()`:
 
 ```php
 $friends = $matt->friendships->get();
 ```
 
-Get the friendships (The actual `FriendsWith` edges):
+However, it's **IMPORTANT** to note that if our original relationship defined more than one concern, the Node Entities can be of mixed classes.  Passing `Person::class` to `get()` specifically limits the type of Node Entities we get and ensures they are returned `as()` that type.
+
+#### Get Related Edge Entities
+
+Often times you will want to work with the Edges that connect the Node.  The equivalent of getting all the edges for a specific Node Entity type is as follows:
 
 ```php
-$friendships = $matt->friendships->all();
+$friendships = $matt->friendships->for(Person::class);
 ```
 
->  Note: The available methods and return values depend on the relationship type.  A `ToMany` has `all()` while a `ToOne` has `any()` for example.
+You can also get the Edge Entities for a specific Node Entity:
+
+```php
+$friendship = $matt->friendships->for($jill);
+```
+
+To get all the Edge Entities on a `Many` relationship use `all()`:
+
+```php
+$friendship = $matt->friendships->all();
+```
+
+Other types of relationships provide slightly different APIs.  For example, a relationship type of `FluidGraph\Relationship\One` provides the `for()` method, but will only ever return a single Edge Entity or Node when it matches the arguments.  If the related Node Entity doesn't match the provided arguments `NULL` will be returned.
+
+Similarly in place of `all()` there the `One` relationship has an `any()` method, which will return the Edge Entity regardless of any constraints, or `NULL` if the relationship is simply not fulfilled yet.
+
+
+
+---
+
+---
+
+---
+
+----
+
+----
+
+----
+
+
 
 ### Working with Entities and Elements
 

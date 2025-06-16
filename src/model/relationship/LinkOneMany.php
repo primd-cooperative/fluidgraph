@@ -32,9 +32,9 @@ abstract class LinkOneMany extends FluidGraph\Relationship
 	 * @return EdgeResults<E>
 
 	 */
-	public function of(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
 	{
-		return $this->all()->of($node, ...$nodes);
+		return $this->all()->for($node, ...$nodes);
 	}
 
 
@@ -45,14 +45,14 @@ abstract class LinkOneMany extends FluidGraph\Relationship
 	 * @param Element\Node|Node|class-string $nodes
 	 * @return EdgeResults<E>
 	 */
-	public function ofAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function forAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
 	{
-		return $this->all()->ofAny($node, ...$nodes);
+		return $this->all()->forAny($node, ...$nodes);
 	}
 
 
 	/**
-	 * Get related node entities of() the specified class as Results.
+	 * Get related node entities for() the specified class as Results.
 	 *
 	 * If related node entities exist but do not match the class, an empty array will be returned.
 	 *
@@ -64,7 +64,7 @@ abstract class LinkOneMany extends FluidGraph\Relationship
 	{
 		return is_null($class)
 			? $this->all()->get($class)
-			: $this->of($class)->get($class)
+			: $this->for($class)->get($class)
 		;
 	}
 

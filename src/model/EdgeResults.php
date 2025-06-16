@@ -23,7 +23,7 @@ class EdgeResults extends Entity\Results
 	 * @param Element\Node|Node|class-string $nodes
 	 * @return static<T>
 	 */
-	public function of(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
 	{
 		$edges = [];
 
@@ -52,7 +52,7 @@ class EdgeResults extends Entity\Results
 	 * @param Element\Node|Node|class-string $nodes
 	 * @return static<T>
 	 */
-	public function ofAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function forAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
 	{
 		$edges = [];
 
@@ -74,7 +74,7 @@ class EdgeResults extends Entity\Results
 
 
 	/**
-	 * Get related node entities of() the specified class as Results.
+	 * Get related node entities for() the specified class as Results.
 	 *
 	 * If related node entities exist but do not match the class, an empty array will be returned.
 	 *

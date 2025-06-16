@@ -32,9 +32,9 @@ abstract class LinkManyOne extends Relationship
 	 * @return EdgeResults<E>
 
 	 */
-	public function of(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
 	{
-		return $this->all()->of($node, ...$nodes);
+		return $this->all()->for($node, ...$nodes);
 	}
 
 
@@ -45,15 +45,15 @@ abstract class LinkManyOne extends Relationship
 	 * @param Element\Node|Node|class-string $nodes
 	 * @return EdgeResults<E>
 	 */
-	public function ofAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function forAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
 	{
-		return $this->all()->ofAny($node, ...$nodes);
+		return $this->all()->forAny($node, ...$nodes);
 	}
 
 
 
 	/**
-	 * Get the related node entity of() the specified class as that class.
+	 * Get the related node entity for() the specified class as that class.
 	 *
 	 * If a related node entity exists but does not match the class, NULL will be returned.
 	 *

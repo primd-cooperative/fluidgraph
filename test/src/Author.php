@@ -45,7 +45,7 @@ class Author extends Node
 		);
 
 		$this->writings->sort(
-			Order::on(Scope::concern, 'date', Direction::asc)
+			Order::on(Scope::concern, Direction::asc, 'date')
 		);
 	}
 }

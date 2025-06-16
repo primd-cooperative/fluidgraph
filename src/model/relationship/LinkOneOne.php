@@ -28,7 +28,7 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 	 * @param Element\Node|Node|class-string $nodes
 	 * @return E
 	 */
-	public function of(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): ?Edge
+	public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): ?Edge
 	{
 		$edge = $this->any();
 
@@ -55,7 +55,7 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 	 * @param Element\Node|Node|class-string $nodes
 	 * @return E
 	 */
-	public function ofAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): ?Edge
+	public function forAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): ?Edge
 	{
 		$edge = $this->any();
 
@@ -74,7 +74,7 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 
 
 	/**
-	 * Get the related node entity of() the specified class as that class.
+	 * Get the related node entity for() the specified class as that class.
 	 *
 	 * If a related node entity exists but does not match the class, NULL will be returned.
 	 *

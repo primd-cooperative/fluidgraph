@@ -58,7 +58,7 @@ class Results extends ArrayObject
 	/**
 	 *
 	 */
-	public function is(Element|Entity|string $class): static
+	public function of(Element|Entity|string $class): static
 	{
 		return $this->where(fn($result) => $result->is($class));
 	}
