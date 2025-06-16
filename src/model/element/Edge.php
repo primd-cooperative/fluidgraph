@@ -69,7 +69,7 @@ class Edge extends FluidGraph\Element
 	/**
 	 *
 	 */
-	public function for(FluidGraph\Node|Node|string $node, Link ...$types): bool
+	public function for(FluidGraph\Node|Node|string $node, Reference ...$types): bool
 	{
 		foreach ($types ?: [Reference::from, Reference::to] as $type) {
 			/**

@@ -262,15 +262,39 @@ abstract class Relationship implements Countable
 	}
 
 
-	public function find(Closure $terms, ?array $order = NULL, ?int $limit = NULL, ?int $offset = NULL): static
+	/**
+	 *
+	 */
+	public function fetch(?int $limit = NULL, ?int $offset = NULL, callable|array $terms = [], ?array $orders = NULL): static
 	{
-		$this->terms = $terms;
+		$clone = $this->match();
 
-		$this->load();
+		if (!is_null($limit)) {
+			$clone->take($limit);
+		}
 
-		$this->terms = NULL;
+		if (!is_null($offset)) {
+			$clone->skip($offset);
+		}
 
-		return $this;
+		if (!empty($terms)) {
+			$clone->where($terms);
+		}
+
+		if (!is_null($orders)) {
+			$clone->sort(...$orders);
+		}
+
+		return $clone->load();
+	}
+
+
+	/**
+	 * @return E
+	 */
+	public function first(): ?Edge
+	{
+		return reset($this->active) ?: NULL;
 	}
 
 
@@ -288,6 +312,14 @@ abstract class Relationship implements Countable
 		return $this;
 	}
 
+
+	/**
+	 * @return E
+	 */
+	public function last(): ?Edge
+	{
+		return end($this->active) ?: NULL;
+	}
 
 	/**
 	 * Load the edges/nodes for the relationship.
@@ -501,9 +533,13 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function where(?Closure $conditions): static
+	public function where(array|Closure $terms): static
 	{
-		$this->terms = $conditions;
+		if (is_array($terms)) {
+			$terms = fn($all, $eq) => $all(...$eq($terms));
+		}
+
+		$this->terms = $terms;
 
 		return $this;
 	}
@@ -571,21 +607,21 @@ abstract class Relationship implements Countable
 				Matching::all => ' AND '
 			},
 			array_map(
-				fn($concern) => 'c:' . $concern,
+				fn($concern) => Scope::concern->value . ':' . $concern,
 				$concerns ?: $this->concerns
 			)
 		);
 
 		if (isset($this->apex)) {
 			$concern_query = sprintf(
-				'%s AND (%s)',
+				$concern_query ? '%s AND (%s)' : '%s',
 				implode(
 					match ($this->apex->rule) {
 						Matching::any => ' OR ',
 						Matching::all => ' AND '
 					},
 					array_map(
-						fn($concern) => 'c:' . $concern,
+						fn($concern) => Scope::concern->value . ':' . $concern,
 						$this->apex->concerns
 					)
 				),
@@ -602,7 +638,7 @@ abstract class Relationship implements Countable
 				$this->subject::class,
 				$this->kind,
 			)
-			->run('WHERE id(s) = $subject AND (%s)', $concern_query)
+			->run('WHERE (%s) AND id(s) = $subject', $concern_query)
 			->set('subject', $this->subject->identity())
 		;
 	}

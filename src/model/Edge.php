@@ -47,7 +47,7 @@ abstract class Edge extends Entity
 	/**
 	 *
 	 */
-	public function for(Element\Node|Node|string $node, Link ...$types): bool
+	public function for(Element\Node|Node|string $node, Reference ...$types): bool
 	{
 		return $this->__element__->for($node, ...$types);
 	}
