@@ -127,7 +127,7 @@ class Query
 					$this->run('MATCH %s', $this->pattern);
 				} else {
 					$this->run(
-						'(%1$s1),()-[%1$s2]-() UNWIND [%1$s1,%1$s2] AS %1$s WITH %1$s',
+						'MATCH (%1$s1),()-[%1$s2]-() UNWIND [%1$s1,%1$s2] AS %1$s WITH %1$s',
 						Scope::concern->value
 					);
 				}

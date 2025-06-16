@@ -16,11 +16,11 @@ class Results extends ArrayObject
 	 *
 	 *
 	 * @template E of Entity
-	 * @param class-string<E> $class The entity class to instantiate as.
+	 * @param null|array|class-string<E> $class The entity class to instantiate as.
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
 	 * @return NodeResults<E>|EntityResults<E>
 	 */
-	public function as(string $class, array $defaults = []): static
+	public function as(null|array|string $class, array $defaults = []): static
 	{
 		switch (TRUE) {
 			case is_subclass_of($class, Node::class, TRUE):
@@ -36,9 +36,9 @@ class Results extends ArrayObject
 				));
 
 			default:
-				throw new InvalidArgumentException(sprintf(
-					'Cannot treat results as "%s", not a Node or Edge class',
-					$class
+				return new self(array_map(
+					fn($result) => $result->as($class, $defaults),
+					$this->getArrayCopy()
 				));
 		}
 	}
