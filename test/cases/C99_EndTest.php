@@ -22,7 +22,7 @@ class C99_EndTest extends C00_BaseTest
 					]
 				)
 			)
-		)->pull();
+		);
 	}
 
 	public function testCleanup()

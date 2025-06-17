@@ -2,8 +2,6 @@
 
 namespace FluidGraph;
 
-use FluidGraph\Relationship\Reference;
-
 /**
  *
  */
@@ -36,28 +34,25 @@ abstract class Edge extends Entity
 
 
 	/**
-	 * Determine wehther or not this edge
+	 *
 	 */
-	public function from(Element\Node|Node|string $node): bool
-	{
-		return $this->for($node, Reference::from);
+	public function for(
+		Reference $type,
+		Element\Node|Node|string $match,
+		Element\Node|Node|string ...$matches
+	): bool {
+		return $this->__element__->for($type, $match, ...$matches);
 	}
 
 
 	/**
 	 *
 	 */
-	public function for(Element\Node|Node|string $node, Reference ...$types): bool
-	{
-		return $this->__element__->for($node, ...$types);
-	}
-
-
-	/**
-	 *
-	 */
-	public function to(Element\Node|Node|string $node): bool
-	{
-		return $this->for($node, Reference::to);
+	public function forAny(
+		Reference $type,
+		Element\Node|Node|string $match,
+		Element\Node|Node|string ...$matches
+	): bool {
+		return $this->__element__->forAny($type, $match, ...$matches);
 	}
 }

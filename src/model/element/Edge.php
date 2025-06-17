@@ -3,7 +3,7 @@
 namespace FluidGraph\Element;
 
 use FluidGraph;
-use FluidGraph\Relationship\Reference;
+use FluidGraph\Reference;
 
 use InvalidArgumentException;
 
@@ -69,9 +69,19 @@ class Edge extends FluidGraph\Element
 	/**
 	 *
 	 */
-	public function for(FluidGraph\Node|Node|string $node, Reference ...$types): bool
-	{
-		foreach ($types ?: [Reference::from, Reference::to] as $type) {
+	public function for(
+		Reference $type,
+		FluidGraph\Node|Node|string $match,
+		FluidGraph\Node|Node|string ...$matches
+	): bool {
+		array_unshift($matches, $match);
+
+		$types = match ($type) {
+			Reference::either => [Reference::from, Reference::to],
+			default           => [$type]
+		};
+
+		foreach ($types as $type) {
 			/**
 			 * @var Node
 			 */
@@ -80,7 +90,40 @@ class Edge extends FluidGraph\Element
 				$type == Reference::from => $this->source
 			};
 
-			if (!$element->is($node)) {
+			if (!$element->of(...$matches)) {
+				return FALSE;
+			}
+		}
+
+		return TRUE;
+	}
+
+
+	/**
+	 *
+	 */
+	public function forAny(
+		Reference $type,
+		FluidGraph\Node|Node|string $match,
+		FluidGraph\Node|Node|string ...$matches
+	): bool {
+		array_unshift($matches, $match);
+
+		$types = match ($type) {
+			Reference::either => [Reference::from, Reference::to],
+			default           => [$type]
+		};
+
+		foreach ($types as $type) {
+			/**
+			 * @var Node
+			 */
+			$element = match(TRUE) {
+				$type == Reference::to   => $this->target,
+				$type == Reference::from => $this->source
+			};
+
+			if (!$element->ofAny(...$matches)) {
 				return FALSE;
 			}
 		}

@@ -2,10 +2,7 @@
 
 namespace FluidGraph;
 
-use Bolt\enum\Signature;
-
 use FluidGraph\Relationship\Mode;
-use FluidGraph\Relationship\Reference;
 use FluidGraph\Relationship\Index;
 use FluidGraph\Relationship\Order;
 
@@ -90,14 +87,34 @@ abstract class Relationship implements Countable
 	protected private(set) ?Closure $terms = NULL;
 
 
-	static public function having(
-		Node $subject,
-		string $kind,
-		Reference $type,
-		Matching $rule = Matching::all,
-		array $concerns = [],
-		Mode $mode = Mode::lazy
-	): static {
+	/**
+	 *
+	 */
+	abstract public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): null|Edge|EdgeResults;
+
+
+	/**
+	 *
+	 */
+	abstract public function forAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): null|Edge|EdgeResults;
+
+
+	/**
+	 *
+	 */
+	abstract public function set(Node $node, array|Edge $data = []): static;
+
+
+	/**
+	 *
+	 */
+	abstract public function unset(null|Node|Edge $entity): static;
+
+
+	/**
+	 *
+	 */
+	static public function having(Node $subject, string $kind, Reference $type, Matching $rule = Matching::all,	array $concerns = [], Mode $mode = Mode::lazy): static {
 		return new static(...func_get_args());
 	}
 
@@ -134,6 +151,17 @@ abstract class Relationship implements Countable
 
 
 	/**
+	 * Get all edge entities for this relationship, regardless what they correspond to
+	 *
+	 * @return EdgeResults<E>
+	 */
+	public function all(): EdgeResults
+	{
+		return new EdgeResults(array_values($this->active))->using($this);
+	}
+
+
+	/**
 	 *
 	 */
 	public function count(Matching|string $rule_or_concern = '', string ...$concerns): int
@@ -151,7 +179,7 @@ abstract class Relationship implements Countable
 
 				foreach ($this->active as $edge) {
 					foreach ($concerns as $concern) {
-						if ($edge->for($concern)) {
+						if ($edge->for($this->type, $concern)) {
 							$count++;
 							break;
 						}
@@ -166,9 +194,6 @@ abstract class Relationship implements Countable
 			}
 		}
 	}
-
-
-
 
 
 	/**
@@ -187,22 +212,22 @@ abstract class Relationship implements Countable
 
 			if (count($nodes)) {
 				$query
-					->run('AND %s', $where->scope($alias, function($any, $id) use ($nodes) {
+					->add('AND %s', $where->scope($alias, function($any, $id) use ($nodes) {
 						return $any(...array_map($id, $nodes));
 					}))
-					->run('RETURN %s', $where->scope($alias, function($count, $eq) use ($nodes) {
+					->add('RETURN %s', $where->scope($alias, function($count, $eq) use ($nodes) {
 						return $eq($count, count($nodes));
 					}))
 				;
 
 			} else {
-				$query->run('RETURN %s', $where->scope($alias, function($gte, $count) {
+				$query->add('RETURN %s', $where->scope($alias, function($gte, $count) {
 					return $gte($count, 1);
 				}));
 
 			}
 
-			return $query->pull(Signature::RECORD)[0];
+			return $query->record(0);
 
 		} else {
 			foreach ($nodes as $node) {
@@ -232,22 +257,22 @@ abstract class Relationship implements Countable
 
 			if (count($nodes)) {
 				$query
-					->run('AND %s', $where->scope($alias, function($any, $id) use ($nodes) {
+					->add('AND %s', $where->scope($alias, function($any, $id) use ($nodes) {
 						return $any(...array_map($id, $nodes));
 					}))
-					->run('RETURN %s', $where->scope($alias, function($count, $gte) use ($nodes) {
+					->add('RETURN %s', $where->scope($alias, function($count, $gte) use ($nodes) {
 						return $gte($count, 1);
 					}))
 				;
 
 			} else {
-				$query->run('RETURN %s', $where->scope($alias, function($gte, $count) {
+				$query->add('RETURN %s', $where->scope($alias, function($gte, $count) {
 					return $gte($count, 1);
 				}));
 
 			}
 
-			return $query->pull(Signature::RECORD)[0];
+			return $query->record(0);
 
 		} else {
 			foreach ($nodes as $node) {
@@ -265,27 +290,13 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function fetch(?int $limit = NULL, ?int $offset = NULL, callable|array $terms = [], ?array $orders = NULL): static
+	public function find(string $class, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = NULL): null|NodeResults|Node
 	{
-		$clone = $this->match();
+		$clone = $this->match($class)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
 
-		if (!is_null($limit)) {
-			$clone->take($limit);
-		}
+		$clone->load();
 
-		if (!is_null($offset)) {
-			$clone->skip($offset);
-		}
-
-		if (!empty($terms)) {
-			$clone->where($terms);
-		}
-
-		if (!is_null($orders)) {
-			$clone->sort(...$orders);
-		}
-
-		return $clone->load();
+		return $clone->get($class);
 	}
 
 
@@ -311,6 +322,27 @@ abstract class Relationship implements Countable
 
 		return $this;
 	}
+
+
+	/**
+	 *
+	 */
+	public function get(?string $class): null|NodeResults|Node
+	{
+		if (is_null($class)) {
+			$class = $this->concerns;
+
+			if (isset($this->apex)) {
+				$class = array_merge($class, $this->apex->concerns);
+			}
+
+			return $this->all()->get($class);
+
+		} else {
+			return $this->for($class)->get($class);
+		}
+	}
+
 
 
 	/**
@@ -343,10 +375,10 @@ abstract class Relationship implements Countable
 				$query = $this->getGraphQuery($rule_or_concern, ...$concerns);
 
 				if ($this->terms) {
-					$query->run('AND (%s)', $query->where->scope(Scope::concern->value, $this->terms));
+					$query->add('AND (%s)', $query->where->scope(Scope::concern->value, $this->terms));
 				}
 
-				$query->run(
+				$query->add(
 					'RETURN %s, %s, %s',
 					Scope::subject->value,
 					Scope::concern->value,
@@ -365,20 +397,20 @@ abstract class Relationship implements Countable
 						);
 					}
 
-					$query->run('ORDER BY %s', implode(',', $orders));
+					$query->add('ORDER BY %s', implode(',', $orders));
 				}
 
 				if ($this->offset) {
-					$query->run('SKIP %s', $this->offset);
+					$query->add('SKIP %s', $this->offset);
 				}
 
 				if ($this->limit) {
-					$query->run('LIMIT %s', $this->limit);
+					$query->add('LIMIT %s', $this->limit);
 				}
 
 				$this->loaded = [];
 
-				foreach ($query->getRaw() as $result) {
+				foreach ($query->results() as $result) {
 					if (!$result instanceof Element\Edge) {
 						continue;
 					}
@@ -446,7 +478,7 @@ abstract class Relationship implements Countable
 	 *
 	 * Called from Queue::merge().
 	 */
-	public function merge(): static
+	public function merge(bool $exclude_apex = FALSE): static
 	{
 		if (isset($this->apex)) {
 			$removed = array_diff_key($this->loaded, $this->active);
@@ -463,7 +495,7 @@ abstract class Relationship implements Countable
 			}
 		}
 
-		if (!isset($this->apex) && isset($this->graph)) {
+		if (!$exclude_apex && !isset($this->apex) && isset($this->graph)) {
 			for($class = static::class; $class != Relationship::class; $class = get_parent_class($class)) {
 				foreach (class_uses($class) as $trait) {
 					if (!in_array(Relationship\MergeHook::class, class_uses($trait))) {
@@ -522,8 +554,12 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function take(int $limit): static
+	public function take(?int $limit): static
 	{
+		if (is_null($limit)) {
+			$limit = -1;
+		}
+
 		$this->limit = $limit;
 
 		return $this;
@@ -629,8 +665,8 @@ abstract class Relationship implements Countable
 			);
 		}
 
-		return $this->graph
-			->run(
+		return $this->graph->query
+			->add(
 				match ($this->type) {
 					Reference::to   => 'MATCH (s:%s)-[r:%s]->(c)',
 					Reference::from => 'MATCH (s:%s)<-[r:%s]-(c)'
@@ -638,7 +674,7 @@ abstract class Relationship implements Countable
 				$this->subject::class,
 				$this->kind,
 			)
-			->run('WHERE (%s) AND id(s) = $subject', $concern_query)
+			->add('WHERE (%s) AND id(s) = $subject', $concern_query)
 			->set('subject', $this->subject->identity())
 		;
 	}
@@ -648,8 +684,8 @@ abstract class Relationship implements Countable
 	{
 		return (int) $this
 			->getGraphQuery($rule_or_concern, ...$concerns)
-			->run('RETURN COUNT(r) AS total')
-			->pull(Signature::RECORD)[0]
+			->add('RETURN COUNT(r) AS total')
+			->record(0)
 		;
 	}
 
@@ -659,12 +695,15 @@ abstract class Relationship implements Countable
 	 *
 	 * Note, this will only return the first index, it's possible that a node exists more than once.
 	 */
-	protected function getIndex(Element\Node|Node|string $node, Index $index = Index::ACTIVE): string|false
+	protected function getIndex(Element\Node|Node $node, Index $index = Index::active): string|false
 	{
 		$index = $index->value;
 
+		/**
+		 * @var Edge $edge
+		 */
 		foreach ($this->$index as $i => $edge) {
-			if ($edge->for($node, $this->type)) {
+			if ($edge->for($this->type, $node)) {
 				return $i;
 			}
 		}
@@ -678,7 +717,7 @@ abstract class Relationship implements Countable
 	 */
 	protected function resolveEdge(Node $concern, array $data = []): string
 	{
-		$hash = $this->getIndex($concern, Index::LOADED);
+		$hash = $this->getIndex($concern, Index::loaded);
 
 		if ($hash) {
 			$this->active[$hash] = $this->loaded[$hash];

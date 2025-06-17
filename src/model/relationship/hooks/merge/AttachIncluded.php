@@ -3,6 +3,7 @@
 namespace FluidGraph\Relationship;
 
 use FluidGraph\Status;
+use FluidGraph\Reference;
 
 /**
  *

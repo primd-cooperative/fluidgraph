@@ -2,9 +2,10 @@
 
 namespace FluidGraph\Testing;
 
-use FluidGraph\Matching;
 use FluidGraph\Node;
-use FluidGraph\Relationship\Reference;
+use FluidGraph\Matching;
+use FluidGraph\Reference;
+
 use FluidGraph\Relationship\Many;
 use FluidGraph\Relationship\Mode;
 

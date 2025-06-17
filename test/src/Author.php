@@ -2,16 +2,16 @@
 
 namespace FluidGraph\Testing;
 
-use FluidGraph\Direction;
-use FluidGraph\Relationship\Many;
-use FluidGraph\Relationship\Reference;
-use FluidGraph\Relationship\Mode;
-
 use FluidGraph\Node;
-use FluidGraph\Matching;
-use FluidGraph\Relationship\One;
-use FluidGraph\Relationship\Order;
 use FluidGraph\Scope;
+use FluidGraph\Matching;
+use FluidGraph\Direction;
+use FluidGraph\Reference;
+
+use FluidGraph\Relationship\One;
+use FluidGraph\Relationship\Many;
+use FluidGraph\Relationship\Mode;
+use FluidGraph\Relationship\Order;
 
 class Author extends Node
 {

@@ -226,13 +226,37 @@ abstract class Entity
 
 
 	/**
-	 * Determine whether or not this entity is an expression of another entity or element or class
+	 * Determine whether or not this element is an expression of another entity, element, or class
 	 *
-	 * @param Entity|Element|class-string $essence
+	 * @param Element|Entity|class-string $match
 	 */
-	public function is(Entity|Element|string $essence): bool
+	public function is(Element|Entity|string $match): bool
 	{
-		return $this->__element__->is($essence);
+		return $this->__element__->is($match);
+	}
+
+
+	/**
+	 * Determine whether or not this element `is()` ALL of the provided arguments.
+	 *
+	 * @param Element|Entity|class-string $match
+	 * @param Element|Entity|class-string ...$matches
+	 */
+	public function of(Element|Entity|string $match, Element|Entity|string ...$matches): bool
+	{
+		return $this->__element__->of($match, ...$matches);
+	}
+
+
+	/**
+	 * Determine whether or not this element `is()` ANY of the provided arguments.
+	 *
+	 * @param Element|Entity|class-string $match
+	 * @param Element|Entity|class-string ...$matches
+	 */
+	public function ofAny(Element|Entity|string $match, Element|Entity|string ...$matches): bool
+	{
+		return $this->__element__->ofAny($match, ...$matches);
 	}
 
 

@@ -2,8 +2,6 @@
 
 namespace FluidGraph;
 
-use FluidGraph\Relationship\Reference;
-
 /**
  * @template T of Edge
  * @extends Entity\Results<T>
@@ -11,65 +9,58 @@ use FluidGraph\Relationship\Reference;
 class EdgeResults extends Entity\Results
 {
 	/**
-	 * @var array<Type>
+	 *
 	 */
-	protected array $types = [Reference::to, Reference::from];
+	protected ?Relationship $relationship = NULL;
 
 
 	/**
 	 * Get all edge entities for this relationship that correspond to all node(s)/label(s) as Results
 	 *
-	 * @param Element\Node|Node|class-string $node
-	 * @param Element\Node|Node|class-string $nodes
+	 * @param Element\Node|Node|class-string $match
+	 * @param Element\Node|Node|class-string $matches
 	 * @return static<T>
 	 */
-	public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function for(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): EdgeResults
 	{
 		$edges = [];
 
-		if (count($this)) {
-			array_unshift($nodes, $node);
-
-			foreach ($this as $edge) {
-				foreach ($nodes as $node) {
-					if (!$edge->for($node, ...$this->types)) {
-						continue 2;
-					}
+		foreach ($this as $edge) {
+			foreach ($this->getReferencedNodes($edge) as $node) {
+				if (!$node->of($match, ...$matches)) {
+					continue;
 				}
-
-				$edges[] = $edge;
 			}
+
+			$edges[] = $edge;
 		}
 
-		return new static($edges)->using(...$this->types);
+		return new static($edges)->using($this->relationship);
 	}
 
 
 	/**
 	 * Get all edge entities for this relationship that corresponds to any node(s)/label(s) as Results
 	 *
-	 * @param Element\Node|Node|class-string $node
-	 * @param Element\Node|Node|class-string $nodes
+	 * @param Element\Node|Node|class-string $match
+	 * @param Element\Node|Node|class-string $matches
 	 * @return static<T>
 	 */
-	public function forAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function forAny(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): EdgeResults
 	{
 		$edges = [];
 
-		if (count($this)) {
-			array_unshift($nodes, $node);
+		foreach ($this as $edge) {
+			foreach ($this->getReferencedNodes($edge) as $node) {
+				if ($node->ofAny($match, ...$matches)) {
+					$edges[] = $edge;
 
-			foreach ($nodes as $node) {
-				foreach ($this as $edge) {
-					if ($edge->for($node, ...$this->types)) {
-						$edges[] = $edge;
-						continue 2;
-					}
+					continue;
 				}
 			}
 		}
 
-		return new static($edges)->using(...$this->types);
+		return new static($edges)->using($this->relationship);
 	}
 
 
@@ -79,21 +70,16 @@ class EdgeResults extends Entity\Results
 	 * If related node entities exist but do not match the class, an empty array will be returned.
 	 *
 	 * @template N of Node
-	 * @param ?class-string<N> $class
+	 * @param null|array|class-string<N> $class
 	 * @return NodeResults<N>
 	 */
-	public function get(?string $class = NULL): NodeResults
+	public function get(null|array|string $class = NULL): NodeResults
 	{
 		$nodes = [];
 		$index = [];
 
 		foreach ($this as $edge) {
-			foreach ($this->types as $type) {
-				$node = match ($type) {
-					Reference::to   => $edge->__element__->target,
-					Reference::from => $edge->__element__->source
-				};
-
+			foreach ($this->getReferencedNodes($edge) as $node) {
 				$hash = spl_object_hash($node);
 
 				if (!isset($index[$hash])) {
@@ -116,10 +102,44 @@ class EdgeResults extends Entity\Results
 	/**
 	 *
 	 */
-	public function using(Reference ...$types): static
+	public function merge(): static
 	{
-		$this->types = $types;
+		if ($this->relationship) {
+			$this->relationship->merge(TRUE);
+		}
 
 		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function using(?Relationship $relationship): static
+	{
+		$this->relationship = $relationship;
+
+		return $this;
+	}
+
+	/**
+	 *
+	 */
+	protected function getReferencedNodes($edge)
+	{
+		if ($this->relationship) {
+			$type = $this->relationship->type;
+		} else {
+			$type = Reference::either;
+		}
+
+		return match ($type) {
+			Reference::to     => [$edge->__element__->target],
+			Reference::from   => [$edge->__element__->source],
+			Reference::either => [
+				$edge->__element__->target,
+				$edge->__element__->source
+			]
+		};
 	}
 }

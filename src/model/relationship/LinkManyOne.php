@@ -5,6 +5,7 @@ namespace FluidGraph\Relationship;
 use FluidGraph\Node;
 use FluidGraph\Edge;
 use FluidGraph\Element;
+use FluidGraph\Reference;
 use FluidGraph\EdgeResults;
 use FluidGraph\Relationship;
 
@@ -13,17 +14,6 @@ use FluidGraph\Relationship;
  */
 abstract class LinkManyOne extends Relationship
 {
-	/**
-	 * Get all edge entities for this relationship, regardless what they correspond to
-	 *
-	 * @return EdgeResults<E>
-	 */
-	public function all(): EdgeResults
-	{
-		return new EdgeResults(array_values($this->active))->using($this->type);
-	}
-
-
 	/**
 	 * Get all edge entities for this relationship that corresponds to all node(s)/label(s)
 	 *
@@ -49,7 +39,6 @@ abstract class LinkManyOne extends Relationship
 	{
 		return $this->all()->forAny($node, ...$nodes);
 	}
-
 
 
 	/**
@@ -95,7 +84,7 @@ abstract class LinkManyOne extends Relationship
 	/**
 	 *
 	 */
-	public function set(Node $node, array $data = []): static
+	public function set(Node $node, array|Edge $data = []): static
 	{
 		$this->validateNode($node);
 
@@ -116,7 +105,7 @@ abstract class LinkManyOne extends Relationship
 	/**
 	 *
 	 */
-	public function unset(NULL|Node|Edge $entity = NULL): static
+	public function unset(null|Node|Edge $entity = NULL): static
 	{
 		if ($entity instanceof Edge) {
 			unset($this->active[spl_object_hash($entity)]);
@@ -129,4 +118,7 @@ abstract class LinkManyOne extends Relationship
 
 		return $this;
 	}
+
+
+
 }

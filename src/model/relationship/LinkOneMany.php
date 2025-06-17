@@ -2,28 +2,17 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph;
 use FluidGraph\Node;
+use FLuidGraph\Edge;
 use FluidGraph\Element;
 use FluidGraph\EdgeResults;
-use FluidGraph\NodeResults;
+use FluidGraph\Relationship;
 
 /**
  * A type of relationship that links to/from many nodes with one edge per node.
  */
-abstract class LinkOneMany extends FluidGraph\Relationship
+abstract class LinkOneMany extends Relationship
 {
-	/**
-	 * Get all edge entities for this relationship, regardless what they correspond to
-	 *
-	 * @return EdgeResults<E>
-	 */
-	public function all(): EdgeResults
-	{
-		return new EdgeResults(array_values($this->active))->using($this->type);
-	}
-
-
 	/**
 	 * Get all edge entities for this relationship that corresponds to all node(s)/label(s)
 	 *
@@ -52,27 +41,9 @@ abstract class LinkOneMany extends FluidGraph\Relationship
 
 
 	/**
-	 * Get related node entities for() the specified class as Results.
-	 *
-	 * If related node entities exist but do not match the class, an empty array will be returned.
-	 *
-	 * @template N of Node
-	 * @param ?class-string<N> $class
-	 * @return NodeResults<N>
-	 */
-	public function get(?string $class = NULL): NodeResults
-	{
-		return is_null($class)
-			? $this->all()->get($class)
-			: $this->for($class)->get($class)
-		;
-	}
-
-
-	/**
 	 *
 	 */
-	public function set(Node $node, array $data = []): static
+	public function set(Node $node, array|Edge $data = []): static
 	{
 		$this->validateNode($node);
 
@@ -91,7 +62,7 @@ abstract class LinkOneMany extends FluidGraph\Relationship
 	/**
 	 *
 	 */
-	public function unset(Node $node): static
+	public function unset(null|Node|Edge $node): static
 	{
 		unset($this->active[$this->getIndex($node)]);
 

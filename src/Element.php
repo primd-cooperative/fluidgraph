@@ -293,7 +293,7 @@ abstract class Element implements Countable
 
 
 	/**
-	 * Instantiate the element as an entity
+	 * Instantiate the element as an entity of a specific or implied class
 	 *
 	 * If an existing entity expressing this element exists, it will be returned.  If not a new
 	 * one will be created using the active element properties for construction with a fallback
@@ -308,6 +308,13 @@ abstract class Element implements Countable
 	{
 		if (!is_string($class)) {
 			$class = $this->getPreferredClass($class);
+
+			if (!$class) {
+				throw new InvalidArgumentException(sprintf(
+					'Cannot instantiate element from preferred types, must specify one of: %s',
+					implode(', ', static::classes($this))
+				));
+			}
 		}
 
 		if (!isset($this->entities[$class])) {
@@ -344,16 +351,25 @@ abstract class Element implements Countable
 
 
 	/**
+	 * Enable elements to be counted as if they were collections/results
 	 *
+	 * This allows people to use PHP's built in `count()` function to determine if the object
+	 * they are dealing with contains more than one item.  For fluid APIs, this is useful because
+	 * neither a collection nor an entity/element can have any further actions performed that are
+	 * meaningful if the count is 0.  That is, it's a simple way to check and break on common
+	 * calls like `of()`.
 	 */
 	public function count(): int
 	{
-		return 1;
+		return 0;
 	}
 
 
 	/**
+	 * Get the In-Graph identity of the element.
 	 *
+	 * For new Elements, i.e. those which are fastened to new Entities, this will be `NULL` until
+	 * they are attached and merged/saved.
 	 */
 	public function identity(): int|null
 	{
@@ -361,24 +377,66 @@ abstract class Element implements Countable
 	}
 
 
-
 	/**
-	 * Determine whether or not this element is an expression of another entity, element, or a class
+	 * Determine whether or not this element is an expression of another entity, element, or class
 	 *
-	 * @param Entity|Element|class-string $essence
+	 * @param Element|Entity|class-string $match
 	 */
-	public function is(Entity|Element|string $essence): bool
+	public function is(Element|Entity|string $match): bool
 	{
 		return match(TRUE) {
-			$essence instanceof Element => $this === $essence,
-			$essence instanceof Entity  => $this === $essence->__element__,
-			default => in_array($essence, self::labels($this))
+			$match instanceof Element => $this === $match,
+			$match instanceof Entity  => $this === $match->__element__,
+			default => in_array($match, self::labels($this))
 		};
 	}
 
 
 	/**
-	 * Get the status (no arguments) of the element or check if status is one of...
+	 * Determine whether or not this element `is()` ALL of the provided arguments.
+	 *
+	 * @param Element|Entity|class-string $match
+	 * @param Element|Entity|class-string ...$matches
+	 */
+	public function of(Element|Entity|string $match, Element|Entity|string ...$matches): bool
+	{
+		array_unshift($matches, $match);
+
+		foreach ($matches as $match) {
+			if (!$this->is($match)) {
+				return FALSE;
+			}
+		}
+
+		return TRUE;
+	}
+
+
+	/**
+	 * Determine whether or not this element `is()` ANY of the provided arguments.
+	 *
+	 * @param Element|Entity|class-string $match
+	 * @param Element|Entity|class-string ...$matches
+	 */
+	public function ofAny(Element|Entity|string $match, Element|Entity|string ...$matches): bool
+	{
+		array_unshift($matches, $match);
+
+		foreach ($matches as $match) {
+			if (!$this->is($match)) {
+				return TRUE;
+			}
+		}
+
+		return FALSE;
+	}
+
+
+	/**
+	 * Get the status of the element
+	 *
+	 * If no states are passed, then this method returns the current Status.  If states are passed
+	 * it determines if the element has a matching status to one of the arguments.
 	 **/
 	public function status(Status ...$statuses): Status|bool
 	{
@@ -395,31 +453,34 @@ abstract class Element implements Countable
 
 
 	/**
+	 * Get a preferred class (one that the element can instantiate as) from a list of candiates
 	 *
+	 * If the candidates are null or an empty array, then the preferred class will be the first
+	 * real class of which the element is aware.  Otherwise, it will check to see which of all
+	 * the candidate classes it is and return the first matching item.
+	 *
+	 * This method can return NULL, which suggests the element cannot be instantiated as that
+	 * class unless forced.
 	 */
-	protected function getPreferredClass(?array $concerns): ?string
+	protected function getPreferredClass(?array $candidates): ?string
 	{
-		$class   = NULL;
-		$classes = static::classes($this);
+		$class      = NULL;
+		$candidates = array_unique(array_filter(
+			$candidates ?: [],
+			fn($candidate) => is_subclass_of($candidate, Entity::class, TRUE)
+		));
 
-		if (empty($concerns)) {
-			$class = $classes[0] ?? NULL;
+		if (empty($candidates)) {
+			$class = static::classes($this)[0] ?? NULL;
 
 		} else {
-			foreach (array_unique(array_filter($concerns, 'class_exists')) as $concern) {
-				if ($this->is($concern)) {
-					$class = $concern;
+			foreach ($candidates as $candidate) {
+				if ($this->is($candidate)) {
+					$class = $candidate;
 					break;
 				}
 			}
 
-		}
-
-		if (!$class) {
-			throw new InvalidArgumentException(sprintf(
-				'Cannot get implied class, must specify from: %s',
-				implode(', ', $classes)
-			));
 		}
 
 		return $class;

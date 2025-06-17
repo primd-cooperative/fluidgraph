@@ -40,8 +40,6 @@ class C01_SimpleTest extends C00_BaseTest
 
 		$queue->merge($info);
 
-		$this->log('%s:%s Merge completed in: %f', __FUNCTION__, __LINE__, $info['time']);
-
 		assertCount(1, $info['nodes']['create'], 1);
 	}
 
@@ -63,12 +61,14 @@ class C01_SimpleTest extends C00_BaseTest
 			])
 			->take(1)
 			->skip(0)
-			->getRaw(0);
+			->results()
+			->at(0)
+		;
 
-		assertEquals(1, count($node));
+		assertEquals(0, count($node));
 		assertEquals(Element\Node::class, $node::class);
 		assertEquals(TRUE, $node->is(Person::class));
-		assertEquals(Person::class, $node->as()::class);
+		assertEquals(Person::class, $node->as(NULL)::class);
 	}
 
 	public function testFindOne()
@@ -83,7 +83,6 @@ class C01_SimpleTest extends C00_BaseTest
 	{
 		static::$graph
 			->run("MATCH (a:%s {name: 'Cynthia Bullwork'}) SET a.age = 38", Person::class)
-			->pull()
 		;
 
 		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
@@ -97,9 +96,8 @@ class C01_SimpleTest extends C00_BaseTest
 
 		$person->setAge(40);
 
-		static::$graph
+		$query = static::$graph
 			->run("MATCH (a:%s {name: 'Cynthia Bullwork'}) SET a.age = 39", Person::class)
-			->pull()
 		;
 
 		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);

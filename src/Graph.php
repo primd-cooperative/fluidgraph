@@ -187,38 +187,27 @@ class Graph
 	 * @template T of Entity
 	 * @param class-string<T> $class
 	 * @param array<Order> $orders
-	 * @return Results<T>
+	 * @return Entity\Results<T>
 	 */
-	public function find(string $class, ?int $limit = NULL, ?int $offset = NULL, callable|array $terms = [], ?array $orders = NULL): Results
+	public function find(string $class, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], array $orders = []): Entity\Results
 	{
-		$query = $this->query->match($class);
+		$query = $this->query;
 
-		if (!is_null($limit)) {
-			$query->take($limit);
-		}
+		$query->match($class)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
 
-		if (!is_null($offset)) {
-			$query->skip($offset);
-		}
-
-		if (!empty($terms)) {
-			$query->where($terms);
-		}
-
-		if (!is_null($orders)) {
-			$query->sort(...$orders);
-		}
-
-		return $query->getRaw()->as($class);
+		return $query->get($class);
 	}
 
 
 	/**
-	 *
+	 * @template T of Entity
+	 * @param class-string<T> $class
+	 * @param array<Order> $orders
+	 * @return Entity\Results<T>
 	 */
-	public function findAll(string $class, ?array $orders = NULL): Results
+	public function findAll(string $class, array $orders = []): Entity\Results
 	{
-		return $this->find($class, NULL, NULL, [], $orders);
+		return $this->find($class, NULL, 0, [], $orders);
 	}
 
 
@@ -247,7 +236,7 @@ class Graph
 			));
 		}
 
-		return $results[0] ?? NULL;
+		return $results->at(0);
 	}
 
 
@@ -259,110 +248,115 @@ class Graph
 	 * The core functionality of this is designed to convert record structures such as nodes
 	 * and relationships (edges) into their content representations.
 	 */
-	public function resolve(IStructure $structure): mixed
+	public function resolve(mixed $structure): mixed
 	{
-		switch($structure::class) {
-			case Struct\DateTimeZoneId::class:
-				$zone  = new DateTimeZone($structure->tz_id);
-				$value = DateTime::createFromFormat(
-					'U.u',
-					sprintf(
-						'%d.%s',
-						$structure->seconds,
-						substr(sprintf('%09d', $structure->nanoseconds), 0, 6)
-					),
-					new DateTimeZone($structure->tz_id)
-				);
-
-				$value->setTimeZone($zone);
-
-				return $value;
-
-			case Struct\Node::class:
-				$labels   = $structure->labels;
-				$identity = $structure->element_id;
-				$storage  = $this->nodes;
-
-				if (!isset($this->nodes[$identity])) {
-					$this->nodes[$identity] = new Element\Node()->on($this);
-				}
-
-				break;
-
-			case Struct\Relationship::class:
-				$labels   = [$structure->type];
-				$identity = $structure->element_id;
-				$storage  = $this->edges;
-
-				if (!isset($this->edges[$identity])) {
-					$this->edges[$identity] = new Element\Edge()->on($this);
-
-					if (isset($this->nodes[$structure->startNodeId])) {
-						$source = $this->nodes[$structure->startNodeId];
-					} else {
-						$source = $this->nodes[$structure->startNodeId] = new Element\Node();
-					}
-
-					if (isset($this->nodes[$structure->endNodeId])) {
-						$target = $this->nodes[$structure->endNodeId];
-					} else {
-						$target = $this->nodes[$structure->endNodeId] = new Element\Node();
-					}
-
-					$this->edges[$identity]->with(
-						function(Element $source, Element $target): void {
-							/**
-							 * @var Element\Edge $this
-							 */
-							$this->source = $source;
-							$this->target = $target;
-						},
-						$source,
-						$target
+		if (is_object($structure)) {
+			switch($structure::class) {
+				case Struct\DateTimeZoneId::class:
+					$zone  = new DateTimeZone($structure->tz_id);
+					$value = DateTime::createFromFormat(
+						'U.u',
+						sprintf(
+							'%d.%s',
+							$structure->seconds,
+							substr(sprintf('%09d', $structure->nanoseconds), 0, 6)
+						),
+						new DateTimeZone($structure->tz_id)
 					);
+
+					$value->setTimeZone($zone);
+
+					return $value;
+
+				case Struct\Node::class:
+					$labels   = $structure->labels;
+					$identity = $structure->element_id;
+					$storage  = $this->nodes;
+
+					if (!isset($this->nodes[$identity])) {
+						$this->nodes[$identity] = new Element\Node()->on($this);
+					}
+
+					break;
+
+				case Struct\Relationship::class:
+					$labels   = [$structure->type];
+					$identity = $structure->element_id;
+					$storage  = $this->edges;
+
+					if (!isset($this->edges[$identity])) {
+						$this->edges[$identity] = new Element\Edge()->on($this);
+
+						if (isset($this->nodes[$structure->startNodeId])) {
+							$source = $this->nodes[$structure->startNodeId];
+						} else {
+							$source = $this->nodes[$structure->startNodeId] = new Element\Node();
+						}
+
+						if (isset($this->nodes[$structure->endNodeId])) {
+							$target = $this->nodes[$structure->endNodeId];
+						} else {
+							$target = $this->nodes[$structure->endNodeId] = new Element\Node();
+						}
+
+						$this->edges[$identity]->with(
+							function(Element $source, Element $target): void {
+								/**
+								 * @var Element\Edge $this
+								 */
+								$this->source = $source;
+								$this->target = $target;
+							},
+							$source,
+							$target
+						);
+					}
+					break;
+
+				default:
+					throw new RuntimeException(sprintf(
+						'Cannot resolve property of type "%s"',
+						$structure::class
+					));
+			}
+
+			$element = $storage[$identity];
+
+			if (!isset($element->identity)) {
+				$element->identity = $identity;
+			}
+
+			if ($element->status != Status::released) {
+				$element->status = Status::attached;
+			}
+
+			foreach ($labels as $label) {
+				$element->labels[str_replace('_', '\\', $label)] = Status::attached;
+			}
+
+			foreach ($structure->properties as $property => $value) {
+				if ($value instanceof IStructure) {
+					$value = $this->resolve($value);
 				}
-				break;
 
-			default:
-				throw new RuntimeException(sprintf(
-					'Cannot resolve property of type "%s"',
-					$structure::class
-				));
-		}
-
-		$element = $storage[$identity];
-
-		if (!isset($element->identity)) {
-			$element->identity = $identity;
-		}
-
-		if ($element->status != Status::released) {
-			$element->status = Status::attached;
-		}
-
-		foreach ($labels as $label) {
-			$element->labels[str_replace('_', '\\', $label)] = Status::attached;
-		}
-
-		foreach ($structure->properties as $property => $value) {
-			if ($value instanceof IStructure) {
-				$value = $this->resolve($value);
-			}
-
-			if (!array_key_exists($property, $element->active)) {
-				$element->active[$property] = $value;
-			}
-
-			if (array_key_exists($property, $element->loaded)) {
-				if ($element->active[$property] == $element->loaded[$property]) {
+				if (!array_key_exists($property, $element->active)) {
 					$element->active[$property] = $value;
 				}
+
+				if (array_key_exists($property, $element->loaded)) {
+					if ($element->active[$property] == $element->loaded[$property]) {
+						$element->active[$property] = $value;
+					}
+				}
+
+				$element->loaded[$property] = is_object($value)
+					? clone $value
+					: $value
+				;
 			}
 
-			$element->loaded[$property] = is_object($value)
-				? clone $value
-				: $value
-			;
+		} else {
+			$element = $structure;
 		}
 
 		return $element;
@@ -378,7 +372,7 @@ class Graph
 	 */
 	public function run(string $statement, mixed ...$args): Query
 	{
-		return $this->query->run($statement, ...$args);
+		return $this->query->add($statement, ...$args)->run();
 	}
 
 

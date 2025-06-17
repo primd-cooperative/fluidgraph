@@ -1,0 +1,19 @@
+services:
+  memgraph:
+    image: docker.io/memgraph/memgraph-mage:latest
+    container_name: fg-memgraph-test
+    command: ["--log-level=TRACE"]
+    user: root
+    env_file:
+      - path: .env.docker
+        required: true
+    volumes:
+      - ./vendor/run/graph:/var/lib/memgraph
+    networks:
+      - default
+    ports:
+      - "127.0.0.1:31337:7687"
+networks:
+  default:
+    name: fluidgraph-test
+    driver: bridge

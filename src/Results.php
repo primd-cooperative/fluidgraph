@@ -7,82 +7,116 @@ use Doctrine\Common\Cache\Psr6\InvalidArgument;
 use InvalidArgumentException;
 
 /**
- * @template T of Element|Entity
+ * @template T
  * @extends ArrayObject<T>
  */
 class Results extends ArrayObject
 {
 	/**
-	 * Get the element results as an array of entities of a particular class.
-	 *
-	 *
-	 * @template E of Entity
-	 * @param null|array|class-string<E> $class The entity class to instantiate as.
-	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
-	 * @return NodeResults<E>|EntityResults<E>|Results<E>
+	 * @return null|static|T
 	 */
-	public function as(null|array|string $class, array $defaults = []): static
+	public function at(int $offset, int ...$offsets): mixed
 	{
-		if (is_string($class)) {
-			return match(TRUE) {
-				is_subclass_of($class, Node::class, TRUE) => new NodeResults(
-					array_map(
-						fn($result) => $result->as($class, $defaults),
-						$this->getArrayCopy()
-					)
-				),
+		$items = [];
 
-				is_subclass_of($class, Edge::class, TRUE) => new EdgeResults(
-					array_map(
-						fn($result) => $result->as($class, $defaults),
-						$this->getArrayCopy()
-					)
-				),
+		array_unshift($offsets, $offset);
 
-				default => throw new InvalidArgumentException(sprintf(
-					'Cannot make results as "%s", must be Node or Edge class',
-					$class
-				))
+		if (count($offsets) == 1) {
+			return $this[$offset] ?? NULL;
+
+		} else {
+			foreach ($offsets as $offset) {
+				if (isset($this[$offset])) {
+					$items[] = $this[$offset];
+				}
+			}
+
+			return new static($items);
+		}
+	}
+
+
+	/**
+	 *
+	 */
+	public function filter(string|callable $filter): static
+	{
+		if (is_string($filter)) {
+			$filter = function(mixed $result) use ($filter) {
+				return (string) $result == (string) $filter;
 			};
 		}
 
-		return new self(
-			array_map(
-				fn($result) => $result->as($class, $defaults),
-				$this->getArrayCopy()
-			)
-		);
-	}
-
-
-	/**
-	 *
-	 */
-	public function of(Element|Entity|string $class): static
-	{
-		return $this->where(fn($result) => $result->is($class));
-	}
-
-
-	/**
-	 *
-	 */
-	public function status(Status $status, Status ...$statuses): static
-	{
-		array_unshift($statuses, $status);
-
-		return $this->where(fn($result) => $result->status($statuses));
-	}
-
-
-	/**
-	 *
-	 */
-	public function where(callable $condition): static
-	{
-		return new static(array_filter(
+		return new static(array_values(array_filter(
 			$this->getArrayCopy(),
-			$condition
-		));
+			$filter
+		)));
+	}
+
+
+	/**
+	 *
+	 */
+	public function first(): mixed
+	{
+		return $this[0] ?? NULL;
+	}
+
+
+	/**
+	 * TODO: Fix and Test
+	 */
+	public function in(array|self $set): bool
+	{
+		if (!is_array($set)) {
+			$set = $set->getArrayCopy();
+		}
+
+		return count(array_intersect($this->getArrayCopy(), $set)) == count($this);
+	}
+
+
+	/**
+	 *
+	 */
+	public function last(): mixed
+	{
+		return $this[count($this) - 1] ?? NULL;
+	}
+
+
+	/**
+	 *
+	 */
+	public function map(string|callable $transformer): self
+	{
+		if (is_string($transformer)) {
+			$transformer = function(mixed $result) use ($transformer) {
+				return sprintf($transformer, $result);
+			};
+		}
+
+		return new self(array_values(array_map(
+			$transformer,
+			$this->getArrayCopy()
+		)));
+	}
+
+
+	/**
+	 *
+	 */
+	public function slice(int $start, int $count): static
+	{
+		return new static(array_slice($this->getArrayCopy(), $start, $count));
+	}
+
+
+	/**
+	 *
+	 */
+	public function unwrap()
+	{
+		return $this->getArrayCopy();
 	}
 }

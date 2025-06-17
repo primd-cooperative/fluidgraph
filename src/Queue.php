@@ -2,10 +2,8 @@
 
 namespace FluidGraph;
 
-use HRTime;
 use ArrayObject;
 use RuntimeException;
-use Bolt\enum\Signature;
 
 class Queue
 {
@@ -227,12 +225,12 @@ class Queue
 			$edge = $this->edges[$identity];
 
 			$query
-				->run('MATCH (%s) WHERE id(%s) = $%s', "f$i", "f$i", "fd$i")
+				->add('MATCH (%s) WHERE id(%s) = $%s', "f$i", "f$i", "fd$i")
 				->set("fd$i", $edge->source->identity)
 			;
 
 			$query
-				->run('MATCH (%s) WHERE id(%s) = $%s', "t$i", "t$i", "td$i")
+				->add('MATCH (%s) WHERE id(%s) = $%s', "t$i", "t$i", "td$i")
 				->set("td$i", $edge->target->identity)
 			;
 		}
@@ -247,17 +245,17 @@ class Queue
 
 			if ($key = Element::key($edge)) {
 				$query
-					->run('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::fastened), "k$i", "t$i")
+					->add('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::fastened), "k$i", "t$i")
 					->set("k$i", $key)
-					->run('ON CREATE SET @%s(%s)', "c$i", "i$i")
-					->run('ON MATCH SET @%s(%s)', "m$i", "i$i")
+					->add('ON CREATE SET @%s(%s)', "c$i", "i$i")
+					->add('ON MATCH SET @%s(%s)', "m$i", "i$i")
 					->set("c$i", array_diff_key(Element::properties($edge), $key))
 					->set("m$i", array_diff_key(Element::properties($edge), $key, $created))
 				;
 
 			} else {
 				$query
-					->run('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::fastened), "d$i", "t$i")
+					->add('CREATE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::fastened), "d$i", "t$i")
 					->set("d$i", Element::properties($edge))
 				;
 
@@ -266,12 +264,12 @@ class Queue
 			$i++;
 		}
 
-		$query->run(
+		$query->add(
 			'RETURN %s',
 			implode(',', array_map(fn($i) => "i$i", range(0, $i - 1)))
 		);
 
-		foreach ($query->pull(Signature::RECORD) as $i => $record) {
+		foreach ($query->records() as $i => $record) {
 			if (isset($this->edges[$record->element_id])) {
 				//
 				// Duplicate merge, re-fasten the entities
@@ -296,15 +294,18 @@ class Queue
 	{
 		$query      = $this->graph->query;
 		$identities = $this->edgeOperations[static::DELETE];
-		$responses  = $query
-			->run(
+
+		$query
+			->add(
 				'MATCH (n1)-[e]->(n2) WHERE %s DELETE e',
 				$query->where->scope('e', function($any, $id) use ($identities) {
 					return $any(...array_map($id, $identities));
 				})
 			)
-			->pull(Signature::SUCCESS)
+			->run()
 		;
+
+		var_dump($query->meta);
 
 		foreach ($identities as $identity) {
 			$this->edges[$identity]->status = Status::detached;
@@ -322,7 +323,7 @@ class Queue
 
 		$i = 0; foreach ($identities as $identity) {
 			$query
-				->run('MATCH (%s)-[%s]->(%s) WHERE id(%s) = $%s', "f$i", "i$i", "t$i", "i$i", "e$i")
+				->add('MATCH (%s)-[%s]->(%s) WHERE id(%s) = $%s', "f$i", "i$i", "t$i", "i$i", "e$i")
 				->set("e$i", $identity)
 			;
 
@@ -333,7 +334,7 @@ class Queue
 			$edge = $this->edges[$identity];
 
 			$query
-				->run('SET @%s(%s)', "d$i", "i$i")
+				->add('SET @%s(%s)', "d$i", "i$i")
 				->set("d$i", Element::changes($edge))
 			;
 
@@ -344,12 +345,12 @@ class Queue
 			$i++;
 		}
 
-		$query->run(
+		$query->add(
 			'RETURN %s',
 			implode(',', array_map(fn($i) => "i$i", range(0, $i - 1)))
 		);
 
-		foreach ($query->pull(Signature::RECORD) as $record) {
+		foreach ($query->records() as $record) {
 			$element = $this->graph->resolve($record);
 		}
 	}
@@ -373,16 +374,16 @@ class Queue
 
 			if ($key = Element::key($node)) {
 				$query
-					->run('MERGE (%s:%s {@%s})', "i$i", Element::signature($node, Status::fastened), "k$i")
+					->add('MERGE (%s:%s {@%s})', "i$i", Element::signature($node, Status::fastened), "k$i")
 					->set("k$i", $key)
-					->run('ON CREATE SET @%s(%s)', "c$i", "i$i")
-					->run('ON MATCH SET @%s(%s)', "m$i", "i$i")
+					->add('ON CREATE SET @%s(%s)', "c$i", "i$i")
+					->add('ON MATCH SET @%s(%s)', "m$i", "i$i")
 					->set("c$i", array_diff_key(Element::properties($node), $key))
 					->set("m$i", array_diff_key(Element::properties($node), $key, $created))
 				;
 			} else {
 				$query
-					->run('CREATE (%s:%s {@%s})', "i$i", Element::signature($node, Status::fastened), "d$i")
+					->add('CREATE (%s:%s {@%s})', "i$i", Element::signature($node, Status::fastened), "d$i")
 					->set("d$i", Element::properties($node))
 				;
 			}
@@ -390,12 +391,12 @@ class Queue
 			$i++;
 		}
 
-		$query->run(
+		$query->add(
 			'RETURN %s',
 			implode(',', array_map(fn($i) => "i$i", range(0, $i - 1)))
 		);
 
-		foreach ($query->pull(Signature::RECORD) as $i => $record) {
+		foreach ($query->records() as $i => $record) {
 			if (isset($this->nodes[$record->element_id])) {
 
 				//
@@ -421,14 +422,15 @@ class Queue
 	{
 		$query      = $this->graph->query;
 		$identities = $this->nodeOperations[static::DELETE];
-		$responses  = $query
-			->run(
+
+		$query
+			->add(
 				'MATCH (n) WHERE %s DETACH DELETE n',
 				$query->where->scope('n', function($any, $id) use ($identities) {
 					return $any(...array_map($id, $identities));
 				})
 			)
-			->pull(Signature::SUCCESS)
+			->run()
 		;
 
 		foreach ($identities as $identity) {
@@ -446,7 +448,7 @@ class Queue
 
 		$i = 0; foreach ($identities as $identity) {
 			$query
-				->run('MATCH (%s) WHERE id(%s) = $%s', "i$i", "i$i", "n$i")
+				->add('MATCH (%s) WHERE id(%s) = $%s', "i$i", "i$i", "n$i")
 				->set("n$i", $identity)
 			;
 
@@ -457,27 +459,27 @@ class Queue
 			$node = $this->nodes[$identity];
 
 			$query
-				->run('SET @%s(%s)', "d$i", "i$i")
+				->add('SET @%s(%s)', "d$i", "i$i")
 				->set("d$i", Element::changes($node))
 			;
 
 			if ($plus_signature = Element::signature($node, Status::fastened)) {
-				$query->run('SET %s:%s', "i$i", $plus_signature);
+				$query->add('SET %s:%s', "i$i", $plus_signature);
 			}
 
 			if ($less_signature = Element::signature($node, Status::released)) {
-				$query->run('REMOVE %s:%s', "i$i", $less_signature);
+				$query->add('REMOVE %s:%s', "i$i", $less_signature);
 			}
 
 			$i++;
 		}
 
-		$query->run(
+		$query->add(
 			'RETURN %s',
 			implode(',', array_map(fn($i) => "i$i", range(0, $i - 1)))
 		);
 
-		foreach ($query->pull(Signature::RECORD) as $record) {
+		foreach ($query->records() as $record) {
 			$element = $this->graph->resolve($record);
 
 			foreach ($element->labels as $label => $status) {
