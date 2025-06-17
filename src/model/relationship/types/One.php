@@ -3,10 +3,10 @@
 namespace FluidGraph\Relationship;
 
 /**
- * A ToOne is a relationship to a single node independent of the source node.
+ * A relationship that allows one node connected by a single edge.
  *
- * When the source node is attached, so is the target node.
- * When the source node is detached, the target node lives on.
+ * When the source node is attached, so is the related node/edge.
+ * When the source node is detached, so is the related edge, the related node lives on.
  */
 class One extends LinkOneOne
 {

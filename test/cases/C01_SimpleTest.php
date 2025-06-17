@@ -79,13 +79,31 @@ class C01_SimpleTest extends C00_BaseTest
 		assertSame($person, static::$data->person);
 	}
 
+
+	public function testFindAll()
+	{
+		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
+		$people = static::$graph->findAll(Person::class);
+
+		assertEquals(1, count($people));
+		assertSame($person, $people->last());
+		assertSame($person, $people->first());
+		assertSame($person, $people->at(0));
+	}
+
+
 	public function testMatchOneForeignUpdate()
 	{
 		static::$graph
 			->run("MATCH (a:%s {name: 'Cynthia Bullwork'}) SET a.age = 38", Person::class)
 		;
 
-		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->query
+			->match(Person::class)
+			->where(['name' => 'Cynthia Bullwork'])
+			->get()
+			->at(0)
+		;
 
 		assertSame(38, $person->age);
 	}

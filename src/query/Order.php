@@ -2,14 +2,18 @@
 
 namespace FluidGraph;
 
-use FluidGraph\Direction;
 use FluidGraph\Scope;
+use FluidGraph\Direction;
+
 use InvalidArgumentException;
 
+/**
+ * An order type common to all queries where where the scope is not configurable by default
+ */
 class Order
 {
 	/**
-	 *
+	 * Create a new relationship with a fixed scope (concern only), direction and field.
 	 */
 	static public function by(Direction $direction, string $field): self
 	{
@@ -18,7 +22,9 @@ class Order
 
 
 	/**
+	 * Validate that the desired field exists on one or another classes
 	 *
+	 * @throws InvalidArgumentException When the field cannot be found on any provided classes
 	 */
 	public function validate(string ...$classes): static
 	{
@@ -40,14 +46,11 @@ class Order
 
 
 	/**
-	 *
+	 * Prevent external construction as the scope should not normally be configurable
 	 */
 	protected function __construct(
 		public protected(set) string $alias,
 		public protected(set) string $direction,
 		public protected(set) string $field
-	)
-	{
-
-	}
+	) {}
 }

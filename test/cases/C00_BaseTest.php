@@ -78,7 +78,7 @@ class C00_BaseTest extends TestCase
 		assertEquals([0, 2, 4, 6, 8, 10, 12], $results->map(fn($r) => $r * 2)->unwrap());
 
 		assertEquals([1, 3, 5], $results->filter(fn($r) => $r & 1)->unwrap());
-		assertEquals([5], $results->filter(5)->unwrap());
+		assertEquals([2, 4, 5], $results->filter([17, 5, 26, 30, 4, 100, 2])->unwrap());
 
 		assertNull($results->at(10));
 		assertEmpty($results->at(20, 33, 40));

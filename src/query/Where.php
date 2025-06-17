@@ -8,6 +8,9 @@ use ReflectionClass;
 use ReflectionMethod;
 use ReflectionFunction;
 
+/**
+ * A "where" clause builder that works using collapsing closures
+ */
 class Where
 {
 	/**
@@ -159,7 +162,7 @@ class Where
 	/**
 	 *
 	 */
-	public function scope(string $alias, ?callable $scope): callable
+	public function scope(string $alias, ?callable $callback): callable
 	{
 		if (!count(static::$methods)) {
 			$methods = new ReflectionClass($this)->getMethods();
@@ -171,7 +174,7 @@ class Where
 			}
 		}
 
-		return function() use ($alias, $scope) {
+		return function() use ($alias, $callback) {
 			$ref = NULL;
 
 			if (isset($this->alias)) {
@@ -180,7 +183,7 @@ class Where
 
 			$this->alias = $alias;
 
-			$parameters = new ReflectionFunction($scope)->getParameters();
+			$parameters = new ReflectionFunction($callback)->getParameters();
 			$arguments  = [];
 
 			foreach ($parameters as $parameter) {
@@ -197,13 +200,23 @@ class Where
 				$arguments[$param] = static::$methods[$method]->getClosure($this);
 			}
 
-			return $scope(...$arguments)();
+			$result = $callback(...$arguments);
+
+			if (!is_callable($result)) {
+				throw new InvalidArgumentException(sprintf(
+					'Scoped where conditions did not provide callable return value'
+				));
+			}
+
+			$result = $result();
 
 			if ($ref) {
 				$this->alias = $ref;
 			} else {
 				unset($this->alias);
 			}
+
+			return $result;
 		};
 	}
 

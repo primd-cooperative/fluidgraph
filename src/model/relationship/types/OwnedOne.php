@@ -3,10 +3,10 @@
 namespace FluidGraph\Relationship;
 
 /**
- * A relationship to a single node where the target node is owned by the source.
+ * A relationship that allows one owned node connected by a single edge.
  *
- * When the source node is attached, so is the target node.
- * When the source node is detached, so is the target node.
+ * When the source node is attached, so is the related node/edge.
+ * When the source node is detached, so is the related node/edge.
  */
 class OwnedOne extends LinkOneOne
 {

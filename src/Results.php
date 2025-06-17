@@ -3,17 +3,21 @@
 namespace FluidGraph;
 
 use ArrayObject;
-use Doctrine\Common\Cache\Psr6\InvalidArgument;
-use InvalidArgumentException;
 
 /**
- * @template T
+ * @template T of mixed
  * @extends ArrayObject<T>
  */
 class Results extends ArrayObject
 {
 	/**
-	 * @return null|static|T
+	 * Get the item(s) at one or more positions
+	 *
+	 * If a single offset is passed the item in that position will returned, or NULL will be
+	 * returned if no item is in that position.  If more than one offset is passed, the result
+	 * will be the same result set containing only those items.
+	 *
+	 * @return null|T|static<T>
 	 */
 	public function at(int $offset, int ...$offsets): mixed
 	{
@@ -37,13 +41,17 @@ class Results extends ArrayObject
 
 
 	/**
+	 * Filter the results by a callable or an array.
 	 *
+	 * The default array behavior is to return only results which are in the passed array. Child
+	 * result types are allowed to overload this behavior depending on the nature of their
+	 * results.
 	 */
-	public function filter(string|callable $filter): static
+	public function filter(array|callable $filter): static
 	{
-		if (is_string($filter)) {
+		if (is_array($filter)) {
 			$filter = function(mixed $result) use ($filter) {
-				return (string) $result == (string) $filter;
+				return in_array($result, $filter);
 			};
 		}
 
@@ -55,7 +63,11 @@ class Results extends ArrayObject
 
 
 	/**
+	 * Get the first item in the results
 	 *
+	 * If results are empty, NULL will be returned
+	 *
+	 * @return ?T
 	 */
 	public function first(): mixed
 	{
@@ -64,20 +76,11 @@ class Results extends ArrayObject
 
 
 	/**
-	 * TODO: Fix and Test
-	 */
-	public function in(array|self $set): bool
-	{
-		if (!is_array($set)) {
-			$set = $set->getArrayCopy();
-		}
-
-		return count(array_intersect($this->getArrayCopy(), $set)) == count($this);
-	}
-
-
-	/**
+	 * Get the first item in the results
 	 *
+	 * If the results are empty, NULL will be returned
+	 *
+	 * @return ?T
 	 */
 	public function last(): mixed
 	{
@@ -86,7 +89,12 @@ class Results extends ArrayObject
 
 
 	/**
+	 * Return a new base result set containing the results of the mapping transformation
 	 *
+	 * The mapping transformation can be either a callable or a string.  The standard behavior
+	 * for a string argument is to map to sprintf() where the %s in the string will be replaced
+	 * with the string representation of the item.  Child result types are allowed to overload
+	 * this behavior depending on the nature of their results.
 	 */
 	public function map(string|callable $transformer): self
 	{
@@ -113,9 +121,11 @@ class Results extends ArrayObject
 
 
 	/**
+	 * Get the copy of the internal results array
 	 *
+	 * @return array<T>
 	 */
-	public function unwrap()
+	public function unwrap(): array
 	{
 		return $this->getArrayCopy();
 	}

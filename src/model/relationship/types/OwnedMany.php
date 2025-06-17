@@ -3,10 +3,10 @@
 namespace FluidGraph\Relationship;
 
 /**
- * A relationship to many nodes where all target nodes are owned by the source.
+ * A relationship that allows many owned nodes connected by a single edge.
  *
- * When the source node is attached, so are the target nodes.
- * When the source node is detached, so are the target nodes.
+ * When the source node is attached, so are the related nodes/edges.
+ * When the source node is detached, so are the related nodes/edges.
  */
 class OwnedMany extends LinkOneMany
 {

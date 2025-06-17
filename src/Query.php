@@ -11,6 +11,9 @@ use RuntimeException;
 use DateTime;
 use Closure;
 
+/**
+ * @template T of mixed
+ */
 class Query
 {
 	use HasGraph;
@@ -133,9 +136,9 @@ class Query
 
 
 	/**
-	 * @template N of Node
-	 * @param ?class-string<N> $class
-	 * @return NodeResults<N>|EdgeResults<N>|ElementResults
+	 * @template E of Entity
+	 * @param ?class-string<E> $class
+	 * @return NodeResults<T|E>|EdgeResults<T|E>|ElementResults
 	 */
 	public function get(?string $class = NULL): NodeResults|EdgeResults|Element\Results
 	{
@@ -150,7 +153,9 @@ class Query
 
 
 	/**
-	 *
+	 * @template T of Entity
+	 * @param class-string<T> ...$concerns
+	 * @return static<T>
 	 */
 	public function match(string ...$concerns): static
 	{
@@ -159,7 +164,9 @@ class Query
 
 
 	/**
-	 *
+	 * @template T of Entity
+	 * @param class-string<T> ...$concerns
+	 * @return static<T>
 	 */
 	public function matchAny(string ...$concerns): static
 	{
@@ -210,7 +217,7 @@ class Query
 
 
 	/**
-	 *
+	 * @return Results<T>|Element\Results<T>
 	 */
 	public function results(): Results|Element\Results
 	{
@@ -266,7 +273,7 @@ class Query
 
 
 	/**
-	 *
+	 * @return static<T>
 	 */
 	public function set(string $name, mixed $value): static
 	{
@@ -277,7 +284,7 @@ class Query
 
 
 	/**
-	 *
+	 * @return static<T>
 	 */
 	public function setAll(array $parameters): static
 	{
@@ -288,7 +295,7 @@ class Query
 
 
 	/**
-	 *
+	 * @return static<T>
 	 */
 	public function skip(int $offset): static
 	{
@@ -299,7 +306,7 @@ class Query
 
 
 	/**
-	 *
+	 * @return static<T>
 	 */
 	public function sort(Order ...$orders): static
 	{
@@ -310,7 +317,7 @@ class Query
 
 
 	/**
-	 *
+	 * @return static<T>
 	 */
 	public function take(?int $limit): static
 	{
@@ -325,15 +332,17 @@ class Query
 
 
 	/**
-	 *
+	 * @return static<T>
 	 */
 	public function where(callable|array $terms)
 	{
-		if (is_array($terms)) {
-			$terms = fn($all, $eq) => $all(...$eq($terms));
-		}
+		if (!empty($terms)) {
+			if (is_array($terms)) {
+				$terms = fn($all, $eq) => $all(...$eq($terms));
+			}
 
-		$this->terms = $this->where->scope(Scope::concern->value, $terms);
+			$this->terms = $this->where->scope(Scope::concern->value, $terms);
+		}
 
 		return $this;
 	}

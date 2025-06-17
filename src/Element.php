@@ -24,18 +24,21 @@ abstract class Element implements Countable
 
 	/**
 	 * The active properties of the element (as managed by/on its models)
+	 *
 	 * @var array<string, mixed>
 	 */
 	public array $active = [];
 
 	/**
 	 * The labels of the element
+	 *
 	 * @var array<string, Status>
 	 */
 	public array $labels = [];
 
 	/**
 	 * The loaded properties of the element (as retreived from the graph)
+	 *
 	 * @var array<string, mixed>
 	 */
 	public array $loaded = [];
@@ -46,15 +49,15 @@ abstract class Element implements Countable
 	public ?Status $status = NULL;
 
 	/**
-	 * The latest entity instance of the content
+	 * The list of instantiated entity instances of this element indexed by class
 	 *
-	 * @var array<Entity>
+	 * @var array<class-string<Entity>, Entity>
 	 */
 	public array $entities = [];
 
 
 	/**
-	 * Get the changes to this element by comparing active to loaded values.
+	 * Get the changes to an element by comparing active to loaded values.
 	 *
 	 * @return array<string, mixed> The properties which have changed and their current values
 	 */
@@ -79,7 +82,7 @@ abstract class Element implements Countable
 
 
 	/**
-	 * Get the element classes for this content based on labels.
+	 * Get the valid classes for an element based on its labels
 	 *
 	 * @return array<class-string<Entity>> The valid entity types
 	 */
@@ -187,7 +190,7 @@ abstract class Element implements Countable
 
 
 	/**
-	 * Get the key properties for this element based on element classes.
+	 * Get the key properties for an element based on its classes.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -213,7 +216,7 @@ abstract class Element implements Countable
 
 
 	/**
-	 * Get the labels (or labels matching specific statuses) for this element
+	 * Get the labels (or labels matching specific statuses) for an element
 	 * @return array<string>
 	 */
 	static public function labels(self $element, Status ...$statuses): array
@@ -232,7 +235,7 @@ abstract class Element implements Countable
 
 
 	/**
-	 * Get a mapping of properties to values for this element.
+	 * Get a mapping of properties to values for an element.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -246,7 +249,7 @@ abstract class Element implements Countable
 
 
 	/**
-	 * Get the signature (colon separated list) for this element
+	 * Get the signature (colon separated list) for an element
 	 */
 	static public function signature(self $element, Status ...$statuses): string
 	{
@@ -280,20 +283,14 @@ abstract class Element implements Countable
 	{
 		return array_filter(
 			get_object_vars($this),
-			fn($key) => !in_array(
-					$key,
-					[
-						'graph',
-						'entities',
-					]
-				),
+			fn($key) => !in_array($key, ['graph', 'entities']),
 			ARRAY_FILTER_USE_KEY
 		);
 	}
 
 
 	/**
-	 * Instantiate the element as an entity of a specific or implied class
+	 * Instantiate an element as a specific type of entity or as a prefferred class
 	 *
 	 * If an existing entity expressing this element exists, it will be returned.  If not a new
 	 * one will be created using the active element properties for construction with a fallback
@@ -366,10 +363,10 @@ abstract class Element implements Countable
 
 
 	/**
-	 * Get the In-Graph identity of the element.
+	 * Get the in-Graph identity of the element.
 	 *
 	 * For new Elements, i.e. those which are fastened to new Entities, this will be `NULL` until
-	 * they are attached and merged/saved.
+	 * they are attached and merged/saved in the actual graph.
 	 */
 	public function identity(): int|null
 	{
@@ -378,7 +375,7 @@ abstract class Element implements Countable
 
 
 	/**
-	 * Determine whether or not this element is an expression of another entity, element, or class
+	 * Determine whether or not this element is an expression of another entity, element, or label
 	 *
 	 * @param Element|Entity|class-string $match
 	 */

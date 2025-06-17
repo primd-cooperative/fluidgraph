@@ -3,10 +3,10 @@
 namespace FluidGraph\Relationship;
 
 /**
- * A cluster is a relationship to many nodes independent of the source node.
+ * A relationship that allows many nodes connected by a single edge.
  *
- * When the source node is attached, so are the target nodes.
- * When the source node is detached, the target nodes live on.
+ * When the source node is attached, so are the related nodes/edges.
+ * When the source node is detached, so are the related edges, the related nodes live on.
  */
 class Many extends LinkOneMany
 {

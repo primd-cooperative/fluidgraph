@@ -124,9 +124,9 @@ abstract class Entity
 
 
 	/**
-	 * Clone an element
+	 * Clone an entity
 	 *
-	 * This will create a copy of an element, removing its content and key properties.  If the
+	 * This will create a copy of an entity, removing its content and key properties.  If the
 	 * element is a node, it will clone the relationship, however, edges and nodes will be
 	 * dropped as edges do not contain information about connecting node expressions.
 	 */
@@ -162,6 +162,7 @@ abstract class Entity
 		});
 	}
 
+
 	/**
 	 *
 	 */
@@ -174,7 +175,7 @@ abstract class Entity
 
 
 	/**
-	 * Instantiate an entity as another type of entity
+	 * Instantiate an entity as another specific type of entity or as a prefferred class
 	 *
 	 * If an existing entity expressing the same element exists, it will be returned.  If not a new
 	 * one will be created using the active element properties for construction with a fallback
@@ -192,7 +193,11 @@ abstract class Entity
 
 
 	/**
-	 * Assign data to the entity/element in a safe/bulk manner
+	 * Assign data to the entity in a bulk manner
+	 *
+	 * Unlike on the Element class, this will validate that the keys of the array are valid
+	 * properties for the entity making this function safe.
+	 *
 	 * @param array<string, mixed> $data
 	 */
 	public function assign(array $data): static
@@ -226,7 +231,7 @@ abstract class Entity
 
 
 	/**
-	 * Determine whether or not this element is an expression of another entity, element, or class
+	 * Determine whether or not this entity is an expression of another entity, element, or label
 	 *
 	 * @param Element|Entity|class-string $match
 	 */
@@ -261,7 +266,10 @@ abstract class Entity
 
 
 	/**
-	 * Get the status (no arguments) of the entity or check if status is one of...
+	 * Get the status of the entity
+	 *
+	 * If no states are passed, then this method returns the current Status.  If states are passed
+	 * it determines if the entity has a matching status to one of the arguments.
 	 */
 	public function status(Status ...$statuses): Status|bool
 	{

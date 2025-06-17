@@ -2,6 +2,9 @@
 
 namespace FluidGraph;
 
+/**
+ * Available query scopes and their corresponding aliases
+ */
 enum Scope: string
 {
 	case subject  = 's';
