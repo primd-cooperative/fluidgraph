@@ -27,16 +27,16 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 	/**
 	 * Get the edge entity for this relationship only if it corresponds to all node(s)/label(s)
 	 *
-	 * @param Element\Node|Node|class-string $node
-	 * @param Element\Node|Node|class-string $nodes
+	 * @param Element\Node|Node|class-string $match
+	 * @param Element\Node|Node|class-string $matches
 	 * @return E
 	 */
-	public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): ?Edge
+	public function for(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): ?Edge
 	{
 		$edge = $this->any();
 
 		if ($edge) {
-			if ($edge->for($this->type, $node, ...$nodes)) {
+			if ($edge->for($this->type, $match, ...$matches)) {
 				return $edge;
 			}
 		}
@@ -48,16 +48,16 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 	/**
 	 * Get the edge entity for this relationship only if it corresponds to one or more node(s)/label(s)
 	 *
-	 * @param Element\Node|Node|class-string $node
-	 * @param Element\Node|Node|class-string $nodes
+	 * @param Element\Node|Node|class-string $match
+	 * @param Element\Node|Node|class-string $matches
 	 * @return E
 	 */
-	public function forAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): ?Edge
+	public function forAny(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): ?Edge
 	{
 		$edge = $this->any();
 
 		if ($edge) {
-			if ($edge->forAny($this->type, $node, ...$nodes)) {
+			if ($edge->forAny($this->type, $match, ...$matches)) {
 				return $edge;
 			}
 		}

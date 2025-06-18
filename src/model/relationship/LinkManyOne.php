@@ -18,27 +18,27 @@ abstract class LinkManyOne extends Relationship
 	/**
 	 * Get all edge entities for this relationship that corresponds to all node(s)/label(s)
 	 *
-	 * @param Element\Node|Node|class-string $node
-	 * @param Element\Node|Node|class-string $nodes
+	 * @param Element\Node|Node|class-string $match
+	 * @param Element\Node|Node|class-string $matches
 	 * @return EdgeResults<E>
 
 	 */
-	public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function for(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): EdgeResults
 	{
-		return $this->all()->for($node, ...$nodes);
+		return $this->all()->for($match, ...$matches);
 	}
 
 
 	/**
 	 * Get all edge entities for this relationship that corresponds to any node(s)/label(s)
 	 *
-	 * @param Element\Node|Node|class-string $node
-	 * @param Element\Node|Node|class-string $nodes
+	 * @param Element\Node|Node|class-string $match
+	 * @param Element\Node|Node|class-string $matches
 	 * @return EdgeResults<E>
 	 */
-	public function forAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): EdgeResults
+	public function forAny(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): EdgeResults
 	{
-		return $this->all()->forAny($node, ...$nodes);
+		return $this->all()->forAny($match, ...$matches);
 	}
 
 

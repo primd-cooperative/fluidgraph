@@ -9,13 +9,13 @@ use FluidGraph\Direction;
 use FluidGraph\Reference;
 
 use FluidGraph\Relationship\One;
-use FluidGraph\Relationship\Many;
 use FluidGraph\Relationship\Mode;
 use FluidGraph\Relationship\Order;
+use FluidGraph\Relationship\OwnedMany;
 
 class Author extends Node
 {
-	public protected(set) Many $writings;
+	public protected(set) OwnedMany $writings;
 
 	public protected(set) One $publishedBy;
 
@@ -33,7 +33,7 @@ class Author extends Node
 			Mode::eager
 		);
 
-		$this->writings = Many::having(
+		$this->writings = OwnedMany::having(
 			$this,
 			Wrote::class,
 			Reference::to,

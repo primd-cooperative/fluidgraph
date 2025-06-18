@@ -27,12 +27,13 @@ class EdgeResults extends Entity\Results
 
 		foreach ($this as $edge) {
 			foreach ($this->getReferencedNodes($edge) as $node) {
-				if (!$node->of($match, ...$matches)) {
-					continue;
+				if ($node->of($match, ...$matches)) {
+					$edges[] = $edge;
+
+					continue 2;
 				}
 			}
 
-			$edges[] = $edge;
 		}
 
 		return new static($edges)->using($this->relationship);
@@ -55,7 +56,7 @@ class EdgeResults extends Entity\Results
 				if ($node->ofAny($match, ...$matches)) {
 					$edges[] = $edge;
 
-					continue;
+					continue 2;
 				}
 			}
 		}

@@ -135,5 +135,18 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 		assertEquals(3, count($author->writings));
 	}
 
+	public function testEdgeFor()
+	{
+		$books  = static::$graph->findAll(Book::class);
+		$author = static::$data->person->as(Author::class);
+
+		foreach ($books as $book) {
+			if ($book->name == 'Lord of the Pings 3') {
+				$edge = $author->writings->for($book)->at(0);
+
+				assertEquals(new DateTime('July 1st 2003'), $edge->date);
+			}
+		}
+	}
 
 }
