@@ -53,24 +53,4 @@ abstract class LinkManyMany extends Relationship
 
 		return $this;
 	}
-
-
-	/**
-	 *
-	 */
-	public function unset(null|Node|Edge $entity): static
-	{
-		if ($entity instanceof Edge) {
-			unset($this->active[spl_object_hash($entity)]);
-
-		} else {
-			foreach ($this->for($entity) as $edge) {
-				unset($this->active[spl_object_hash($edge)]);
-			}
-
-		}
-
-		return $this;
-	}
-
 }

@@ -4,6 +4,7 @@ namespace FluidGraph\Entity;
 
 use FluidGraph\Entity;
 use FluidGraph\Element;
+use FluidGraph\Relationship;
 
 /**
  * @template T of Entity
@@ -11,6 +12,11 @@ use FluidGraph\Element;
  */
 abstract class Results extends Element\Results
 {
+	/**
+	 *
+	 */
+	protected ?Relationship $relationship = NULL;
+
 	/**
 	 *
 	 */
@@ -51,5 +57,29 @@ abstract class Results extends Element\Results
 			$transformer,
 			$this->getArrayCopy()
 		));
+	}
+
+
+	/**
+	 *
+	 */
+	public function merge(): static
+	{
+		if ($this->relationship) {
+			$this->relationship->merge(TRUE);
+		}
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function using(?Relationship $relationship): static
+	{
+		$this->relationship = $relationship;
+
+		return $this;
 	}
 }

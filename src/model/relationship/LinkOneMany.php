@@ -57,15 +57,4 @@ abstract class LinkOneMany extends Relationship
 
 		return $this;
 	}
-
-
-	/**
-	 *
-	 */
-	public function unset(null|Node|Edge $node): static
-	{
-		unset($this->active[$this->getIndex($node)]);
-
-		return $this;
-	}
 }

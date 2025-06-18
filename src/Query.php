@@ -17,6 +17,7 @@ use Closure;
 class Query
 {
 	use HasGraph;
+	use DoesMatch;
 
 	const REGEX_EXPANSION = '#@([a-zA-Z][a-zA-Z0-9]*)(?:\(([a-zA-Z][a-zA-Z0-9]*)\))?#';
 
@@ -25,30 +26,12 @@ class Query
 	 */
 	public protected(set) array $concerns;
 
-	/**
-	 *
-	 */
-	public protected(set) int $limit = -1;
-
-	/**
-	 *
-	 */
-	public protected(set) int $offset = 0;
-
-	/**
-	 *
-	 */
-	public protected(set) array $orders = [];
 
 	/**
 	 *
 	 */
 	public protected(set) string $pattern;
 
-	/**
-	 *
-	 */
-	public protected(set) Closure $terms;
 
 	/**
 	 *
@@ -289,60 +272,6 @@ class Query
 	public function setAll(array $parameters): static
 	{
 		$this->parameters = array_replace($this->parameters, $this->prepare($parameters));
-
-		return $this;
-	}
-
-
-	/**
-	 * @return static<T>
-	 */
-	public function skip(int $offset): static
-	{
-		$this->offset = $offset;
-
-		return $this;
-	}
-
-
-	/**
-	 * @return static<T>
-	 */
-	public function sort(Order ...$orders): static
-	{
-		$this->orders = $orders;
-
-		return $this;
-	}
-
-
-	/**
-	 * @return static<T>
-	 */
-	public function take(?int $limit): static
-	{
-		if (is_null($limit)) {
-			$limit = -1;
-		}
-
-		$this->limit = $limit;
-
-		return $this;
-	}
-
-
-	/**
-	 * @return static<T>
-	 */
-	public function where(callable|array $terms)
-	{
-		if (!empty($terms)) {
-			if (is_array($terms)) {
-				$terms = fn($all, $eq) => $all(...$eq($terms));
-			}
-
-			$this->terms = $this->where->scope(Scope::concern->value, $terms);
-		}
 
 		return $this;
 	}

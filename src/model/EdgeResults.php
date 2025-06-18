@@ -9,12 +9,6 @@ namespace FluidGraph;
 class EdgeResults extends Entity\Results
 {
 	/**
-	 *
-	 */
-	protected ?Relationship $relationship = NULL;
-
-
-	/**
 	 * Get all edge entities for this relationship that correspond to all node(s)/label(s) as Results
 	 *
 	 * @param Element\Node|Node|class-string $match
@@ -96,32 +90,9 @@ class EdgeResults extends Entity\Results
 			}
 		}
 
-		return new NodeResults($nodes);
+		return new NodeResults($nodes)->using($this->relationship);
 	}
 
-
-	/**
-	 *
-	 */
-	public function merge(): static
-	{
-		if ($this->relationship) {
-			$this->relationship->merge(TRUE);
-		}
-
-		return $this;
-	}
-
-
-	/**
-	 *
-	 */
-	public function using(?Relationship $relationship): static
-	{
-		$this->relationship = $relationship;
-
-		return $this;
-	}
 
 	/**
 	 *
@@ -129,18 +100,21 @@ class EdgeResults extends Entity\Results
 	protected function getReferencedNodes($edge)
 	{
 		if ($this->relationship) {
-			$type = $this->relationship->type;
-		} else {
-			$type = Reference::either;
+			return match ($this->relationship->type) {
+				Reference::to     => [$edge->__element__->target],
+				Reference::from   => [$edge->__element__->source],
+				Reference::either => [
+					$this->relationship->subject->is($edge->__element__->target)
+						? $edge->__element__->source
+						: $edge->__element__->target
+				]
+			};
+
 		}
 
-		return match ($type) {
-			Reference::to     => [$edge->__element__->target],
-			Reference::from   => [$edge->__element__->source],
-			Reference::either => [
-				$edge->__element__->target,
-				$edge->__element__->source
-			]
-		};
+		return [
+			$edge->__element__->target,
+			$edge->__element__->source
+		];
 	}
 }

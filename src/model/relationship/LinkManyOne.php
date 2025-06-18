@@ -84,25 +84,4 @@ abstract class LinkManyOne extends Relationship
 
 		return $this;
 	}
-
-
-	/**
-	 *
-	 */
-	public function unset(null|Node|Edge $entity = NULL): static
-	{
-		if ($entity instanceof Edge) {
-			unset($this->active[spl_object_hash($entity)]);
-
-		} else {
-			if (!$entity || $this->getIndex($entity)) {
-				$this->active = [];
-			}
-		}
-
-		return $this;
-	}
-
-
-
 }

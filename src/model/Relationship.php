@@ -18,6 +18,7 @@ use Closure;
 abstract class Relationship implements Countable
 {
 	use HasGraph;
+	use DoesMatch;
 
 	/**
 	 * @var array<E>
@@ -66,30 +67,6 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	protected private(set) int $limit = 0;
-
-
-	/**
-	 *
-	 */
-	protected private(set) int $offset = 0;
-
-
-	/**
-	 * @param array<Order>
-	 */
-	protected private(set) array $orders = [];
-
-
-	/**
-	 *
-	 */
-	protected private(set) ?Closure $terms = NULL;
-
-
-	/**
-	 *
-	 */
 	abstract public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): null|Edge|EdgeResults;
 
 
@@ -103,12 +80,6 @@ abstract class Relationship implements Countable
 	 *
 	 */
 	abstract public function set(Node $node, array|Edge $data = []): static;
-
-
-	/**
-	 *
-	 */
-	abstract public function unset(null|Node|Edge $entity): static;
 
 
 	/**
@@ -139,12 +110,9 @@ abstract class Relationship implements Countable
 	{
 		return array_filter(
 			get_object_vars($this),
-			fn($key) => !in_array(
-					$key,
-					[
-						'graph'
-					]
-				),
+			fn($key) => !in_array($key, [
+				'graph'
+			]),
 			ARRAY_FILTER_USE_KEY
 		);
 	}
@@ -199,13 +167,17 @@ abstract class Relationship implements Countable
 	/**
 	 * Determine whether or not the relationship contains all of a set of nodes or node types.
 	 */
-	public function contains(Node|Element\Node|string $node, Node|Element\Node|string ...$nodes): bool
+	public function contains(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): bool
 	{
-		array_unshift($nodes, $node);
+		array_unshift($matches, $match);
 
-		if ($this->mode == Mode::manual) {
-			$concerns = array_filter($nodes, fn($node) => is_string($node));
-			$nodes    = array_filter($nodes, fn($node) => !is_string($node));
+		$use_graph = !is_null($this->subject->identity()) && (
+			$this->mode == Mode::manual || ($this->mode == Mode::lazy && !isset($this->loadTime))
+		);
+
+		if ($use_graph) {
+			$concerns = array_filter($matches, fn($match) => is_string($match));
+			$nodes    = array_filter($matches, fn($match) => !is_string($match));
 			$query    = $this->getGraphQuery(Matching::all, ...$concerns);
 			$alias    = Scope::concern->value;
 			$where    = $query->where;
@@ -230,8 +202,8 @@ abstract class Relationship implements Countable
 			return $query->record(0);
 
 		} else {
-			foreach ($nodes as $node) {
-				if ($this->getIndex($node) === FALSE) {
+			foreach ($matches as $match) {
+				if ($this->getIndex($match) === FALSE) {
 					return FALSE;
 				}
 			}
@@ -244,13 +216,17 @@ abstract class Relationship implements Countable
 	/**
 	 * Determine whether or not the relationship contains any of a set of nodes or node types.
 	 */
-	public function containsAny(Node|Element\Node|string $node, Node|Element\Node|string ...$nodes): bool
+	public function containsAny(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): bool
 	{
-		array_unshift($nodes, $node);
+		array_unshift($matches, $match);
 
-		if ($this->mode == Mode::manual) {
-			$concerns = array_filter($nodes, fn($node) => is_string($node));
-			$nodes    = array_filter($nodes, fn($node) => !is_string($node));
+		$use_graph = !is_null($this->subject->identity()) && (
+			$this->mode == Mode::manual || ($this->mode == Mode::lazy && !isset($this->loadTime))
+		);
+
+		if ($use_graph) {
+			$concerns = array_filter($matches, fn($match) => is_string($match));
+			$nodes    = array_filter($matches, fn($match) => !is_string($match));
 			$query    = $this->getGraphQuery(Matching::any, ...$concerns);
 			$alias    = Scope::concern->value;
 			$where    = $query->where;
@@ -275,8 +251,8 @@ abstract class Relationship implements Countable
 			return $query->record(0);
 
 		} else {
-			foreach ($nodes as $node) {
-				if ($this->getIndex($node) !== FALSE) {
+			foreach ($matches as $match) {
+				if ($this->getIndex($match) !== FALSE) {
 					return TRUE;
 				}
 			}
@@ -349,7 +325,6 @@ abstract class Relationship implements Countable
 	}
 
 
-
 	/**
 	 * @return E
 	 */
@@ -357,6 +332,7 @@ abstract class Relationship implements Countable
 	{
 		return end($this->active) ?: NULL;
 	}
+
 
 	/**
 	 * Load the edges/nodes for the relationship.
@@ -380,7 +356,7 @@ abstract class Relationship implements Countable
 				$query = $this->getGraphQuery($rule_or_concern, ...$concerns);
 
 				if ($this->terms) {
-					$query->add('AND (%s)', $query->where->scope(Scope::concern->value, $this->terms));
+					$query->add('AND (%s)', $this->terms);
 				}
 
 				$query->add(
@@ -405,12 +381,12 @@ abstract class Relationship implements Countable
 					$query->add('ORDER BY %s', implode(',', $orders));
 				}
 
-				if ($this->offset) {
-					$query->add('SKIP %s', $this->offset);
+				if ($this->limit >= 0) {
+					$query->add('LIMIT %s', $this->limit);
 				}
 
-				if ($this->limit) {
-					$query->add('LIMIT %s', $this->limit);
+				if ($this->offset > 0) {
+					$query->add('SKIP %s', $this->offset);
 				}
 
 				$this->loaded = [];
@@ -481,7 +457,7 @@ abstract class Relationship implements Countable
 	 * This method should be implemented by a concrete relationship implementation which can
 	 * choose to implement more advanced merging features such as Merge hooks.
 	 *
-	 * Called from Queue::merge().
+	 * Called from Queue::merge() or relations NodeResults/EdgeResults.
 	 */
 	public function merge(bool $exclude_apex = FALSE): static
 	{
@@ -498,6 +474,8 @@ abstract class Relationship implements Countable
 					unset($this->apex->active[$hash]);
 				}
 			}
+
+			return $this->apex;
 		}
 
 		if (!$exclude_apex && !isset($this->apex) && isset($this->graph)) {
@@ -524,9 +502,13 @@ abstract class Relationship implements Countable
 	 */
 	public function purge(): static
 	{
-		foreach ($this->loaded as $i => $edge) {
-			if ($edge->__element__->status == Status::detached) {
-				unset($this->loaded[$i]);
+		foreach ([Index::active, Index::loaded] as $index) {
+			$index = $index->value;
+
+			foreach ($this->$index as $i => $edge) {
+				if ($edge->__element__->status == Status::detached) {
+					unset($this->loaded[$i]);
+				}
 			}
 		}
 
@@ -537,50 +519,31 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function skip(int $offset): static
+	public function unset(null|Node|Edge $entity = NULL, Node|Edge ...$entities): static
 	{
-		$this->offset = $offset;
-
-		return $this;
-	}
-
-
-	/**
-	 *
-	 */
-	public function sort(Order ...$orders): static
-	{
-		$this->orders = $orders;
-
-		return $this;
-	}
-
-
-	/**
-	 *
-	 */
-	public function take(?int $limit): static
-	{
-		if (is_null($limit)) {
-			$limit = -1;
+		if ($entity) {
+			array_unshift($entities, $entity);
 		}
 
-		$this->limit = $limit;
+		if (count($entities)) {
+			foreach ($entities as $entity) {
+				switch (TRUE) {
+					case $entity instanceof Edge:
+						unset($this->active[spl_object_hash($entity)]);
+						break;
 
-		return $this;
-	}
+					case $entity instanceof Node:
+						while ($hash = $this->getIndex($entity)) {
+							unset($this->active[$hash]);
+						}
+						break;
+				}
+			}
 
+		} else {
+			$this->active = [];
 
-	/**
-	 *
-	 */
-	public function where(array|Closure $terms): static
-	{
-		if (is_array($terms)) {
-			$terms = fn($all, $eq) => $all(...$eq($terms));
 		}
-
-		$this->terms = $terms;
 
 		return $this;
 	}
@@ -620,6 +583,7 @@ abstract class Relationship implements Countable
 		$clone = clone $this;
 
 		$clone->apex     = $this;
+		$clone->mode     = Mode::lazy;
 		$clone->concerns = $concerns;
 
 		return $clone;
@@ -673,8 +637,9 @@ abstract class Relationship implements Countable
 		return $this->graph->query
 			->add(
 				match ($this->type) {
-					Reference::to   => 'MATCH (s:%s)-[r:%s]->(c)',
-					Reference::from => 'MATCH (s:%s)<-[r:%s]-(c)'
+					Reference::to     => 'MATCH (s:%s)-[r:%s]->(c)',
+					Reference::from   => 'MATCH (s:%s)<-[r:%s]-(c)',
+					Reference::either => 'MATCH (s:%s)-[r:%s]-(c)'
 				},
 				$this->subject::class,
 				$this->kind,
@@ -700,7 +665,7 @@ abstract class Relationship implements Countable
 	 *
 	 * Note, this will only return the first index, it's possible that a node exists more than once.
 	 */
-	protected function getIndex(Element\Node|Node $node, Index $index = Index::active): string|false
+	protected function getIndex(Element\Node|Node|string $match, Index $index = Index::active): string|false
 	{
 		$index = $index->value;
 
@@ -708,7 +673,7 @@ abstract class Relationship implements Countable
 		 * @var Edge $edge
 		 */
 		foreach ($this->$index as $i => $edge) {
-			if ($edge->for($this->type, $node)) {
+			if ($edge->for($this->type, $match)) {
 				return $i;
 			}
 		}
@@ -731,12 +696,12 @@ abstract class Relationship implements Countable
 			$edge = $this->kind::make($data, Entity::MAKE_ASSIGN);
 			$hash = spl_object_hash($edge);
 
-			if ($this->type == Reference::to) {
-				$source = $this->subject;
-				$target = $concern;
-			} else {
+			if ($this->type == Reference::from) {
 				$source = $concern;
 				$target = $this->subject;
+			} else {
+				$source = $this->subject;
+				$target = $concern;
 			}
 
 			$edge->with(

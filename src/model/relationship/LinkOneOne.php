@@ -108,17 +108,4 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 
 		return $this;
 	}
-
-
-	/**
-	 *
-	 */
-	public function unset(null|Node|Edge $node = NULL): static
-	{
-		if (!$node || $this->getIndex($node)) {
-			$this->active = [];
-		}
-
-		return $this;
-	}
 }
