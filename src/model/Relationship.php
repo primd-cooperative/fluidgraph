@@ -521,6 +521,17 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
+	public function sort(Order ...$orders): static
+	{
+		$this->orders = $orders;
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
 	public function unset(null|Node|Edge $entity = NULL, Node|Edge ...$entities): static
 	{
 		if ($entity) {

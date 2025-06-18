@@ -158,6 +158,7 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 		assertEquals(2, count($books));
 	}
 
+
 	public function testMerge()
 	{
 		$author = static::$data->person->as(Author::class);
@@ -173,6 +174,11 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 
 		assertEquals(2, count($books));
 		assertEquals(2, count($author->writings));
-	}
 
+		static::$graph->save();
+
+		$books = static::$graph->find(Book::class);
+
+		assertEquals(2, count($books));
+	}
 }
