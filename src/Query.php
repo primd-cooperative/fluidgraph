@@ -123,7 +123,7 @@ class Query
 	 * @param ?class-string<E> $class
 	 * @return NodeResults<T|E>|EdgeResults<T|E>|ElementResults
 	 */
-	public function get(?string $class = NULL): NodeResults|EdgeResults|Element\Results
+	public function get(?string $class = NULL): NodeResults|EdgeResults|Entity\Results
 	{
 		$results = $this->results();
 

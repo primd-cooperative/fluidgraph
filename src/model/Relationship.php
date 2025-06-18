@@ -203,7 +203,7 @@ abstract class Relationship implements Countable
 
 		} else {
 			foreach ($matches as $match) {
-				if ($this->getIndex($match) === FALSE) {
+				if ($this->getIndex(Index::active, $match) === FALSE) {
 					return FALSE;
 				}
 			}
@@ -252,7 +252,7 @@ abstract class Relationship implements Countable
 
 		} else {
 			foreach ($matches as $match) {
-				if ($this->getIndex($match) !== FALSE) {
+				if ($this->getIndex(Index::active, $match) !== FALSE) {
 					return TRUE;
 				}
 			}
@@ -266,13 +266,15 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function find(string $class, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = NULL): null|NodeResults|Node
+	public function find(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = []): null|NodeResults|Node
 	{
-		$clone = $this->match($class)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
+		settype($concerns, 'array');
+
+		$clone = $this->match(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
 
 		$clone->load();
 
-		return $clone->get($class);
+		return $clone->get();
 	}
 
 
@@ -533,7 +535,7 @@ abstract class Relationship implements Countable
 						break;
 
 					case $entity instanceof Node:
-						while ($hash = $this->getIndex($entity)) {
+						foreach ($this->getIndexes(Index::active, $entity) as $hash) {
 							unset($this->active[$hash]);
 						}
 						break;
@@ -665,29 +667,28 @@ abstract class Relationship implements Countable
 	 *
 	 * Note, this will only return the first index, it's possible that a node exists more than once.
 	 */
-	protected function getIndex(Element\Node|Node|string $match, Index $index = Index::active): string|false
+	protected function getIndex(Index $index, Element\Node|Node|string $match): string|false
 	{
 		$index = $index->value;
 
-		/**
-		 * @var Edge $edge
-		 */
-		foreach ($this->$index as $i => $edge) {
-			if ($edge->for($this->type, $match)) {
-				return $i;
-			}
-		}
+		return array_find_key($this->$index, fn($edge) => $edge->for($this->type, $match)) ?? FALSE;
+	}
 
-		return FALSE;
+
+	protected function getIndexes(Index $index, Element\Node|Node $match, Element\Node|Node ...$matches): array
+	{
+		$index = $index->value;
+
+		return array_keys(array_filter($this->$index, fn($edge) => $edge->for($this->type, $match, ...$matches)));
 	}
 
 
 	/**
 	 *
 	 */
-	protected function resolveEdge(Node $concern, array $data = []): string
+	protected function resolveEdge(Node $node, array $data = []): string
 	{
-		$hash = $this->getIndex($concern, Index::loaded);
+		$hash = $this->getIndex(Index::loaded, $node);
 
 		if ($hash) {
 			$this->active[$hash] = $this->loaded[$hash];
@@ -697,11 +698,11 @@ abstract class Relationship implements Countable
 			$hash = spl_object_hash($edge);
 
 			if ($this->type == Reference::from) {
-				$source = $concern;
+				$source = $node;
 				$target = $this->subject;
 			} else {
 				$source = $this->subject;
-				$target = $concern;
+				$target = $node;
 			}
 
 			$edge->with(

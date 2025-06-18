@@ -47,7 +47,7 @@ abstract class LinkOneMany extends Relationship
 	{
 		$this->validateNode($node);
 
-		$hash = $this->getIndex($node);
+		$hash = $this->getIndex(Index::active, $node);
 
 		if (!$hash) {
 			$hash = $this->resolveEdge($node, $data);

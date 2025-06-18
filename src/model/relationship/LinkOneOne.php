@@ -96,7 +96,7 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 	{
 		$this->validateNode($node);
 
-		$hash = $this->getIndex($node);
+		$hash = $this->getIndex(Index::active, $node);
 
 		if (!$hash) {
 			$this->unset();

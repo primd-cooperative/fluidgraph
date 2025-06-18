@@ -10,12 +10,19 @@ use FluidGraph\Relationship;
  * @template T of Entity
  * @extends Element\Results<T>
  */
-abstract class Results extends Element\Results
+class Results extends Element\Results
 {
 	/**
 	 *
 	 */
 	protected ?Relationship $relationship = NULL;
+
+
+	/**
+	 *
+	 */
+	protected array $removed = [];
+
 
 	/**
 	 *
@@ -68,6 +75,14 @@ abstract class Results extends Element\Results
 		if ($this->relationship) {
 			$this->relationship->merge(TRUE);
 		}
+
+		$copy = $this->getArrayCopy();
+
+		while ($key = array_pop($this->removed) !== NULL) {
+			unset($copy[$key]);
+		}
+
+		$this->exchangeArray(array_values($copy));
 
 		return $this;
 	}

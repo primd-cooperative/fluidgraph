@@ -185,29 +185,32 @@ class Graph
 	 * The type of elements (node or edge) being matched is determined by the class.
 	 *
 	 * @template T of Entity
-	 * @param class-string<T> $class
+	 * @param class-string<T>|array $concerns
 	 * @param array<Order> $orders
 	 * @return Entity\Results<T>
 	 */
-	public function find(string $class, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], array $orders = []): Entity\Results
+	public function find(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], array $orders = []): Entity\Results
 	{
+		settype($concerns, 'array');
+
 		$query = $this->query;
 
-		$query->match($class)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
+		$query->match(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
 
-		return $query->get($class);
+		return $query->get();
 	}
 
 
 	/**
 	 * @template T of Entity
-	 * @param class-string<T> $class
+	 * @param class-string<T>|array $concerns
 	 * @param array<Order> $orders
 	 * @return Entity\Results<T>
 	 */
-	public function findAll(string $class, array $orders = []): Entity\Results
+	public function findAll(string|array $concerns, array $orders = []): Entity\Results
 	{
-		return $this->find($class, NULL, 0, [], $orders);
+
+		return $this->find($concerns, NULL, 0, [], $orders);
 	}
 
 
@@ -217,10 +220,10 @@ class Graph
 	 * The type of element (node or edge) being matched is determined by the class.
 	 *
 	 * @template T of Entity
-	 * @param class-string<T> $class
+	 * @param class-string<T>|array $concerns
 	 * @return ?T
 	 */
-	public function findOne(string $class, callable|array|int $terms): ?Entity
+	public function findOne(string|array $concerns, callable|array|int $terms): ?Entity
 	{
 		if (is_int($terms)) {
 			$terms = function($id) use ($terms) {
@@ -228,7 +231,7 @@ class Graph
 			};
 		}
 
-		$results = $this->find($class, 2, 0, $terms, []);
+		$results = $this->find($concerns, 2, 0, $terms, []);
 
 		if (count($results) > 1) {
 			throw new RuntimeException(sprintf(

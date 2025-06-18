@@ -21,9 +21,9 @@ class Results extends FluidGraph\Results
 	 * @template E of Entity
 	 * @param null|array|class-string<E> $class The entity class to instantiate as.
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
-	 * @return NodeResults<E>|EntityResults<E>|Results<T>
+	 * @return NodeResults<E>|EdgeResults<E>|Entity\Results<E>
 	 */
-	public function as(null|array|string $class, array $defaults = []): Entity\Results|FluidGraph\Results
+	public function as(null|array|string $class, array $defaults = []): Entity\Results
 	{
 		if (is_string($class)) {
 			return match(TRUE) {
@@ -48,7 +48,7 @@ class Results extends FluidGraph\Results
 			};
 		}
 
-		return new self(
+		return new Entity\Results(
 			array_map(
 				fn($result) => $result->as($class, $defaults),
 				$this->getArrayCopy()

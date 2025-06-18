@@ -75,13 +75,13 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 		);
 
 		$author->writings->set(
-			new Book(name: 'Lord of the Pings 2', pages: 2314), [
+			new Book(name: 'Lord of The Pings 2', pages: 2314), [
 				'date' => new DateTime('July 1st 2007')
 			]
 		);
 
 		$author->writings->set(
-			new Book(name: 'Lord of the Pings 3', pages: 2), [
+			new Book(name: 'Lord of The Pings 3', pages: 2), [
 				'date' => new DateTime('July 1st 2003')
 			]
 		);
@@ -108,8 +108,8 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 			$titles = [
 				'The Cave of Blunder',
 				'Lord of The Pings 1',
-				'Lord of the Pings 3',
-				'Lord of the Pings 2'
+				'Lord of The Pings 3',
+				'Lord of The Pings 2'
 			];
 
 			assertEquals($titles[$i], $book->name);
@@ -141,12 +141,38 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 		$author = static::$data->person->as(Author::class);
 
 		foreach ($books as $book) {
-			if ($book->name == 'Lord of the Pings 3') {
+			if ($book->name == 'Lord of The Pings 3') {
 				$edge = $author->writings->for($book)->at(0);
 
 				assertEquals(new DateTime('July 1st 2003'), $edge->date);
 			}
 		}
+	}
+
+
+	public function testFind()
+	{
+		$author = static::$data->person->as(Author::class);
+		$books  = $author->writings->find(Book::class, 2);
+
+		assertEquals(2, count($books));
+	}
+
+	public function testMerge()
+	{
+		$author = static::$data->person->as(Author::class);
+		$books  = $author->writings->find(Book::class, 3);
+
+		foreach ($books as $book) {
+			if ($book->name == 'Lord of The Pings 1') {
+				$books->unset($book);
+			}
+		}
+
+		$books->merge();
+
+		assertEquals(2, count($books));
+		assertEquals(2, count($author->writings));
 	}
 
 }

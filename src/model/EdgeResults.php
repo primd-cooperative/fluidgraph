@@ -94,6 +94,23 @@ class EdgeResults extends Entity\Results
 	}
 
 
+	public function unset(Edge $edge): static
+	{
+		if ($this->relationship) {
+			$this->relationship->unset($edge);
+		}
+
+		$copy = $this->getArrayCopy();
+		$key  = array_search($edge, $copy, TRUE);
+
+		if ($key) {
+			$this->removed[] = $key;
+		}
+
+		return $this;
+	}
+
+
 	/**
 	 *
 	 */
@@ -109,7 +126,6 @@ class EdgeResults extends Entity\Results
 						: $edge->__element__->target
 				]
 			};
-
 		}
 
 		return [
