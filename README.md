@@ -22,7 +22,7 @@ The **Element** world is the supernatural world.  Entities are the embodiment of
 
 Throughout this documentation we may refer to Nodes (generally) or use terms like "Node Entity" as opposed to "Node Element."
 
-> NOTE: FluidGraph is still **alpha** and is subject to fairly rapid changes.  It should not be used in production and if you update, you should come back to check these docs frequently.
+> NOTE: FluidGraph is still **beta**.  Not all 1.0 features are implemented, but the API is considered relatively stable.
 
 ## Basic Usage
 
@@ -91,7 +91,7 @@ To create a new relationship you need add the relationship as a property on your
 | OwnedMany                 | Same as Many, but related Nodes are removed if the subject is removed |
 | OwnedOne                  | Same as One, but the related Node is remoed if the subject is removed |
 
-We can return to our `Person` entity and add a few lines (note the used namespaces).  
+We can return to our `Person` entity and add a few lines (note the used namespaces).
 
 ```php
 use FluidGraph\Node;
@@ -232,7 +232,7 @@ You can bulk assign data to Entities and Elements using the `assign()` method.  
 $entity_or_element->assign([
     // Will work on both
 	'validProperty' => 10,
-    
+
     // Only works on Elements
 	'invalidProperty' => 10
 ])
@@ -490,7 +490,7 @@ $people = $graph->query
 
 ### Manual Relationships
 
-Now that we've introduced a bit of querying, let's talk about more manual relationships.  When creating a relationship you can specify a `FluidGraph\Relationship\Mode` of that relationship.  The `lazy` and `eager` members of this enum are largely handled for you, and the only difference between the two is whether or not the Edges and Nodes of that relationship are loaded immediately after the subject Node is realize or when the relationship is accessed in some way.  
+Now that we've introduced a bit of querying, let's talk about more manual relationships.  When creating a relationship you can specify a `FluidGraph\Relationship\Mode` of that relationship.  The `lazy` and `eager` members of this enum are largely handled for you, and the only difference between the two is whether or not the Edges and Nodes of that relationship are loaded immediately after the subject Node is realize or when the relationship is accessed in some way.
 
 For finer control and large relationships, you will want to use the `manual` mode.  This mode requires you to establish the various query parameters and manually load in the Edges/Nodes you're working with:
 
@@ -578,7 +578,7 @@ $friends = $person->friendships
     	Order::by(Direction::asc, 'lastName')
     ])
 	->get()
-    
+
 ```
 
 

@@ -8,8 +8,6 @@ namespace FluidGraph;
  */
 class NodeResults extends Entity\Results
 {
-	protected array $removed = [];
-
 	// TODO: add as(), of(), ofAny()
 
 	public function unset(Node $node): static
