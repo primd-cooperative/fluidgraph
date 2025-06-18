@@ -166,11 +166,7 @@ class Query
 			$this->run();
 		}
 
-		if (isset($this->records[$index])) {
-			return $this->records[$index];
-		}
-
-		return NULL;
+		return $this->records[$index] ?? NULL;
 	}
 
 
@@ -409,8 +405,8 @@ class Query
 
 			foreach ($concerns as $i => $concern) {
 				if (class_exists($concern)) {
-					$has_nodes = $has_nodes | is_a($concern, Node::class, TRUE);
-					$has_edges = $has_edges | is_a($concern, Edge::class, TRUE);
+					$has_nodes |= is_a($concern, Node::class, TRUE);
+					$has_edges |= is_a($concern, Edge::class, TRUE);
 
 					if (!is_a($concern, Entity::class, TRUE)) {
 						throw new InvalidArgumentException(sprintf(

@@ -226,9 +226,7 @@ class Graph
 	public function findOne(string|array $concerns, callable|array|int $terms): ?Entity
 	{
 		if (is_int($terms)) {
-			$terms = function($id) use ($terms) {
-				return $id($terms);
-			};
+			$terms = (fn($id) => $id($terms));
 		}
 
 		$results = $this->find($concerns, 2, 0, $terms, []);

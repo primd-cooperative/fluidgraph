@@ -184,18 +184,12 @@ abstract class Relationship implements Countable
 
 			if (count($nodes)) {
 				$query
-					->add('AND %s', $where->scope($alias, function($any, $id) use ($nodes) {
-						return $any(...array_map($id, $nodes));
-					}))
-					->add('RETURN %s', $where->scope($alias, function($count, $eq) use ($nodes) {
-						return $eq($count, count($nodes));
-					}))
+					->add('AND %s', $where->scope($alias, fn($any, $id) => $any(...array_map($id, $nodes))))
+					->add('RETURN %s', $where->scope($alias, fn($count, $eq) => $eq($count, count($nodes))))
 				;
 
 			} else {
-				$query->add('RETURN %s', $where->scope($alias, function($gte, $count) {
-					return $gte($count, 1);
-				}));
+				$query->add('RETURN %s', $where->scope($alias, fn($gte, $count) => $gte($count, 1)));
 
 			}
 
@@ -233,18 +227,12 @@ abstract class Relationship implements Countable
 
 			if (count($nodes)) {
 				$query
-					->add('AND %s', $where->scope($alias, function($any, $id) use ($nodes) {
-						return $any(...array_map($id, $nodes));
-					}))
-					->add('RETURN %s', $where->scope($alias, function($count, $gte) use ($nodes) {
-						return $gte($count, 1);
-					}))
+					->add('AND %s', $where->scope($alias, fn($any, $id) => $any(...array_map($id, $nodes))))
+					->add('RETURN %s', $where->scope($alias, fn($count, $gte) => $gte($count, 1)))
 				;
 
 			} else {
-				$query->add('RETURN %s', $where->scope($alias, function($gte, $count) {
-					return $gte($count, 1);
-				}));
+				$query->add('RETURN %s', $where->scope($alias, fn($gte, $count) => $gte($count, 1)));
 
 			}
 
@@ -773,7 +761,7 @@ abstract class Relationship implements Countable
 			};
 
 			if (isset($this->apex)) {
-				$valid = $valid & $this->apex->validateNode($target, TRUE);
+				$valid &= $this->apex->validateNode($target, TRUE);
 			}
 
 			if (!$valid) {

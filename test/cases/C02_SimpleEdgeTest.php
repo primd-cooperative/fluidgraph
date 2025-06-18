@@ -120,7 +120,7 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 	{
 		$author = static::$data->person->as(Author::class);
 
-		foreach ($author->writings->get() as $i => $book) {
+		foreach ($author->writings->get() as $book) {
 			if ($book->name == 'The Cave of Blunder') {
 				$author->writings->unset($book);
 			}

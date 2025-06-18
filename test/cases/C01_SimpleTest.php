@@ -35,7 +35,7 @@ class C01_SimpleTest extends C00_BaseTest
 
 	public function testNodeMerge()
 	{
-		$info  = array();
+		$info  = [];
 		$queue = static::$graph->queue;
 
 		$queue->merge($info);

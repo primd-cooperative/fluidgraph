@@ -113,9 +113,7 @@ class Results extends FluidGraph\Results
 	{
 		array_unshift($matches, $match);
 
-		$filter = function($result) use ($matches) {
-			return $result->of(...$matches);
-		};
+		$filter = (fn($result) => $result->of(...$matches));
 
 		return parent::filter($filter);
 	}
@@ -128,9 +126,7 @@ class Results extends FluidGraph\Results
 	{
 		array_unshift($matches, $match);
 
-		$filter = function($result) use ($matches) {
-			return $result->ofAny(...$matches);
-		};
+		$filter = (fn($result) => $result->ofAny(...$matches));
 
 		return parent::filter($filter);
 	}

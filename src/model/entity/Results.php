@@ -32,9 +32,7 @@ class Results extends Element\Results
 		$results = [];
 
 		if (is_string($indexer)) {
-			$indexer = function($result) use ($indexer) {
-				return $result->$indexer;
-			};
+			$indexer = (fn($result) => $result->$indexer);
 		}
 
 		foreach ($this as $result) {

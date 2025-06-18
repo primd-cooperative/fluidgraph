@@ -50,9 +50,7 @@ class Results extends ArrayObject
 	public function filter(array|callable $filter): static
 	{
 		if (is_array($filter)) {
-			$filter = function(mixed $result) use ($filter) {
-				return in_array($result, $filter);
-			};
+			$filter = (fn(mixed $result) => in_array($result, $filter));
 		}
 
 		return new static(array_values(array_filter(
@@ -99,9 +97,7 @@ class Results extends ArrayObject
 	public function map(string|callable $transformer): self
 	{
 		if (is_string($transformer)) {
-			$transformer = function(mixed $result) use ($transformer) {
-				return sprintf($transformer, $result);
-			};
+			$transformer = (fn(mixed $result) => sprintf($transformer, $result));
 		}
 
 		return new self(array_values(array_map(
