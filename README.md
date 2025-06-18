@@ -33,12 +33,12 @@ use Bolt\Bolt;
 use Bolt\connection\StreamSocket;
 
 $graph = new FluidGraph\Graph(
-    [
-        'scheme'      => 'basic',
-        'principal'   => 'memgraph',
-        'credentials' => 'password'
-    ],
-    new Bolt(new StreamSocket())
+	[
+		'scheme'      => 'basic',
+		'principal'   => 'memgraph',
+		'credentials' => 'password'
+	],
+	new Bolt(new StreamSocket())
 );
 ```
 
@@ -105,19 +105,19 @@ class Person extends Node
 {
 	use Entity\Id\Uuid7;
 
-    // ADDED:
-    public protected(set) Many $friendships;
+	// ADDED:
+	public protected(set) Many $friendships;
 
 	public function __construct(
 		public ?string $firstName = NULL,
 		public ?string $lastName = NULL,
 	) {
-        // ADDED:
+		// ADDED:
 		$this->friendships = Many::having(
 			$this,
 			FriendsWith::class,
-            Reference::to,
-            Matching::any,
+			Reference::to,
+			Matching::any,
 			[
 				Person::class
 			]
@@ -160,7 +160,7 @@ You can get the Node Entities of a relationship back using the `get()` method:
 
 ```php
 foreach ($matt->friendships->get(Person::class) as $person) {
-    echo 'Hi' . $person->firstName . PHP_EOL;
+	echo 'Hi' . $person->firstName . PHP_EOL;
 }
 ```
 
@@ -192,7 +192,7 @@ A contrived example that works only because we only have a single person named "
 
 ```php
 $matt = $graph->findOne(Person::class, [
-    'firstName' => 'Matt'
+	'firstName' => 'Matt'
 ]);
 ```
 
@@ -220,7 +220,7 @@ More often than not, `identity()` is a quick way to check if an Entity or Elemen
 
 ```php
 foreach ($notifications->findByPerson($person->identity()) as $notification) {
-    // Do things with notifications
+	// Do things with notifications
 }
 ```
 
@@ -230,10 +230,10 @@ You can bulk assign data to Entities and Elements using the `assign()` method.  
 
 ```php
 $entity_or_element->assign([
-    // Will work on both
+	// Will work on both
 	'validProperty' => 10,
 
-    // Only works on Elements
+	// Only works on Elements
 	'invalidProperty' => 10
 ])
 ```
@@ -363,7 +363,7 @@ Similar to this is working with the Edges themselves.  If you need to get all Ed
 
 ```php
 foreach($author->writings->all() as $wrote) {
-    // Do things with $wrote
+	// Do things with $wrote
 }
 ```
 
@@ -428,12 +428,12 @@ To build `AND` and `OR` conditions you can use the `$all` and `$any` callbacks r
 ```php
 $person = $graph->findOne(Person::class, function($all, $eq) {
 	return $any(
-        $eq('email', 'mattsah@example.com'),
-    	$all(
-        	$eq('firstName', 'Matthew'),
-            $eq('lastName', 'Sahagian')
-        ),
-    );
+		$eq('email', 'mattsah@example.com'),
+		$all(
+			$eq('firstName', 'Matthew'),
+			$eq('lastName', 'Sahagian')
+		),
+	);
 })
 ```
 
@@ -454,15 +454,15 @@ use FluidGraph\Order;
 use FluidGraph\Direction;
 
 $people = $graph->find(
-    Person::class,
-    10,
-    10,
-    function ($eq) {
-    	return $eq('firstName', 'Matthew');
-    },
-    [
-        Order::by(Direction::asc, 'lastName')
-    ]
+	Person::class,
+	10,
+	10,
+	function ($eq) {
+		return $eq('firstName', 'Matthew');
+	},
+	[
+		Order::by(Direction::asc, 'lastName')
+	]
 );
 ```
 
@@ -473,17 +473,17 @@ use FluidGraph\Order;
 use FluidGraph\Direction;
 
 $people = $graph->query
-    ->match(Person::class)
-    ->take(10)
-    ->skip(10)
-    ->where(
-        function ($eq) {
-            return $eq('firstName', 'Matt');
-        }
-    )
-    ->sort(
-    	Order::by(Direction::asc, 'lastName')
-    ])
+	->match(Person::class)
+	->take(10)
+	->skip(10)
+	->where(
+		function ($eq) {
+			return $eq('firstName', 'Matt');
+		}
+	)
+	->sort(
+		Order::by(Direction::asc, 'lastName')
+	])
 	->get()
 ;
 ```
@@ -527,9 +527,9 @@ For example, although we can get all of our `Person` friends above for use, the 
 $friends = $person->friendships->find(Person::class, 10);
 
 foreach ($friends as $friend) {
-    if ($friend->is(Archivable::archived)) {
-        $friends->unset($friend);
-    }
+	if ($friend->is(Archivable::archived)) {
+		$friends->unset($friend);
+	}
 }
 
 $graph->save();
@@ -541,7 +541,7 @@ Neither would something like:
 $person->friendships->find(Person::class, 10);
 
 foreach ($person->friendships->get(Person::class) as $person) {
-    // Do things with friendly person
+	// Do things with friendly person
 }
 ```
 
@@ -551,9 +551,9 @@ To merge a relationship fork back into the apex relationship using our first exa
 $friends = $person->friendships->find(Person::class, 10);
 
 foreach ($friends as $friend) {
-    if ($friend->is(Archivable::archived)) {
-        $friends->unset($friend);
-    }
+	if ($friend->is(Archivable::archived)) {
+		$friends->unset($friend);
+	}
 }
 
 // ADDED:
@@ -566,19 +566,18 @@ The expanded form of forked relationships uses the full `match()` and `matchAny(
 
 ```php
 $friends = $person->friendships
-    ->match(Person::class)
-    ->take(10)
-    ->skip(10)
-    ->where(
-        function ($eq) {
-            return $eq('firstName', 'Matt');
-        }
-    )
-    ->sort(
-    	Order::by(Direction::asc, 'lastName')
-    ])
+	->match(Person::class)
+	->take(10)
+	->skip(10)
+	->where(
+		function ($eq) {
+			return $eq('firstName', 'Matt');
+		}
+	)
+	->sort(
+		Order::by(Direction::asc, 'lastName')
+	])
 	->get()
-
 ```
 
 
