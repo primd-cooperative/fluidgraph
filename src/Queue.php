@@ -305,8 +305,6 @@ class Queue
 			->run()
 		;
 
-		var_dump($query->meta);
-
 		foreach ($identities as $identity) {
 			$this->edges[$identity]->status = Status::detached;
 

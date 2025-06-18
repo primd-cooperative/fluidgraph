@@ -317,7 +317,12 @@ abstract class Relationship implements Countable
 		if (isset($this->loadTime)) {
 			unset($this->loadTime);
 
-			$this->load();
+			$this->active = [];
+			$this->loaded = [];
+
+			if ($this->mode != Mode::manual) {
+				$this->load();
+			}
 		}
 
 		return $this;
@@ -327,7 +332,7 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function get(?string $class): null|NodeResults|Node
+	public function get(?string $class = NULL): null|NodeResults|Node
 	{
 		if (is_null($class)) {
 			$class = $this->concerns;

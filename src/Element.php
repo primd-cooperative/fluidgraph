@@ -2,9 +2,10 @@
 
 namespace FluidGraph;
 
-use Countable;
-use InvalidArgumentException;
 use FluidGraph\Relationship\Mode;
+
+use InvalidArgumentException;
+use Countable;
 
 /**
  * The content base provides the common properties for edge and node contents.
@@ -165,7 +166,6 @@ abstract class Element implements Countable
 					/**
 					 * @var Entity $this
 					 */
-
 					$this->__element__ = $element;
 
 					foreach ($properties as $property => $value) {

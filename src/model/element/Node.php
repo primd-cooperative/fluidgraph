@@ -42,7 +42,6 @@ class Node extends FluidGraph\Element
 			}
 
 			if (!is_subclass_of($class, FluidGraph\Node::class, TRUE)) {
-				var_dump(debug_backtrace()); exit();
 				throw new InvalidArgumentException(sprintf(
 					'Cannot make "%s" from non-Node result',
 					$class

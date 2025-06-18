@@ -8,6 +8,7 @@ use FluidGraph\Element;
 use FluidGraph\Reference;
 use FluidGraph\EdgeResults;
 use FluidGraph\Relationship;
+use UnexpectedValueException;
 
 /**
  * A type of relationship that links to/from one node with one edge.
@@ -52,32 +53,15 @@ abstract class LinkManyOne extends Relationship
 	 */
 	public function get(?string $class = NULL): ?Node
 	{
-		$edge = reset($this->active);
+		$results = parent::get($class);
 
-		if ($edge) {
-			$node = match ($this->type) {
-				Reference::to   => $edge->__element__->target,
-				Reference::from => $edge->__element__->source
-			};
-
-			if (!is_null($class)) {
-				if (!$node->is($class)) {
-					return NULL;
-				}
-
-			} else {
-				$class = $this->concerns;
-
-				if (isset($this->apex)) {
-					$class = array_merge($class, $this->apex->concerns);
-				}
-
-			}
-
-			return $node->as($class);
+		if (count($results) > 1) {
+			throw new UnexpectedValueException(sprintf(
+				'Relationship limited to one Node Entity returned more than one linked Node'
+			));
 		}
 
-		return NULL;
+		return $results->at(0);
 	}
 
 

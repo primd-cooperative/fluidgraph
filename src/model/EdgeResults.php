@@ -83,7 +83,7 @@ class EdgeResults extends Entity\Results
 				$hash = spl_object_hash($node);
 
 				if (!isset($index[$hash])) {
-					if (is_null($class) || $node->is($class)) {
+					if (!is_string($class) || $node->is($class)) {
 						$nodes[]      = $node->as($class);
 						$index[$hash] = TRUE;
 

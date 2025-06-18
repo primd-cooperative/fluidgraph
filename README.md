@@ -513,7 +513,7 @@ $person->friendships->take(10)->skip($offset)->load(Person::class)
 An alternative approach is the fork the relationship.  A forked relationship basically enables you to create an isolated clone of the relationship with its own records.  To do this you can use the `find()` method just as you would on the Graph to get specific nodes instead:
 
 ```php
-$friends = $person->friendships->find(Person::class, 10)->get();
+$friends = $person->friendships->find(Person::class, 10);
 ```
 
 It is, however, extremely **IMPORTANT** to note that you fork a relationship this has two **MAJOR** implications:
@@ -521,7 +521,7 @@ It is, however, extremely **IMPORTANT** to note that you fork a relationship thi
 1. Any use of the `set()` or `unset()` methods will not result in changes being persisted unless you merge the fork back into the apex relationship using `merge()`
 2. Any Edge Entities or the related Nodes will not be available on the apex relationship, again, unless the fork has been merged.
 
-For example, although we can `get()` all of our `Person` friends above for use, the following would not work as anticipated:
+For example, although we can get all of our `Person` friends above for use, the following would not work as anticipated:
 
 ```php
 $friends = $person->friendships->find(Person::class, 10);
