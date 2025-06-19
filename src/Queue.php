@@ -406,14 +406,8 @@ class Queue
 				}
 
 			} else {
-				if (!isset($this->nodes[$identities[$i]])) {
-					throw new RuntimeException(sprintf(
-						'Failed merging node with hash "%s"',
-						$i
-					));
-				}
-
 				$this->nodes[$record->element_id] = $this->nodes[$identities[$i]];
+
 			}
 
 			$element = $this->graph->resolve($record);
