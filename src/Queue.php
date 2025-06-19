@@ -46,7 +46,8 @@ class Queue
 
 
 	/**
-	 *
+	 * @param ArrayObject<string, Element\Node> $nodes
+	 * @param ArrayObject<string, Element\Edge> $edges
 	 */
 	public function manage(ArrayObject $nodes, ArrayObject $edges): static
 	{
@@ -57,15 +58,14 @@ class Queue
 	}
 
 	/**
-	 * @param ArrayObject<Element\Node> $nodes
-	 * @param ArrayObject<Element\Edge> $edges
+	 * @param array<string, mixed> &$meta_info
 	 */
-	public function merge(array &$info = []): static
+	public function merge(array &$meta_info = []): static
 	{
 		/**
 		 * @disregard P1009
 		 */
-		$start       = hrtime(TRUE);
+		$start_time  = hrtime(TRUE);
 		$visit_nodes = [
 			'new' => [],
 			'old' => [],
@@ -105,33 +105,28 @@ class Queue
 			}
 		}
 
-		foreach ($this->nodes as $identity => $node) {
-			$operation = match ($node->status) {
-				Status::inducted => static::CREATE,
-				Status::attached => static::UPDATE,
-				Status::released => static::DELETE,
-			};
+		foreach (['nodes' => 'nodeOperations', 'edges' => 'edgeOperations'] as $store => $queue) {
+			foreach ($this->$store as $identity => $element) {
+				$operation = match ($element->status) {
+					Status::inducted => static::CREATE,
+					Status::attached => static::UPDATE,
+					Status::released => static::DELETE,
+					default          => throw new RuntimeException(sprintf(
+						'Entity with invalid status "%s" in %s does not have related operation',
+						$element->status->value,
+						$store
+					))
+				};
 
-			$this->nodeOperations[$operation][] = $identity;
-		}
+				$this->$queue[$operation][] = $identity;
+			}
 
-		foreach ($this->edges as $identity => $edge) {
-			$operation = match ($edge->status) {
-				Status::inducted => static::CREATE,
-				Status::attached => static::UPDATE,
-				Status::released => static::DELETE,
-			};
-
-			$this->edgeOperations[$operation][] = $identity;
-		}
-
-		foreach (['nodeOperations' => 'nodes', 'edgeOperations' => 'edges'] as $type => $list) {
-			foreach ($this->$type[static::UPDATE] as $i => $identity) {
-				$element = $this->$list[$identity];
+			foreach ($this->$queue[static::UPDATE] as $i => $identity) {
+				$element = $this->$store[$identity];
 				$diffs   = Element::changes($element);
 
 				if (empty($diffs)) {
-					unset($this->$type[static::UPDATE][$i]);
+					unset($this->$queue[static::UPDATE][$i]);
 					continue;
 				}
 
@@ -142,8 +137,8 @@ class Queue
 		}
 
 		$this->spent = FALSE;
-		$info        = [
-			'time'  => (hrtime(TRUE) - $start) / 1_000_000_000,
+		$meta_info   = [
+			'time'  => (hrtime(TRUE) - $start_time) / 1_000_000_000,
 			'nodes' => $this->nodeOperations,
 			'edges' => $this->edgeOperations,
 		];
@@ -226,12 +221,12 @@ class Queue
 
 			$query
 				->add('MATCH (%s) WHERE id(%s) = $%s', "f$i", "f$i", "fd$i")
-				->set("fd$i", $edge->source->identity)
+				->set("fd$i", $edge->source->identity())
 			;
 
 			$query
 				->add('MATCH (%s) WHERE id(%s) = $%s', "t$i", "t$i", "td$i")
-				->set("td$i", $edge->target->identity)
+				->set("td$i", $edge->target->identity())
 			;
 		}
 
@@ -280,6 +275,13 @@ class Queue
 				}
 
 			} else {
+				if (!isset($this->edges[$identities[$i]])) {
+					throw new RuntimeException(sprintf(
+						'Failed merging edge with hash "%s"',
+						$i
+					));
+				}
+
 				$this->edges[$record->element_id] = $this->edges[$identities[$i]];
 			}
 
@@ -404,6 +406,13 @@ class Queue
 				}
 
 			} else {
+				if (!isset($this->nodes[$identities[$i]])) {
+					throw new RuntimeException(sprintf(
+						'Failed merging node with hash "%s"',
+						$i
+					));
+				}
+
 				$this->nodes[$record->element_id] = $this->nodes[$identities[$i]];
 			}
 

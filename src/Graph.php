@@ -10,7 +10,6 @@ use Bolt\protocol\v5\structures as Struct;
 use ArrayObject;
 use RuntimeException;
 use InvalidArgumentException;
-use ReflectionProperty;
 use DateTimeZone;
 use DateTime;
 
@@ -40,6 +39,8 @@ class Graph
 
 	/**
 	 * An instance of the base query implementation to clone
+	 *
+	 * @var Query<mixed>
 	 */
 	public protected(set) Query $query {
 		get {
@@ -56,23 +57,18 @@ class Graph
 	public protected(set) Queue $queue;
 
 	/**
-	 * @var ArrayObject<Element\Edge>
+	 * @var ArrayObject<string, Element\Edge>
 	 */
 	protected ArrayObject $edges;
 
 	/**
-	 * @var ArrayObject<Element\Node>
+	 * @var ArrayObject<string, Element\Node>
 	 */
 	protected ArrayObject $nodes;
 
-	/**
-	 *
-	 */
-	private readonly ReflectionProperty $union;
-
 
 	/**
-	 *
+	 * @param Query<mixed> $query
 	 */
 	public function __construct(
 		private readonly array $login,
@@ -82,7 +78,6 @@ class Graph
 	) {
 		$this->nodes = new ArrayObject();
 		$this->edges = new ArrayObject();
-		$this->union = new ReflectionProperty(Entity::class, '__element__');
 
 		if (!$query) {
 			$query = new Query();
@@ -162,6 +157,10 @@ class Graph
 					$target   = match(TRUE) {
 						$element instanceof Element\Node => $this->nodes,
 						$element instanceof Element\Edge => $this->edges,
+						default => throw new InvalidArgumentException(sprintf(
+							'Cannot detach entity with uknown element of type "%s"',
+							gettype($element)
+						))
 					};
 
 					$element->status = Status::fastened;
@@ -184,12 +183,13 @@ class Graph
 	 *
 	 * The type of elements (node or edge) being matched is determined by the class.
 	 *
-	 * @template T of Entity
-	 * @param class-string<T>|array $concerns
+	 * @template E of Entity
+	 * @param null|array<class-string<E>|string>|class-string<E>|string $concerns
+	 * @param callable|array<string, mixed> $terms
 	 * @param array<Order> $orders
-	 * @return Entity\Results<T>
+	 * @return Entity\Results<E>
 	 */
-	public function find(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], array $orders = []): Entity\Results
+	public function find(null|array|string $concerns = NULL, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], array $orders = []): Entity\Results
 	{
 		settype($concerns, 'array');
 
@@ -202,12 +202,12 @@ class Graph
 
 
 	/**
-	 * @template T of Entity
-	 * @param class-string<T>|array $concerns
+	 * @template E of Entity
+	 * @param null|array<class-string<E>|string>|class-string<E>|string $concerns
 	 * @param array<Order> $orders
-	 * @return Entity\Results<T>
+	 * @return Entity\Results<E>
 	 */
-	public function findAll(string|array $concerns, array $orders = []): Entity\Results
+	public function findAll(null|array|string $concerns = NULL, array $orders = []): Entity\Results
 	{
 
 		return $this->find($concerns, NULL, 0, [], $orders);
@@ -219,11 +219,12 @@ class Graph
 	 *
 	 * The type of element (node or edge) being matched is determined by the class.
 	 *
-	 * @template T of Entity
-	 * @param class-string<T>|array $concerns
-	 * @return ?T
+	 * @template E of Entity
+	 * @param null|array<class-string<E>|string>|class-string<E>|string $concerns
+	 * @param callable|array<string, mixed> $terms
+	 * @return ?E
 	 */
-	public function findOne(string|array $concerns, callable|array|int $terms): ?Entity
+	public function findOne(null|array|string $concerns = NULL, callable|array|int $terms = []): ?Entity
 	{
 		if (is_int($terms)) {
 			$terms = (fn($id) => $id($terms));
@@ -263,9 +264,11 @@ class Graph
 							substr(sprintf('%09d', $structure->nanoseconds), 0, 6)
 						),
 						new DateTimeZone($structure->tz_id)
-					);
+					) ?: NULL;
 
-					$value->setTimeZone($zone);
+					if ($value) {
+						$value->setTimeZone($zone);
+					}
 
 					return $value;
 
@@ -370,6 +373,8 @@ class Graph
 	 * Query statements operate via `sprintf` underneath the hood.  The arguments passed here are
 	 * for placeholder replacement.  For actual query parameters, use the `with()` call on the
 	 * returned query.
+	 *
+	 * @return Query<mixed>
 	 */
 	public function run(string $statement, mixed ...$args): Query
 	{

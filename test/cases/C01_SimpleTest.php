@@ -50,6 +50,7 @@ class C01_SimpleTest extends C00_BaseTest
 		static::$graph->queue->run();
 
 		assertEquals(Status::attached, $person->status());
+		assertNotEmpty($person->id);
 	}
 
 	public function testMatch()

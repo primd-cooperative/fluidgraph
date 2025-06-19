@@ -22,7 +22,7 @@ class Query
 	const REGEX_EXPANSION = '#@([a-zA-Z][a-zA-Z0-9]*)(?:\(([a-zA-Z][a-zA-Z0-9]*)\))?#';
 
 	/**
-	 * @var array<string>
+	 * @var array<class-string<T>|string>
 	 */
 	public protected(set) ?array $concerns = NULL;
 
@@ -39,12 +39,12 @@ class Query
 	public protected(set) Where $where;
 
 	/**
-	 *
+	 * @var array<string, mixed>
 	 */
 	public private(set) array $meta = [];
 
 	/**
-	 *
+	 * @var array<mixed>
 	 */
 	protected private(set) array $records;
 
@@ -69,7 +69,8 @@ class Query
 
 
 	/**
-	 *
+	 * @param array<string> $statements
+	 * @param array<string, mixed> $parameters
 	 */
 	public function __construct(
 		protected array $statements = [],
@@ -120,8 +121,8 @@ class Query
 
 	/**
 	 * @template E of Entity
-	 * @param null|array|class-string<E> $concerns
-	 * @return NodeResults<T|E>|EdgeResults<T|E>|ElementResults
+	 * @param null|array<class-string<E>|string>|class-string<E> $concerns
+	 * @return NodeResults<T|E>|EdgeResults<T|E>|Entity\Results<T|E>
 	 */
 	public function get(null|array|string $concerns = NULL): NodeResults|EdgeResults|Entity\Results
 	{
@@ -205,7 +206,8 @@ class Query
 	 * the graph.  If you need to perform manual resolution or work with raw return data, use
 	 * the `records()` method instead.
 	 *
-	 * @return ($this is object{concerns: null} ? Results<T> : Element\Results<T>)
+	 * @template E of Element
+	 * @return ($this is object{concerns: null} ? Results<T> : Element\Results<E>)
 	 */
 	public function results(): Results|Element\Results
 	{
@@ -275,8 +277,6 @@ class Query
 	 * Set a single parameter for the query.
 	 *
 	 * This allows you to add or replace existing properties ad-hoc.
-	 *
-	 * @return static<T>
 	 */
 	public function set(string $name, mixed $value): static
 	{
@@ -291,8 +291,6 @@ class Query
 	 *
 	 * Note, this does not merge parameters, it replaces the entire parameter array with only
 	 * the keys (as parameter names) and values (as parameter value) in the array.
-	 *
-	 * @return static<T>
 	 */
 	public function setAll(array $parameters): static
 	{

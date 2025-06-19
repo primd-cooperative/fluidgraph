@@ -21,7 +21,7 @@
         "classmap": ["test/src"]
     },
     "require-dev": {
-        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^10.0"
     }
 }

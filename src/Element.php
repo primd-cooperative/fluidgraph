@@ -33,7 +33,7 @@ abstract class Element implements Countable
 	/**
 	 * The labels of the element
 	 *
-	 * @var array<string, Status>
+	 * @var array<class-string|string, Status>
 	 */
 	public array $labels = [];
 
@@ -297,14 +297,14 @@ abstract class Element implements Countable
 	 * to defaults provided.
 	 *
 	 * @template E of Entity
-	 * @param null|array|class-string<E> $class The entity class to instantiate as
+	 * @param null|array<class-string<E>|string>|class-string<E>|string $concerns
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
 	 * @return E
 	 */
-	public function as(null|array|string $class = NULL, array $defaults = []): Entity
+	public function as(null|array|string $concerns = NULL, array $defaults = []): Entity
 	{
-		if (!is_string($class)) {
-			$class = $this->getPreferredClass($class);
+		if (!is_string($concerns)) {
+			$class = $this->getPreferredClass($concerns);
 
 			if (!$class) {
 				throw new InvalidArgumentException(sprintf(
@@ -312,6 +312,8 @@ abstract class Element implements Countable
 					implode(', ', static::classes($this))
 				));
 			}
+		} else {
+			$class = $concerns;
 		}
 
 		if (!isset($this->entities[$class])) {
@@ -458,6 +460,9 @@ abstract class Element implements Countable
 	 *
 	 * This method can return NULL, which suggests the element cannot be instantiated as that
 	 * class unless forced.
+	 *
+	 * @param array<class-string|string> $candidates
+	 * @return null|class-string
 	 */
 	protected function getPreferredClass(?array $candidates): ?string
 	{

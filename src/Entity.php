@@ -14,7 +14,7 @@ abstract class Entity
 	use DoesMake;
 
 	/**
-	 *
+	 * @var ?Element<static>
 	 */
 	abstract public protected(set) ?Element $__element__ {
 		get;
@@ -34,30 +34,16 @@ abstract class Entity
 
 
 	/**
+	 * Run all create hook traits on an element
+	 *
+	 * This method will add or replace properties according to the array structures returned
+	 * by each hook trait and return the complete/merged results of all hooks.
+	 *
 	 * @return array<string, mixed>
 	 */
 	static public function onCreate(Element $element): array
 	{
-		$results = [];
-
-		for(
-			$class = static::class;
-			$class && $class != self::class;
-			$class = get_parent_class($class)
-		) {
-			$results = array_replace(
-				$results,
-				self::doHooks($class, Entity\CreateHook::class, $element)
-			);
-		}
-
-		foreach ($results as $property => $value) {
-			if (!isset($element->active[$property])) {
-				$element->active[$property] = $value;
-			}
-		}
-
-		return $results;
+		return self::doHooks(static::class, Entity\CreateHook::class, $element);
 	}
 
 
@@ -69,17 +55,7 @@ abstract class Entity
 		$results = [];
 
 		if (count(Element::changes($element))) {
-			for(
-				$class = static::class;
-				$class && $class != self::class;
-				$class = get_parent_class($class)
-			) {
-				$results = self::doHooks($class, Entity\UpdateHook::class, $element);
-
-				foreach ($results as $property => $value) {
-					$element->active[$property] = $value;
-				}
-			}
+			$results = self::doHooks(static::class, Entity\UpdateHook::class, $element);
 		}
 
 		return $results;
@@ -94,30 +70,37 @@ abstract class Entity
 	{
 		$results = [];
 
-		foreach (class_uses($class) ?: [] as $trait) {
-			$results = array_replace($results, self::doHooks($trait, $hook, $element));
+		while ($class && $class != self::class) {
+			foreach (class_uses($class) ?: [] as $trait) {
+				$results = array_replace($results, self::doHooks($trait, $hook, $element));
 
-			if (!in_array($hook, class_uses($trait))) {
-				continue;
+				if (!in_array($hook, class_uses($trait))) {
+					continue;
+				}
+
+				$parts  = explode('\\', $trait);
+				$method = match($hook) {
+					Entity\CreateHook::class => 'create' . end($parts),
+					Entity\UpdateHook::class => 'update' . end($parts),
+					default => FALSE
+				};
+
+				if (!$method || !method_exists($trait, $method)) {
+					throw new InvalidArgumentException(sprintf(
+						'Invalid hook "%s" specified, method "%s" does not exist',
+						$trait,
+						$method
+					));
+				}
+
+				foreach (static::$method($element) as $property => $value) {
+					$results[$property] = $element->active[$property] = $value;
+				}
 			}
 
-			$parts  = explode('\\', $trait);
-			$method = match($hook) {
-				Entity\CreateHook::class => 'create' . end($parts),
-				Entity\UpdateHook::class => 'update' . end($parts),
-				default => FALSE
-			};
-
-			if (!$method || !method_exists($trait, $method)) {
-				throw new InvalidArgumentException(sprintf(
-					'Invalid hook "%s" specified, method "%s" does not exist',
-					$trait,
-					$method
-				));
-			}
-
-			$results = array_replace($results, static::$method($element));
+			$class = get_parent_class($class);
 		}
+
 
 		return $results;
 	}
@@ -182,13 +165,13 @@ abstract class Entity
 	 * to defaults provided.
 	 *
 	 * @template E of Entity
-	 * @param null|array|class-string<E> $class The entity class to instantiate as
+	 * @param null|array<class-string<E>|string>|class-string<E>|string $concerns
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
 	 * @return E
 	 */
-	public function as(null|array|string $class = NULL, array $defaults = []): Entity
+	public function as(null|array|string $concerns = NULL, array $defaults = []): Entity
 	{
-		return $this->__element__->as($class, $defaults);
+		return $this->__element__->as($concerns, $defaults);
 	}
 
 

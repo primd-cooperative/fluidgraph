@@ -3,11 +3,12 @@
 namespace FluidGraph\Testing;
 
 use FluidGraph\Node;
-
-use FluidGraph\Relationship\One;
+use FluidGraph\Entity;
 
 class Person extends Node
 {
+	use Entity\Id\Uuid7;
+
 	public function __construct(
 		public protected(set) string $name,
 		public protected(set) int $age
