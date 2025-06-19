@@ -52,9 +52,9 @@ class C01_SimpleTest extends C00_BaseTest
 		assertEquals(Status::attached, $person->status());
 	}
 
-	public function testQuery()
+	public function testMatch()
 	{
-		$node = static::$graph->query
+		$results = static::$graph->query
 			->match(Node::class)
 			->where([
 				'name' => 'Cynthia Bullwork'
@@ -62,8 +62,9 @@ class C01_SimpleTest extends C00_BaseTest
 			->take(1)
 			->skip(0)
 			->results()
-			->at(0)
 		;
+
+		$node = $results->at(0);
 
 		assertEquals(0, count($node));
 		assertEquals(Element\Node::class, $node::class);

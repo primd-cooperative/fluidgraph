@@ -22,9 +22,9 @@ class Query
 	const REGEX_EXPANSION = '#@([a-zA-Z][a-zA-Z0-9]*)(?:\(([a-zA-Z][a-zA-Z0-9]*)\))?#';
 
 	/**
-	 *
+	 * @var array<string>
 	 */
-	public protected(set) array $concerns;
+	public protected(set) ?array $concerns = NULL;
 
 
 	/**
@@ -54,7 +54,7 @@ class Query
 	protected private(set) bool $running = FALSE;
 
 	/**
-	 *
+	 * @var Results<T>|Element\Results<T>
 	 */
 	protected private(set) Results|Element\Results $results;
 
@@ -120,24 +120,27 @@ class Query
 
 	/**
 	 * @template E of Entity
-	 * @param ?class-string<E> $class
+	 * @param null|array|class-string<E> $concerns
 	 * @return NodeResults<T|E>|EdgeResults<T|E>|ElementResults
 	 */
-	public function get(?string $class = NULL): NodeResults|EdgeResults|Entity\Results
+	public function get(null|array|string $concerns = NULL): NodeResults|EdgeResults|Entity\Results
 	{
-		$results = $this->results();
-
-		if (is_null($class)) {
-			return $results->as($this->concerns);
-		} else {
-			return $results->of($class)->as($class);
+		if (!isset($this->concerns)) {
+			throw new RuntimeException(sprintf(
+				'Cannot call get() on a query not initialized with match()'
+			));
 		}
+
+		return !$concerns
+			? $this->results()->get($this->concerns)
+			: $this->results()->get($concerns)
+		;
 	}
 
 
 	/**
 	 * @template T of Entity
-	 * @param class-string<T> ...$concerns
+	 * @param class-string<T>|string ...$concerns
 	 * @return static<T>
 	 */
 	public function match(string ...$concerns): static
@@ -148,7 +151,7 @@ class Query
 
 	/**
 	 * @template T of Entity
-	 * @param class-string<T> ...$concerns
+	 * @param class-string<T>|string ...$concerns
 	 * @return static<T>
 	 */
 	public function matchAny(string ...$concerns): static
@@ -196,16 +199,30 @@ class Query
 
 
 	/**
-	 * @return Results<T>|Element\Results<T>
+	 * Get the records and resolve them via the graph.
+	 *
+	 * Resolving will convert any actual Node/Edge responses into elements and register them with
+	 * the graph.  If you need to perform manual resolution or work with raw return data, use
+	 * the `records()` method instead.
+	 *
+	 * @return ($this is object{concerns: null} ? Results<T> : Element\Results<T>)
 	 */
 	public function results(): Results|Element\Results
 	{
 		if (!isset($this->results)) {
-			$results_type  = isset($this->concerns) ? Element\Results::class : Results::class;
-			$this->results = new $results_type(array_map(
-				$this->graph->resolve(...),
-				$this->records()
-			));
+			if (!isset($this->concerns)) {
+				$this->results = new Results(array_map(
+					$this->graph->resolve(...),
+					$this->records()
+				));
+
+			} else {
+				$this->results = new Element\Results(array_map(
+					$this->graph->resolve(...),
+					$this->records()
+				));
+
+			}
 		}
 
 		return $this->results;
@@ -213,7 +230,10 @@ class Query
 
 
 	/**
+	 * Run the query.
 	 *
+	 * This will execute the query, pull, and collect the unpacked responses as records which are
+	 * accessible in raw form via `records()`.
 	 */
 	public function run(): static
 	{
@@ -240,8 +260,8 @@ class Query
 		}
 
 		$this->running = FALSE;
-		$this->records = $this->unwind(
-			...array_filter(
+		$this->records = $this->unpack(
+			array_filter(
 				$responses,
 				fn($response) => $response->signature == Signature::RECORD
 			)
@@ -252,6 +272,10 @@ class Query
 
 
 	/**
+	 * Set a single parameter for the query.
+	 *
+	 * This allows you to add or replace existing properties ad-hoc.
+	 *
 	 * @return static<T>
 	 */
 	public function set(string $name, mixed $value): static
@@ -263,6 +287,11 @@ class Query
 
 
 	/**
+	 * Set all the query parameters at once.
+	 *
+	 * Note, this does not merge parameters, it replaces the entire parameter array with only
+	 * the keys (as parameter names) and values (as parameter value) in the array.
+	 *
 	 * @return static<T>
 	 */
 	public function setAll(array $parameters): static
@@ -274,19 +303,19 @@ class Query
 
 
 	/**
+	 * Compose a complete query
 	 *
+	 * If match() or matchAny() was used and there are concerns or other query constraints set
+	 * like where(), take(), or skip(), etc, it will crate the query from these values.  Otherwise,
+	 * this function acts simply as a proxy to compile all statements passed to add().
+	 *
+	 * It is not possible to mix match-type queries and added statements.  Attempts to call one
+	 * once the other has been called will result in an exception.
 	 */
 	protected function compose(): string
 	{
 		if (isset($this->concerns)) {
-			if (isset($this->pattern)) {
-				$this->add('MATCH %s', $this->pattern);
-			} else {
-				$this->add(
-					'MATCH (%1$s1),()-[%1$s2]-() UNWIND [%1$s1,%1$s2] AS %1$s WITH %1$s',
-					Scope::concern->value
-				);
-			}
+			$this->add('MATCH %s', $this->pattern);
 
 			if (isset($this->terms) && $conditions = call_user_func($this->terms)) {
 				$this->add('WHERE %s', $conditions);
@@ -323,7 +352,12 @@ class Query
 
 
 	/**
+	 * Compile a query by converting classes to labels and filling all expansions
 	 *
+	 * Expansions allow for a syntax such as `SET @d(i)` where `d` is the name of the actual
+	 * parameter and `i` is the cypher query variable or `(i:Label {@d})`.  This allows you to pass
+	 * an associative array as a parameter that will expand into something like either
+	 * `i.property = $d.property` or `{property: $d.property}` (respectively).
 	 */
 	protected function compile(): string
 	{
@@ -389,7 +423,12 @@ class Query
 
 
 	/**
+	 * Initialize a match query (for element selection).
 	 *
+	 * This is used by match() and matchAny() in order to select elements, based on concerns we'll
+	 * determine what the match pattern looks like for our cypher query.
+	 *
+	 * @param class-string<T>|string ...$concerns
 	 */
 	protected function init(Matching $method, string ...$concerns): static
 	{
@@ -399,52 +438,62 @@ class Query
 			));
 		}
 
-		if (count($concerns)) {
-			$has_nodes = FALSE;
-			$has_edges = FALSE;
+		$match_nodes   = !count($concerns);
+		$match_edges   = !count($concerns);
+		$node_concerns = [];
+		$edge_concerns = [];
 
-			foreach ($concerns as $i => $concern) {
-				if (class_exists($concern)) {
-					$has_nodes |= is_a($concern, Node::class, TRUE);
-					$has_edges |= is_a($concern, Edge::class, TRUE);
+		foreach ($concerns as $i => $concern) {
+			if (is_a($concern, Edge::class, TRUE)) {
+				$match_edges = TRUE;
 
-					if (!is_a($concern, Entity::class, TRUE)) {
-						throw new InvalidArgumentException(sprintf(
-							'Invalid class concern "%s" specifed, must extend Entity',
-							$concern
-						));
-					}
-
-					if (get_parent_class($concern) == Entity::class) {
-						unset($concerns[$i]);
-					}
+				if ($concern != Edge::class) {
+					$edge_concerns[] = $concern;
+				} else {
+					unset($concerns[$i]);
 				}
-			}
-
-			if ($has_nodes && $has_edges) {
-				throw new InvalidArgumentException(sprintf(
-					'Cannot match mixed classes of Node and Edge from: %s',
-					implode(', ', $concerns)
-				));
-			}
-
-			if ($has_edges) {
-				$this->pattern = sprintf(
-					'(n1)-[%s]-(n2)',
-					count($concerns)
-						? Scope::concern->value . ':' . implode($method->value, $concerns)
-						: Scope::concern->value
-				);
 
 			} else {
-				$this->pattern = sprintf(
-					'(%s)',
-					count($concerns)
-						? Scope::concern->value . ':' . implode($method->value, $concerns)
-						: Scope::concern->value
-				);
+				$match_nodes = TRUE;
 
+				if ($concern != Node::class) {
+					$node_concerns[] = $concern;
+				} else {
+					unset($concerns[$i]);
+				}
 			}
+		}
+
+		if ($match_edges && $match_nodes) {
+			$this->pattern = sprintf(
+				'(%1$s1%2$s),()-[%1$s2%3$s]-() UNWIND [%1$s1,%1$s2] AS %1$s WITH %1$s',
+				Scope::concern->value,
+				count($node_concerns)
+					? ':' . implode($method->value, $node_concerns)
+					: '',
+				count($edge_concerns)
+					? ':' . implode('|', $edge_concerns)
+					: ''
+			);
+
+		} elseif ($match_edges) {
+			$this->pattern = sprintf(
+				'()-[%s%s]-()',
+				Scope::concern->value,
+				count($edge_concerns)
+					? ':' . implode('|', $edge_concerns)
+					: ''
+			);
+
+		} else {
+			$this->pattern = sprintf(
+				'(%s%s)',
+				Scope::concern->value,
+				count($node_concerns)
+					? ':' . implode($method->value, $node_concerns)
+					: ''
+			);
+
 		}
 
 		$this->concerns = $concerns;
@@ -454,7 +503,9 @@ class Query
 
 
 	/**
+	 * Prepare a property into a format that Bolt can understand.
 	 *
+	 * If the property is an array, all of the elements in that array will be prepared as necessary.
 	 */
 	protected function prepare(mixed $property): mixed
 	{
@@ -475,15 +526,17 @@ class Query
 
 
 	/**
+	 * Unpack record content recursively until it's no longer a Response object.
 	 *
+	 * @return array<mixed>
 	 */
-	protected function unwind(mixed ...$items): array
+	protected function unpack(mixed $items): array
 	{
 		$records = [];
 
 		foreach ($items as $item) {
 			if ($item instanceof Response) {
-				array_push($records, ...$this->unwind(...$item->content));
+				array_push($records, ...$this->unpack($item->content));
 			} else {
 				array_push($records, $item);
 			}

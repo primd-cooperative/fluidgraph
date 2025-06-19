@@ -71,14 +71,40 @@ class Results extends FluidGraph\Results
 
 
 	/**
+	 * Get all the elments matching all concerns as entities
+	 *
+	 * The list of concerns acts as preferred classes for instantiation.
+	 *
 	 * @template E of Entity
-	 * @param ?string-class E
-	 * @return Element\Results<E>|Entity\Results<T>
+	 * @param null|array<string-class<E>>|string-class<E> $class
+	 * @return NodeResults<E>|EdgeResults<E>|Entity\Results<E>
 	 */
-	public function get(?string $class = NULL): Entity\Results|Element\Results
+	public function get(null|array|string $concerns = NULL): Entity\Results
 	{
-		return $class
-			? $this->of($class)->as($class)
+		$matches = array_filter(!is_array($concerns) ? [$concerns] : $concerns);
+
+		return $matches
+			? $this->of(...$concerns)->as($concerns)
+			: $this->as(NULL)
+		;
+	}
+
+
+	/**
+	 * Get all the elments matching any concerns as entities
+	 *
+	 * The list of concerns acts as preferred classes for instantiation.
+	 *
+	 * @template E of Entity
+	 * @param null|array<string-class<E>>|string-class<E> $class
+	 * @return NodeResults<E>|EdgeResults<E>|Entity\Results<E>
+	 */
+	public function getAny(null|array|string $concerns = NULL): Entity\Results
+	{
+		$matches = array_filter(!is_array($concerns) ? [$concerns] : $concerns);
+
+		return $matches
+			? $this->ofAny(...$concerns)->as($concerns)
 			: $this->as(NULL)
 		;
 	}
@@ -90,13 +116,7 @@ class Results extends FluidGraph\Results
 	public function map(string|callable $transformer): FluidGraph\Results
 	{
 		if (is_string($transformer)) {
-			$transformer = function(Element $result) use ($transformer) {
-				if (!isset($result->active[$transformer])) {
-					return NULL;
-				}
-
-				return $result->active[$transformer];
-			};
+			$transformer = fn(Element $result) => $result->active[$transformer] ?? NULL;
 		}
 
 		return new FluidGraph\Results(array_map(
@@ -107,7 +127,10 @@ class Results extends FluidGraph\Results
 
 
 	/**
-	 *
+	 * @template E of Entity
+	 * @param Element|Entity|string-class<E> $match
+	 * @param Element|Entity|string-class<E> ...$matches
+	 * @return static<E>
 	 */
 	public function of(Element|Entity|string $match, Element|Entity|string ...$matches): static
 	{
@@ -115,12 +138,15 @@ class Results extends FluidGraph\Results
 
 		$filter = (fn($result) => $result->of(...$matches));
 
-		return parent::filter($filter);
+		return parent::when($filter);
 	}
 
 
 	/**
-	 *
+	 * @template E of Entity
+	 * @param Element|Entity|string-class<E> $match
+	 * @param Element|Entity|string-class<E> ...$matches
+	 * @return static<E>
 	 */
 	public function ofAny(Element|Entity|string $match, Element|Entity|string ...$matches): static
 	{
@@ -128,14 +154,19 @@ class Results extends FluidGraph\Results
 
 		$filter = (fn($result) => $result->ofAny(...$matches));
 
-		return parent::filter($filter);
+		return parent::when($filter);
 	}
 
 
 	/**
+	 * {@inheritDoc}
 	 *
+	 * This method overloads array filtering behavior such that if the key is numeric an element
+	 * will fail to match the filtering if the property represented by the value is not set.  If
+	 * the key is not numeric, the key is used as the property and the element will fail to match
+	 * if the current property value on the element is not equal to the array item value.
 	 */
-	public function when(array|callable $filter): static|FluidGraph\Results
+	public function when(array|callable $filter): static
 	{
 		if (is_array($filter)) {
 			$filter = function($result) use ($filter) {
@@ -143,24 +174,19 @@ class Results extends FluidGraph\Results
 					if (is_numeric($property)) {
 						$property  = $condition;
 						$condition = fn() => isset($result->active[$property]);
-					}
-
-					if (is_callable($condition)) {
-						if (!$condition()) {
-							return FALSE;
-						}
-
 					} else {
-						$value = $result->active[$property] ?? NULL;
-
-						if ($value != $condition) {
-							return FALSE;
-						}
+						$condition = fn() => $result->active[$property] ?? NULL == $condition;
 					}
+
+					if (!$condition()) {
+						return FALSE;
+					}
+
+					return TRUE;
 				}
 			};
 		}
 
-		return parent::filter($filter);
+		return parent::when($filter);
 	}
 }

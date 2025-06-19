@@ -40,24 +40,7 @@ class Results extends ArrayObject
 	}
 
 
-	/**
-	 * Filter the results by a callable or an array.
-	 *
-	 * The default array behavior is to return only results which are in the passed array. Child
-	 * result types are allowed to overload this behavior depending on the nature of their
-	 * results.
-	 */
-	public function filter(array|callable $filter): static
-	{
-		if (is_array($filter)) {
-			$filter = (fn(mixed $result) => in_array($result, $filter));
-		}
 
-		return new static(array_values(array_filter(
-			$this->getArrayCopy(),
-			$filter
-		)));
-	}
 
 
 	/**
@@ -108,7 +91,7 @@ class Results extends ArrayObject
 
 
 	/**
-	 *
+	 * Slice out a portion of the array from a starting index and for a some count of items
 	 */
 	public function slice(int $start, int $count): static
 	{
@@ -124,5 +107,25 @@ class Results extends ArrayObject
 	public function unwrap(): array
 	{
 		return $this->getArrayCopy();
+	}
+
+
+	/**
+	 * Filter the results by a callable or an array.
+	 *
+	 * The default array behavior is to return only results which are in the passed array. Child
+	 * result types are allowed to overload this behavior depending on the nature of their
+	 * results.
+	 */
+	public function when(array|callable $filter): static
+	{
+		if (is_array($filter)) {
+			$filter = (fn(mixed $result) => in_array($result, $filter));
+		}
+
+		return new static(array_values(array_filter(
+			$this->getArrayCopy(),
+			$filter
+		)));
 	}
 }
