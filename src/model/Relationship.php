@@ -13,7 +13,7 @@ use DateTime;
 use Closure;
 
 /**
- * @template E of Edge
+ * @template T of Edge
  */
 abstract class Relationship implements Countable
 {
@@ -67,26 +67,21 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	abstract public function for(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): null|Edge|EdgeResults;
-
-
-	/**
-	 *
-	 */
-	abstract public function forAny(Element\Node|Node|string $node, Element\Node|Node|string ...$nodes): null|Edge|EdgeResults;
-
-
-	/**
-	 *
-	 */
 	abstract public function set(Node $node, array|Edge $data = []): static;
 
 
 	/**
+	 * Createa a new relationship
 	 *
+	 * @template T of Edge
+	 * @param class-string<T> $kind
+	 * @return static<T>
 	 */
-	static public function having(Node $subject, string $kind, Reference $type, Matching $rule = Matching::all,	array $concerns = [], Mode $mode = Mode::lazy): static {
-		return new static(...func_get_args());
+	static public function having(Node $subject, string $kind, Reference $type, Matching $rule = Matching::all,	array|string $concerns = [], Mode $mode = Mode::lazy): static
+	{
+		settype($concerns, 'array');
+
+		return new static($subject, $kind, $type, $rule, $concerns, $mode);
 	}
 
 
@@ -121,7 +116,7 @@ abstract class Relationship implements Countable
 	/**
 	 * Get all edge entities for this relationship, regardless what they correspond to
 	 *
-	 * @return EdgeResults<E>
+	 * @return EdgeResults<T>
 	 */
 	public function all(): EdgeResults
 	{
@@ -254,7 +249,7 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function find(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = []): null|NodeResults|Node
+	public function find(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = []): NodeResults|Node|null
 	{
 		settype($concerns, 'array');
 
@@ -264,6 +259,36 @@ abstract class Relationship implements Countable
 
 		return $clone->get();
 	}
+
+	/**
+	 *
+	 */
+	public function findAny(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = []): NodeResults|Node|null
+	{
+		settype($concerns, 'array');
+
+		$clone = $this->matchAny(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
+
+		$clone->load();
+
+		return $clone->get();
+	}
+
+
+	/**
+	 *
+	 */
+	public function findForAny(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = []): EdgeResults|Edge|null
+	{
+		settype($concerns, 'array');
+
+		$clone = $this->match(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
+
+		$clone->load();
+
+		return $clone->get();
+	}
+
 
 
 	/**
@@ -276,7 +301,7 @@ abstract class Relationship implements Countable
 
 
 	/**
-	 *  Reload the relationship
+	 * Reload the relationship
 	 */
 	public function flush(): static
 	{
@@ -296,22 +321,63 @@ abstract class Relationship implements Countable
 
 
 	/**
+	 * Get all edge entities for this relationship whose node corresponds to all node/label matches
 	 *
+	 * @param Element\Node|Node|class-string $match
+	 * @param Element\Node|Node|class-string $matches
+	 * @return EdgeResults<T>|T|null
+
 	 */
-	public function get(?string $class = NULL): null|NodeResults|Node
+	public function for(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): EdgeResults|Edge|null
 	{
-		if (is_null($class)) {
-			$class = $this->concerns;
+		return $this->all()->for($match, ...$matches);
+	}
 
-			if (isset($this->apex)) {
-				$class = array_merge($class, $this->apex->concerns);
-			}
 
-			return $this->all()->get($class);
+	/**
+	 * Get all edge entities for this relationship whose node corresponds to any node/label matches
+	 *
+	 * @param Element\Node|Node|class-string $match
+	 * @param Element\Node|Node|class-string $matches
+	 * @return EdgeResults<T>|T|null
+	 */
+	public function forAny(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): EdgeResults|Edge|null
+	{
+		return $this->all()->forAny($match, ...$matches);
+	}
 
-		} else {
-			return $this->for($class)->get($class);
+
+	/**
+	 * Get the related node entities of() the specified classes.
+	 *
+	 * @template N of Node
+	 * @param class-string<N>|string ...$concerns
+	 * @return NodeResults<N>|N|null
+	 */
+	public function get(string ...$concerns): NodeResults|Node|null
+	{
+		if (empty($concerns)) {
+			$concerns = $this->concerns;
 		}
+
+		return $this->all()->get(...$concerns);
+	}
+
+
+	/**
+	 * Get the related node entitities of() the specified concerns.
+	 *
+	 * @template N of Node
+	 * @param class-string<N>|string ...$concerns
+	 * @return NodeResults<N>|N|null
+	 */
+	public function getAny(string ...$concerns): NodeResults|Node|null
+	{
+		if (empty($concerns)) {
+			$concerns = $this->concerns;
+		}
+
+		return $this->all()->getAny(...$concerns);
 	}
 
 
@@ -329,7 +395,7 @@ abstract class Relationship implements Countable
 	 *
 	 * Called from Element::as() -- for Node elements only, Edge elements do not have relationships.
 	 */
-	public function load(Matching|string $rule_or_concern = '', string ...$concerns): static
+	public function load(): static
 	{
 		if (!isset($this->graph)) {
 			return $this;
@@ -340,10 +406,10 @@ abstract class Relationship implements Countable
 		}
 
 		if (!isset($this->loadTime)) {
-			$this->loader = function() use ($rule_or_concern, $concerns) {
+			$this->loader = function() {
 				unset($this->loader);
 
-				$query = $this->getGraphQuery($rule_or_concern, ...$concerns);
+				$query = $this->getGraphQuery();
 
 				if ($this->terms) {
 					$query->add('AND (%s)', $this->terms);
@@ -381,7 +447,7 @@ abstract class Relationship implements Countable
 
 				$this->loaded = [];
 
-				foreach ($query->results() as $result) {
+				foreach ($query->results()->map($this->graph->resolve(...)) as $result) {
 					if (!$result instanceof Element\Edge) {
 						continue;
 					}
@@ -554,7 +620,7 @@ abstract class Relationship implements Countable
 	 * Construct a new Relationship
 	 *
 	 * @param Node $subject The subject for this relationship.
-	 * @param class-string<E> $kind The edge type that defines the relationship
+	 * @param class-string<T> $kind The edge type that defines the relationship
 	 * @param array<class-string<Node>> $concerns
 	 */
 	protected function __construct(
@@ -594,7 +660,7 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	protected function getGraphQuery(Matching|string $rule_or_concern = '', string ...$concerns): Query
+	protected function getGraphQuery(Matching|string $rule_or_concern = '', string ...$concerns): Query\RawQuery
 	{
 		if (!$rule_or_concern instanceof Matching) {
 			$rule = $this->rule;
@@ -635,7 +701,8 @@ abstract class Relationship implements Countable
 			);
 		}
 
-		return $this->graph->query
+		return new Query\RawQuery()
+			->on($this->graph)
 			->add(
 				match ($this->type) {
 					Reference::to     => 'MATCH (s:%s)-[r:%s]->(c)',
@@ -651,6 +718,9 @@ abstract class Relationship implements Countable
 	}
 
 
+	/**
+	 *
+	 */
 	protected function getGraphCount(Matching|string $rule_or_concern = '', string ...$concerns): int
 	{
 		return (int) $this
@@ -674,6 +744,9 @@ abstract class Relationship implements Countable
 	}
 
 
+	/**
+	 *
+	 */
 	protected function getIndexes(Index $index, Element\Node|Node $match, Element\Node|Node ...$matches): array
 	{
 		$index = $index->value;

@@ -5,6 +5,8 @@ namespace FluidGraph;
 use ArrayObject;
 use RuntimeException;
 
+use FluidGraph\Query\RawQuery;
+
 class Queue
 {
 	use HasGraph;
@@ -213,7 +215,7 @@ class Queue
 	 */
 	protected function doEdgeCreates(): void
 	{
-		$query      = $this->graph->query;
+		$query      = new RawQuery()->on($this->graph);
 		$identities = $this->edgeOperations[static::CREATE];
 
 		foreach ($identities as $i => $identity) {
@@ -294,7 +296,7 @@ class Queue
 
 	protected function doEdgeDeletes(): void
 	{
-		$query      = $this->graph->query;
+		$query      = new RawQuery()->on($this->graph);
 		$identities = $this->edgeOperations[static::DELETE];
 
 		$query
@@ -316,7 +318,7 @@ class Queue
 
 	protected function doEdgeUpdates(): void
 	{
-		$query      = $this->graph->query;
+		$query      = new RawQuery()->on($this->graph);
 		$identities = $this->edgeOperations[static::UPDATE];
 
 		$i = 0; foreach ($identities as $identity) {
@@ -359,7 +361,7 @@ class Queue
 	 */
 	protected function doNodeCreates(): void
 	{
-		$query      = $this->graph->query;
+		$query      = new RawQuery()->on($this->graph);
 		$identities = $this->nodeOperations[static::CREATE];
 
 		$i = 0; foreach ($identities as $identity) {
@@ -419,7 +421,7 @@ class Queue
 
 	protected function doNodeDeletes(): void
 	{
-		$query      = $this->graph->query;
+		$query      = new RawQuery()->on($this->graph);
 		$identities = $this->nodeOperations[static::DELETE];
 
 		$query
@@ -440,7 +442,7 @@ class Queue
 
 	protected function doNodeUpdates(): void
 	{
-		$query      = $this->graph->query;
+		$query      = new RawQuery()->on($this->graph);
 		$identities = $this->nodeOperations[static::UPDATE];
 
 		$i = 0; foreach ($identities as $identity) {

@@ -55,14 +55,10 @@ class C01_SimpleTest extends C00_BaseTest
 
 	public function testMatch()
 	{
-		$results = static::$graph->query
-			->match(Node::class)
-			->where([
+		$results = static::$graph
+			->match([Node::class], 1, 0, [
 				'name' => 'Cynthia Bullwork'
 			])
-			->take(1)
-			->skip(0)
-			->results()
 		;
 
 		$node = $results->at(0);
@@ -75,7 +71,7 @@ class C01_SimpleTest extends C00_BaseTest
 
 	public function testFindOne()
 	{
-		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->findNode(Person::class, ['name' => 'Cynthia Bullwork']);
 
 		assertNotEmpty($person);
 		assertSame($person, static::$data->person);
@@ -84,8 +80,8 @@ class C01_SimpleTest extends C00_BaseTest
 
 	public function testFindAll()
 	{
-		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
-		$people = static::$graph->findAll(Person::class);
+		$person = static::$graph->findNode(Person::class, ['name' => 'Cynthia Bullwork']);
+		$people = static::$graph->findNodes(Person::class);
 
 		assertEquals(1, count($people));
 		assertSame($person, $people->last());
@@ -97,14 +93,12 @@ class C01_SimpleTest extends C00_BaseTest
 	public function testMatchOneForeignUpdate()
 	{
 		static::$graph
-			->run("MATCH (a:%s {name: 'Cynthia Bullwork'}) SET a.age = 38", Person::class)
+			->exec("MATCH (a:%s {name: 'Cynthia Bullwork'}) SET a.age = 38", Person::class)
 		;
 
-		$person = static::$graph->query
-			->match(Person::class)
-			->where(['name' => 'Cynthia Bullwork'])
-			->get()
-			->at(0)
+		$person = static::$graph->findNode(Person::class, [
+				'name' => 'Cynthia Bullwork'
+			])
 		;
 
 		assertSame(38, $person->age);
@@ -112,15 +106,17 @@ class C01_SimpleTest extends C00_BaseTest
 
 	public function testMatchOneForeignUpdateConflict()
 	{
-		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->findNode(Person::class, [
+			'name' => 'Cynthia Bullwork'
+		]);
 
 		$person->setAge(40);
 
-		$query = static::$graph
-			->run("MATCH (a:%s {name: 'Cynthia Bullwork'}) SET a.age = 39", Person::class)
+		static::$graph
+			->exec("MATCH (a:%s {name: 'Cynthia Bullwork'}) SET a.age = 39", Person::class)
 		;
 
-		$person = static::$graph->findOne(Person::class, ['name' => 'Cynthia Bullwork']);
+		$person = static::$graph->findNode(Person::class, ['name' => 'Cynthia Bullwork']);
 
 		assertSame($person, static::$data->person);
 		assertSame(40, $person->age);

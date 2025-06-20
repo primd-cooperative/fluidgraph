@@ -12,6 +12,9 @@ use RuntimeException;
 use InvalidArgumentException;
 use DateTimeZone;
 use DateTime;
+use FluidGraph\Query\MatchQuery;
+use FluidGraph\Query\RawQuery;
+use UnexpectedValueException;
 
 /**
  *
@@ -38,21 +41,7 @@ class Graph
 	}
 
 	/**
-	 * An instance of the base query implementation to clone
-	 *
-	 * @var Query<mixed>
-	 */
-	public protected(set) Query $query {
-		get {
-			return clone $this->query;
-		}
-		set (Query $query) {
-			$this->query = $query;
-		}
-	}
-
-	/**
-	 * An instance of the base queue implementation to clone
+	 * An instance of the base queue implementation
 	 */
 	public protected(set) Queue $queue;
 
@@ -66,34 +55,27 @@ class Graph
 	 */
 	protected ArrayObject $nodes;
 
-
 	/**
-	 * @param Query<mixed> $query
+	 *
 	 */
 	public function __construct(
 		private readonly array $login,
 		private readonly Bolt $bolt,
-		?Query $query = NULL,
 		?Queue $queue = NULL
 	) {
 		$this->nodes = new ArrayObject();
 		$this->edges = new ArrayObject();
-
-		if (!$query) {
-			$query = new Query();
-		}
 
 		if (!$queue) {
 			$queue = new Queue();
 		}
 
 		$this->queue = $queue->on($this)->manage($this->nodes, $this->edges);
-		$this->query = $query->on($this);
 	}
 
 
 	/**
-	 *
+	 * Attach an element or entity to the graph
 	 */
 	public function attach(Element|Entity ...$elements): static
 	{
@@ -142,7 +124,7 @@ class Graph
 
 
 	/**
-	 *
+	 * Detach and entity or element from the graph
 	 */
 	public function detach(Element|Entity ...$elements): static
 	{
@@ -179,66 +161,203 @@ class Graph
 
 
 	/**
-	 * Match multiple nodes or edges and have them returned as an instance of a given class.
+	 * Execute a query and get mixed results
 	 *
-	 * The type of elements (node or edge) being matched is determined by the class.
+	 * @param string $statement An `sprintf()` style string with placeholders for `$args`
+	 * @param mixed ...$values The values for filling palceholders in the `$statement`
+	 * */
+	public function exec(string $statement, mixed ...$values): Results
+	{
+		return $this->query($statement, ...$values)->results();
+	}
+
+
+	/**
+	 * Get a single edge
 	 *
-	 * @template E of Entity
-	 * @param null|array<class-string<E>|string>|class-string<E>|string $concerns
-	 * @param callable|array<string, mixed> $terms
-	 * @param array<Order> $orders
-	 * @return Entity\Results<E>
+	 * @template E of Edge
+	 * @param array<class-string<E>|string>|class-string<E>|string $concerns
+	 * @param array<string, mixed>|callable|int $terms
+	 * @return ?E
 	 */
-	public function find(null|array|string $concerns = NULL, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], array $orders = []): Entity\Results
+	public function findEdge(array|string $concerns = [], array|callable|int $terms = []): ?Edge
 	{
 		settype($concerns, 'array');
 
-		$query = $this->query;
+		$invalid = array_filter(
+			$concerns,
+			fn($concern) => !is_subclass_of($concern, Edge::class, TRUE)
+		);
 
-		$query->match(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
-
-		return $query->get();
-	}
-
-
-	/**
-	 * @template E of Entity
-	 * @param null|array<class-string<E>|string>|class-string<E>|string $concerns
-	 * @param array<Order> $orders
-	 * @return Entity\Results<E>
-	 */
-	public function findAll(null|array|string $concerns = NULL, array $orders = []): Entity\Results
-	{
-
-		return $this->find($concerns, NULL, 0, [], $orders);
-	}
-
-
-	/**
-	 * Find a single node or edge and have it returned as an instance of a given class.
-	 *
-	 * The type of element (node or edge) being matched is determined by the class.
-	 *
-	 * @template E of Entity
-	 * @param null|array<class-string<E>|string>|class-string<E>|string $concerns
-	 * @param callable|array<string, mixed> $terms
-	 * @return ?E
-	 */
-	public function findOne(null|array|string $concerns = NULL, callable|array|int $terms = []): ?Entity
-	{
-		if (is_int($terms)) {
-			$terms = (fn($id) => $id($terms));
-		}
-
-		$results = $this->find($concerns, 2, 0, $terms, []);
-
-		if (count($results) > 1) {
-			throw new RuntimeException(sprintf(
-				'Trying to match a unique result returned more than one result'
+		if (count($invalid)) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot call edge() with invalid concerns: %s',
+				implode(',', $invalid)
 			));
 		}
 
-		return $results->at(0);
+		if (is_int($terms)) {
+			$terms = fn($id) => $id($terms);
+		}
+
+		$results = $this->matchAny([Edge::class, ...$concerns], 2, 0, $terms, []);
+
+		if (count($results) > 1) {
+			throw new UnexpectedValueException(sprintf(
+				'Call for edge() returned more than one result'
+			));
+		}
+
+		return $results->as($concerns)->at(0);
+	}
+
+
+	/**
+	 * Get multiple edges
+	 *
+	 * @template E of Edge
+	 * @param array<class-string<E>|string>|class-string<E>|string $concerns
+	 * @param array<string, mixed>|callable $terms
+	 * @param array<Order> $orders
+	 * @return EdgeResults<E>
+	 */
+	public function findEdges(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): EdgeResults
+	{
+		settype($concerns, 'array');
+
+		$invalid = array_filter(
+			$concerns,
+			fn($concern) => !is_subclass_of($concern, Edge::class, TRUE)
+		);
+
+		if (count($invalid)) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot call edges() with invalid concerns: %s',
+				implode(',', $invalid)
+			));
+		}
+
+		$results = $this->matchAny([Edge::class, ...$concerns], $limit, $offset, $terms, $orders);
+
+		return new EdgeResults($results->as($concerns)->unwrap());
+	}
+
+
+	/**
+	 * Get a single node
+	 *
+	 * @template E of Node
+	 * @param array<class-string<E>|string>|class-string<E>|string $concerns
+	 * @param array<string, mixed>|callable|int $terms
+	 * @return ?E
+	 */
+	public function findNode(array|string $concerns = [], array|callable|int $terms = []): ?Node
+	{
+		settype($concerns, 'array');
+
+		$invalid = array_filter(
+			$concerns,
+			fn($concern) => is_subclass_of($concern, Edge::class, TRUE)
+		);
+
+		if (count($invalid)) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot call node() with invalid concerns: %s',
+				implode(',', $invalid)
+			));
+		}
+
+		if (is_int($terms)) {
+			$terms = fn($id) => $id($terms);
+		}
+
+		$results = $this->matchAny([Node::class, ...$concerns], 2, 0, $terms, []);
+
+		if (count($results) > 1) {
+			throw new UnexpectedValueException(sprintf(
+				'Call for node() returned more than one result'
+			));
+		}
+
+		return $results->as($concerns)->at(0);
+	}
+
+
+	/**
+	 * Get multiple nodes
+	 *
+	 * @template E of Node
+	 * @param array<class-string<E>|string>|class-string<E>|string $concerns
+	 * @param array<string, mixed>|callable $terms
+	 * @param array<Order> $orders
+	 * @return NodeResults<E>
+	 */
+	public function findNodes(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): NodeResults
+	{
+		settype($concerns, 'array');
+
+		$invalid = array_filter(
+			$concerns,
+			fn($concern) => is_subclass_of($concern, Edge::class, TRUE)
+		);
+
+		if (count($invalid)) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot call nodes() with invalid concerns: %s',
+				implode(',', $invalid)
+			));
+		}
+
+		$results = $this->matchAny([Node::class, ...$concerns], $limit, $offset, $terms, $orders);
+
+		return new NodeResults($results->as($concerns)->unwrap());
+	}
+
+
+	/**
+	 * Initialize a new match query and get element results matching ALL `$concerns`
+	 */
+	public function match(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): Element\Results
+	{
+		return new MatchQuery(Matching::all, ...$concerns)
+			->on($this)
+			->where($terms)
+			->skip($offset)
+			->take($limit)
+			->sort(...$orders)
+			->results()
+		;
+	}
+
+
+	/**
+	 * Initialize a new match query and get element results matching ANY `$concerns`
+	 */
+	public function matchAny(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): Element\Results
+	{
+		return new MatchQuery(Matching::any, ...$concerns)
+			->on($this)
+			->where($terms)
+			->skip($offset)
+			->take($limit)
+			->sort(...$orders)
+			->results()
+		;
+	}
+
+
+	/**
+	 * Initialize a new raw query
+	 *
+	 * @param string $statement An `sprintf()` style string with placeholders for `$args`
+	 * @param mixed ...$values The values for filling palceholders in the `$statement`
+	 */
+	public function query(string $statement, mixed ...$values): Query\RawQuery
+	{
+		return new Query\RawQuery()
+			->on($this)
+			->add($statement, ...$values)
+		;
 	}
 
 
@@ -252,115 +371,110 @@ class Graph
 	 */
 	public function resolve(mixed $structure): mixed
 	{
-		if (is_object($structure)) {
-			switch($structure::class) {
-				case Struct\DateTimeZoneId::class:
-					$zone  = new DateTimeZone($structure->tz_id);
-					$value = DateTime::createFromFormat(
-						'U.u',
-						sprintf(
-							'%d.%s',
-							$structure->seconds,
-							substr(sprintf('%09d', $structure->nanoseconds), 0, 6)
-						),
-						new DateTimeZone($structure->tz_id)
-					) ?: NULL;
+		switch($structure::class) {
+			case Struct\DateTimeZoneId::class:
+				$zone  = new DateTimeZone($structure->tz_id);
+				$value = DateTime::createFromFormat(
+					'U.u',
+					sprintf(
+						'%d.%s',
+						$structure->seconds,
+						substr(sprintf('%09d', $structure->nanoseconds), 0, 6)
+					),
+					new DateTimeZone($structure->tz_id)
+				) ?: NULL;
 
-					if ($value) {
-						$value->setTimeZone($zone);
-					}
-
-					return $value;
-
-				case Struct\Node::class:
-					$labels   = $structure->labels;
-					$identity = $structure->element_id;
-					$storage  = $this->nodes;
-
-					if (!isset($this->nodes[$identity])) {
-						$this->nodes[$identity] = new Element\Node()->on($this);
-					}
-
-					break;
-
-				case Struct\Relationship::class:
-					$labels   = [$structure->type];
-					$identity = $structure->element_id;
-					$storage  = $this->edges;
-
-					if (!isset($this->edges[$identity])) {
-						$this->edges[$identity] = new Element\Edge()->on($this);
-
-						if (isset($this->nodes[$structure->startNodeId])) {
-							$source = $this->nodes[$structure->startNodeId];
-						} else {
-							$source = $this->nodes[$structure->startNodeId] = new Element\Node();
-						}
-
-						if (isset($this->nodes[$structure->endNodeId])) {
-							$target = $this->nodes[$structure->endNodeId];
-						} else {
-							$target = $this->nodes[$structure->endNodeId] = new Element\Node();
-						}
-
-						$this->edges[$identity]->with(
-							function(Element $source, Element $target): void {
-								/**
-								 * @var Element\Edge $this
-								 */
-								$this->source = $source;
-								$this->target = $target;
-							},
-							$source,
-							$target
-						);
-					}
-					break;
-
-				default:
-					throw new RuntimeException(sprintf(
-						'Cannot resolve property of type "%s"',
-						$structure::class
-					));
-			}
-
-			$element = $storage[$identity];
-
-			if (!isset($element->identity)) {
-				$element->identity = $identity;
-			}
-
-			if ($element->status != Status::released) {
-				$element->status = Status::attached;
-			}
-
-			foreach ($labels as $label) {
-				$element->labels[str_replace('_', '\\', $label)] = Status::attached;
-			}
-
-			foreach ($structure->properties as $property => $value) {
-				if ($value instanceof IStructure) {
-					$value = $this->resolve($value);
+				if ($value) {
+					$value->setTimeZone($zone);
 				}
 
-				if (!array_key_exists($property, $element->active)) {
+				return $value;
+
+			case Struct\Node::class:
+				$labels   = $structure->labels;
+				$identity = $structure->element_id;
+				$storage  = $this->nodes;
+
+				if (!isset($this->nodes[$identity])) {
+					$this->nodes[$identity] = new Element\Node()->on($this);
+				}
+
+				break;
+
+			case Struct\Relationship::class:
+				$labels   = [$structure->type];
+				$identity = $structure->element_id;
+				$storage  = $this->edges;
+
+				if (!isset($this->edges[$identity])) {
+					$this->edges[$identity] = new Element\Edge()->on($this);
+
+					if (isset($this->nodes[$structure->startNodeId])) {
+						$source = $this->nodes[$structure->startNodeId];
+					} else {
+						$source = $this->nodes[$structure->startNodeId] = new Element\Node();
+					}
+
+					if (isset($this->nodes[$structure->endNodeId])) {
+						$target = $this->nodes[$structure->endNodeId];
+					} else {
+						$target = $this->nodes[$structure->endNodeId] = new Element\Node();
+					}
+
+					$this->edges[$identity]->with(
+						function(Element $source, Element $target): void {
+							/**
+							 * @var Element\Edge $this
+							 */
+							$this->source = $source;
+							$this->target = $target;
+						},
+						$source,
+						$target
+					);
+				}
+				break;
+
+			default:
+				throw new RuntimeException(sprintf(
+					'Cannot resolve property of type "%s"',
+					$structure::class
+				));
+		}
+
+		$element = $storage[$identity];
+
+		if (!isset($element->identity)) {
+			$element->identity = $identity;
+		}
+
+		if ($element->status != Status::released) {
+			$element->status = Status::attached;
+		}
+
+		foreach ($labels as $label) {
+			$element->labels[str_replace('_', '\\', $label)] = Status::attached;
+		}
+
+		foreach ($structure->properties as $property => $value) {
+			if ($value instanceof IStructure) {
+				$value = $this->resolve($value);
+			}
+
+			if (!array_key_exists($property, $element->active)) {
+				$element->active[$property] = $value;
+			}
+
+			if (array_key_exists($property, $element->loaded)) {
+				if ($element->active[$property] == $element->loaded[$property]) {
 					$element->active[$property] = $value;
 				}
-
-				if (array_key_exists($property, $element->loaded)) {
-					if ($element->active[$property] == $element->loaded[$property]) {
-						$element->active[$property] = $value;
-					}
-				}
-
-				$element->loaded[$property] = is_object($value)
-					? clone $value
-					: $value
-				;
 			}
 
-		} else {
-			$element = $structure;
+			$element->loaded[$property] = is_object($value)
+				? clone $value
+				: $value
+			;
 		}
 
 		return $element;
@@ -368,22 +482,7 @@ class Graph
 
 
 	/**
-	 * Initiate a new query with a statement and arguments.
-	 *
-	 * Query statements operate via `sprintf` underneath the hood.  The arguments passed here are
-	 * for placeholder replacement.  For actual query parameters, use the `with()` call on the
-	 * returned query.
-	 *
-	 * @return Query<mixed>
-	 */
-	public function run(string $statement, mixed ...$args): Query
-	{
-		return $this->query->add($statement, ...$args)->run();
-	}
-
-
-	/**
-	 *
+	 * Save the current runtime element state(s) into the graph
 	 */
 	public function save(): static
 	{

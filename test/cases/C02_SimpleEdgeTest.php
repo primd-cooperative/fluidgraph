@@ -86,7 +86,7 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 			]
 		);
 
-		static::$graph->save();
+		static::$graph->save();;
 
 		assertEquals(4, count($author->writings));
 	}
@@ -98,6 +98,7 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 		$author->writings->flush();
 
 		assertEquals(4, count($author->writings));
+
 	}
 
 	public function testGetOrder()
@@ -137,7 +138,7 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 
 	public function testEdgeFor()
 	{
-		$books  = static::$graph->findAll(Book::class);
+		$books  = static::$graph->findNodes(Book::class);
 		$author = static::$data->person->as(Author::class);
 
 		foreach ($books as $book) {
@@ -177,7 +178,7 @@ class C02_SimpleEdgeTest extends C00_BaseTest
 
 		static::$graph->save();
 
-		$books = static::$graph->find(Book::class);
+		$books = static::$graph->findNodes(Book::class);
 
 		assertEquals(2, count($books));
 	}

@@ -8,7 +8,7 @@ class C99_EndTest extends C00_BaseTest
 {
 	protected function tearDown(): void
 	{
-		static::$graph->run(
+		static::$graph->exec(
 			'MATCH (n:%s) DETACH DELETE n;',
 			implode(
 				'|',

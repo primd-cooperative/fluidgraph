@@ -52,6 +52,7 @@ class Node extends FluidGraph\Element
 		return parent::as($class, $defaults);
 	}
 
+
 	/**
 	 * Attach one or more labels to the node element
 	 */

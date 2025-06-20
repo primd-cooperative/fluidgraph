@@ -6,4 +6,4 @@ if (file_exists(__DIR__ . '/../vendor/bin/phpstan')) {
 	$STAN_BIN = '$(which phpstan)';
 }
 
-passthru(sprintf('%s %s -l7 analyse src/', PHP_BINARY, $STAN_BIN));
+passthru(sprintf('%s %s -l5 analyse src/', PHP_BINARY, $STAN_BIN));

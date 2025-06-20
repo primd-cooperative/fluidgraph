@@ -2,6 +2,8 @@
 
 namespace FluidGraph;
 
+use InvalidArgumentException;
+
 /**
  * @template T of Edge
  * @extends Entity\Results<T>
@@ -60,26 +62,27 @@ class EdgeResults extends Entity\Results
 
 
 	/**
-	 * Get related node entities for() the specified class as Results.
-	 *
-	 * If related node entities exist but do not match the class, an empty array will be returned.
+	 * Get the related node entities of() the specified classes.
 	 *
 	 * @template N of Node
-	 * @param null|array|class-string<N> $class
+	 * @param class-string<N>|string $concern
+	 * @param class-string<N>|string ...$concerns
 	 * @return NodeResults<N>
 	 */
-	public function get(null|array|string $class = NULL): NodeResults
+	public function get(string $concern, string ...$concerns): NodeResults
 	{
 		$nodes = [];
 		$index = [];
+
+		array_unshift($concerns, $concern);
 
 		foreach ($this as $edge) {
 			foreach ($this->getReferencedNodes($edge) as $node) {
 				$hash = spl_object_hash($node);
 
 				if (!isset($index[$hash])) {
-					if (!is_string($class) || $node->is($class)) {
-						$nodes[]      = $node->as($class);
+					if ($node->of(...$concerns)) {
+						$nodes[]      = $node->as($concerns);
 						$index[$hash] = TRUE;
 
 					} else {
@@ -94,6 +97,45 @@ class EdgeResults extends Entity\Results
 	}
 
 
+	/**
+	 * Get the related node entities ofAny() of the specified classes.
+	 *
+	 * @template N of Node
+	 * @param class-string<N>|string $concern
+	 * @param class-string<N>|string ...$concerns
+	 * @return NodeResults<N>
+	 */
+	public function getAny(string $concern, string ...$concerns): NodeResults
+	{
+		$nodes = [];
+		$index = [];
+
+		array_unshift($concerns, $concern);
+
+		foreach ($this as $edge) {
+			foreach ($this->getReferencedNodes($edge) as $node) {
+				$hash = spl_object_hash($node);
+
+				if (!isset($index[$hash])) {
+					if ($node->ofAny(...$concerns)) {
+						$nodes[]      = $node->as($concerns);
+						$index[$hash] = TRUE;
+
+					} else {
+						$index[$hash] = FALSE;
+
+					}
+				}
+			}
+		}
+
+		return new NodeResults($nodes)->using($this->relationship);
+	}
+
+
+	/**
+	 *
+	 */
 	public function unset(Edge $edge): static
 	{
 		if ($this->relationship) {

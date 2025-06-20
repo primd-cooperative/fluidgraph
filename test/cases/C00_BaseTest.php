@@ -12,6 +12,7 @@ use Bolt\protocol\V5_2;
 use FluidGraph\Results;
 use PHPUnit\Framework\TestCase;
 
+use function PHPUnit\Framework\assertCount;
 use function PHPUnit\Framework\assertEmpty;
 use function PHPUnit\Framework\assertEquals;
 use function PHPUnit\Framework\assertInstanceOf;
@@ -97,12 +98,13 @@ class C00_BaseTest extends TestCase
 	public function testConnection()
 	{
 		assertInstanceOf(V5_2::class, static::$graph->protocol);
+
 	}
 
 	public function testQueryResults()
 	{
 		$results = static::$graph
-			->run('UNWIND [0, 1, 2, 3, 4, 5, 6] AS res RETURN res')
+			->query('UNWIND [0, 1, 2, 3, 4, 5, 6] AS res RETURN res')
 			->results()
 		;
 
@@ -148,10 +150,10 @@ class C00_BaseTest extends TestCase
 
 	public function testMatchQuery()
 	{
-		$el_results = static::$graph->query->match()->results();
-		$en_results = static::$graph->query->match()->results()->get();
+		$node_results = static::$graph->findNodes();
+		$edge_results = static::$graph->findEdges();
 
-		assertEquals(0, count($el_results));
-		assertEquals(0, count($en_results));
+		assertCount(0, $node_results);
+		assertCount(0, $edge_results);
 	}
 }

@@ -38,6 +38,7 @@ class Edge extends FluidGraph\Element
 		}
 	}
 
+
 	/**
 	 * @type T of FluidGraph\Edge
 	 * @param null|array|class-string<T>

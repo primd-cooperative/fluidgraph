@@ -25,7 +25,7 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 
 
 	/**
-	 * Get the edge entity for this relationship only if it corresponds to all node(s)/label(s)
+	 * Get the edge entity for this relationship if its node corresponds to ALL node/label matches
 	 *
 	 * @param Element\Node|Node|class-string $match
 	 * @param Element\Node|Node|class-string $matches
@@ -33,20 +33,20 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 	 */
 	public function for(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): ?Edge
 	{
-		$edge = $this->any();
+		$results = parent::for($match, ...$matches);
 
-		if ($edge) {
-			if ($edge->for($this->type, $match, ...$matches)) {
-				return $edge;
-			}
+		if (count($results) > 1) {
+			throw new UnexpectedValueException(sprintf(
+				'Relationship limited to one Edge Entity but returned more than one'
+			));
 		}
 
-		return NULL;
+		return $results->at(0);
 	}
 
 
 	/**
-	 * Get the edge entity for this relationship only if it corresponds to one or more node(s)/label(s)
+	 * Get the edge entity for this relationship if its node corresponds to ANY node/label matches
 	 *
 	 * @param Element\Node|Node|class-string $match
 	 * @param Element\Node|Node|class-string $matches
@@ -54,30 +54,53 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 	 */
 	public function forAny(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): ?Edge
 	{
-		$edge = $this->any();
+		$results = parent::forAny($match, ...$matches);
 
-		if ($edge) {
-			if ($edge->forAny($this->type, $match, ...$matches)) {
-				return $edge;
-			}
+		if (count($results) > 1) {
+			throw new UnexpectedValueException(sprintf(
+				'Relationship limited to one Edge Entity but returned more than one'
+			));
 		}
 
-		return NULL;
+		return $results->at(0);
 	}
 
 
 	/**
-	 * Get the related node entity for() the specified class as that class.
+	 * Get the related node entity of() the specified classes.
 	 *
-	 * If a related node entity exists but does not match the class, NULL will be returned.
+	 * If a related node entity exists but does not match ALL of the concerns, NULL will be returned.
 	 *
 	 * @template N of Node
-	 * @param ?class-string<N> $class
+	 * @param class-string<N>|string ...$concerns
 	 * @return ?N
 	 */
-	public function get(?string $class = NULL): ?Node
+	public function get(string ...$concerns): ?Node
 	{
-		$results = parent::get($class);
+		$results = parent::get(...$concerns);
+
+		if (count($results) > 1) {
+			throw new UnexpectedValueException(sprintf(
+				'Relationship limited to one Node Entity returned more than one linked Node'
+			));
+		}
+
+		return $results->at(0);
+	}
+
+
+	/**
+	 * Get the related node entity ofAny() of the specified classes.
+	 *
+	 * If a related node entity exists but does not match ANY of the concerns, NULL will be returned.
+	 *
+	 * @template N of Node
+	 * @param class-string<N>|string ...$concerns
+	 * @return ?N
+	 */
+	public function getAny(string ...$concerns): ?Node
+	{
+		$results = parent::getAny(...$concerns);
 
 		if (count($results) > 1) {
 			throw new UnexpectedValueException(sprintf(

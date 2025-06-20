@@ -7,7 +7,6 @@ use FluidGraph\Entity;
 use FluidGraph\Element;
 use FluidGraph\EdgeResults;
 use FluidGraph\NodeResults;
-use InvalidArgumentException;
 
 /**
  * @template T of Element
@@ -16,41 +15,18 @@ use InvalidArgumentException;
 class Results extends FluidGraph\Results
 {
 	/**
-	 * Get the element results as an array of entities of a particular class.
+	 * Convert results
 	 *
 	 * @template E of Entity
-	 * @param null|array|class-string<E> $class The entity class to instantiate as.
+	 * @param array<class-string<E>>|class-string<E> $classes The entity class to instantiate as.
 	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
-	 * @return NodeResults<E>|EdgeResults<E>|Entity\Results<E>
+	 * @return Entity\Results<E>
 	 */
-	public function as(null|array|string $class, array $defaults = []): Entity\Results
+	public function as(array|string $classes, array $defaults = []): Entity\Results
 	{
-		if (is_string($class)) {
-			return match(TRUE) {
-				is_subclass_of($class, FluidGraph\Node::class, TRUE) => new NodeResults(
-					array_map(
-						fn($result) => $result->as($class, $defaults),
-						$this->getArrayCopy()
-					)
-				),
-
-				is_subclass_of($class, FluidGraph\Edge::class, TRUE) => new EdgeResults(
-					array_map(
-						fn($result) => $result->as($class, $defaults),
-						$this->getArrayCopy()
-					)
-				),
-
-				default => throw new InvalidArgumentException(sprintf(
-					'Cannot make results as "%s", must be Node or Edge class',
-					$class
-				))
-			};
-		}
-
 		return new Entity\Results(
 			array_map(
-				fn($result) => $result->as($class, $defaults),
+				fn($result) => $result->as($classes, $defaults),
 				$this->getArrayCopy()
 			)
 		);
@@ -71,42 +47,21 @@ class Results extends FluidGraph\Results
 
 
 	/**
-	 * Get all the elments matching all concerns as entities
 	 *
-	 * The list of concerns acts as preferred classes for instantiation.
-	 *
-	 * @template E of Entity
-	 * @param null|array<string-class<E>>|string-class<E> $class
-	 * @return NodeResults<E>|EdgeResults<E>|Entity\Results<E>
 	 */
-	public function get(null|array|string $concerns = NULL): Entity\Results
+	public function by(string|callable $indexer): static
 	{
-		$matches = array_filter(!is_array($concerns) ? [$concerns] : $concerns);
+		$results = [];
 
-		return $matches
-			? $this->of(...$concerns)->as($concerns)
-			: $this->as(NULL)
-		;
-	}
+		if (is_string($indexer)) {
+			$indexer = (fn($result) => $result->active[$indexer]);
+		}
 
+		foreach ($this as $result) {
+			$results[$indexer($result)] = $result;
+		}
 
-	/**
-	 * Get all the elments matching any concerns as entities
-	 *
-	 * The list of concerns acts as preferred classes for instantiation.
-	 *
-	 * @template E of Entity
-	 * @param null|array<string-class<E>>|string-class<E> $class
-	 * @return NodeResults<E>|EdgeResults<E>|Entity\Results<E>
-	 */
-	public function getAny(null|array|string $concerns = NULL): Entity\Results
-	{
-		$matches = array_filter(!is_array($concerns) ? [$concerns] : $concerns);
-
-		return $matches
-			? $this->ofAny(...$concerns)->as($concerns)
-			: $this->as(NULL)
-		;
+		return new static($results);
 	}
 
 
@@ -119,10 +74,7 @@ class Results extends FluidGraph\Results
 			$transformer = fn(Element $result) => $result->active[$transformer] ?? NULL;
 		}
 
-		return new FluidGraph\Results(array_map(
-			$transformer,
-			$this->getArrayCopy()
-		));
+		return parent::map($transformer);
 	}
 
 

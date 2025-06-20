@@ -40,9 +40,6 @@ class Results extends ArrayObject
 	}
 
 
-
-
-
 	/**
 	 * Get the first item in the results
 	 *

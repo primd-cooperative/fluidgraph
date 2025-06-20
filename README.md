@@ -191,7 +191,7 @@ The corresponding Edge Entities and related Node Entities will have their persis
 A contrived example that works only because we only have a single person named "Matt."  Traditionally you'd want to use the `id` or some set of properties that provide uniqueness.  The `findOne()` method **WILL** throw an exception if the provided terms result in more than a single match.
 
 ```php
-$matt = $graph->findOne(Person::class, [
+$matt = $graph->findNode(Person::class, [
 	'firstName' => 'Matt'
 ]);
 ```
@@ -400,7 +400,7 @@ Querying in FluidGraph ultimately uses the `Where` class to construct composite 
 ```php
 $id = '01976f54-66b3-7744-a593-44259dce9651';
 
-$person = $graph->findOne(Person::class, function($eq) use ($id) {
+$person = $graph->findNode(Person::class, function($eq) use ($id) {
 	return $eq('id', $id);
 });
 ```
@@ -412,7 +412,7 @@ This method has pitfalls as it relates to code completion and typing which may b
 ```php
 use FluidGraph\Where\Eq;
 
-$person = $graph->findOne(Person::class, function(Eq $eq) use ($id) {
+$person = $graph->findNode(Person::class, function(Eq $eq) use ($id) {
 	return $eq('id', $id);
 });
 ```
@@ -426,7 +426,7 @@ return $eq($upper($md5('id')), md5($id));
 To build `AND` and `OR` conditions you can use the `$all` and `$any` callbacks respectively:
 
 ```php
-$person = $graph->findOne(Person::class, function($all, $eq) {
+$person = $graph->findNode(Person::class, function($all, $eq) {
 	return $any(
 		$eq('email', 'mattsah@example.com'),
 		$all(
@@ -443,17 +443,17 @@ The above conditions translate to:
 WHERE c.email = 'mattsah' OR (c.firstName = 'Matthew' AND c.lastName = 'Sahagian')
 ```
 
-Using `findOne` will automatically use no ordering, limit the results to `2`, skip `0`and throw an exception if more than one result is returned, hence, you should be ensuring that your queries when using it provide for uniqueness.
+Using `findNode` will automatically use no ordering, limit the results to `2`, skip `0`and throw an exception if more than one result is returned, hence, you should be ensuring that your queries when using it provide for uniqueness.
 
 #### Matching Multiple Entities
 
-If you want to find multiple nodes or edges you can simply use the `find()` method.  In addition to the where conditions you can provide `$orders`, `$limit` and `$skip` parameters:
+If you want to find multiple nodes or edges you can use the `findNodes()` and `findEdges()` methods (respectively).  In addition to the where conditions you can provide `$orders`, `$limit` and `$skip` parameters:
 
 ```php
 use FluidGraph\Order;
 use FluidGraph\Direction;
 
-$people = $graph->find(
+$people = $graph->findNodes(
 	Person::class,
 	10,
 	10,
