@@ -70,11 +70,8 @@ class Edge extends FluidGraph\Element
 	/**
 	 *
 	 */
-	public function for(
-		Reference $type,
-		FluidGraph\Node|Node|string $match,
-		FluidGraph\Node|Node|string ...$matches
-	): bool {
+	public function for(Reference $type, FluidGraph\Node|Node|string $match, FluidGraph\Node|Node|string ...$matches): bool
+	{
 		array_unshift($matches, $match);
 
 		$types = match ($type) {
@@ -103,11 +100,8 @@ class Edge extends FluidGraph\Element
 	/**
 	 *
 	 */
-	public function forAny(
-		Reference $type,
-		FluidGraph\Node|Node|string $match,
-		FluidGraph\Node|Node|string ...$matches
-	): bool {
+	public function forAny(Reference $type, FluidGraph\Node|Node|string $match, FluidGraph\Node|Node|string ...$matches): bool
+	{
 		array_unshift($matches, $match);
 
 		$types = match ($type) {

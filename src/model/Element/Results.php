@@ -5,8 +5,6 @@ namespace FluidGraph\Element;
 use FluidGraph;
 use FluidGraph\Entity;
 use FluidGraph\Element;
-use FluidGraph\EdgeResults;
-use FluidGraph\NodeResults;
 
 /**
  * @template T of Element

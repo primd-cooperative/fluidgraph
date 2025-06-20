@@ -147,17 +147,6 @@ abstract class Entity
 
 
 	/**
-	 *
-	 */
-	public function __invoke(Closure $callback): static
-	{
-		$callback->bindTo($this, $this)();
-
-		return $this;
-	}
-
-
-	/**
 	 * Instantiate an entity as another specific type of entity or as a prefferred class
 	 *
 	 * If an existing entity expressing the same element exists, it will be returned.  If not a new

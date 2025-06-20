@@ -54,7 +54,7 @@ class Results extends Element\Results
 
 
 	/**
-	 *
+	 * Merge changes upstream
 	 */
 	public function merge(): static
 	{

@@ -16,7 +16,7 @@ use function PHPUnit\Framework\assertTrue;
 /**
  *
  */
-class C02_SimpleEdgeTest extends C00_BaseTest
+class C02_SimpleEdgeTest extends AbstractTest
 {
 	public function testLocalToManyRelations()
 	{

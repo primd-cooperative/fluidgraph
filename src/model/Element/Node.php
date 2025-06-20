@@ -25,6 +25,7 @@ class Node extends FluidGraph\Element
 		);
 	}
 
+
 	/**
 	 * @template T of FluidGraph\Node
 	 * @param null|array|class-string<T> $class

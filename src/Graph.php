@@ -10,11 +10,9 @@ use Bolt\protocol\v5\structures as Struct;
 use ArrayObject;
 use RuntimeException;
 use InvalidArgumentException;
+use UnexpectedValueException;
 use DateTimeZone;
 use DateTime;
-use FluidGraph\Query\MatchQuery;
-use FluidGraph\Query\RawQuery;
-use UnexpectedValueException;
 
 /**
  *
@@ -319,7 +317,7 @@ class Graph
 	 */
 	public function match(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): Element\Results
 	{
-		return new MatchQuery(Matching::all, ...$concerns)
+		return new Query\MatchQuery(Matching::all, ...$concerns)
 			->on($this)
 			->where($terms)
 			->skip($offset)
@@ -335,7 +333,7 @@ class Graph
 	 */
 	public function matchAny(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): Element\Results
 	{
-		return new MatchQuery(Matching::any, ...$concerns)
+		return new Query\MatchQuery(Matching::any, ...$concerns)
 			->on($this)
 			->where($terms)
 			->skip($offset)

@@ -4,7 +4,7 @@ namespace FluidGraph\Testing;
 
 use function PHPUnit\Framework\assertTrue;
 
-class C99_EndTest extends C00_BaseTest
+class C99_EndTest extends AbstractTest
 {
 	protected function tearDown(): void
 	{
