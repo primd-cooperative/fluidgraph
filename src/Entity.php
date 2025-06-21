@@ -43,7 +43,9 @@ abstract class Entity implements Countable
 	 */
 	static public function onCreate(Element $element): array
 	{
-		return self::doHooks(static::class, Entity\CreateHook::class, $element);
+		$results = self::doHooks(static::class, Entity\CreateHook::class, $element);
+
+		return  $results;
 	}
 
 
@@ -94,6 +96,10 @@ abstract class Entity implements Countable
 				}
 
 				foreach (static::$method($element) as $property => $value) {
+					if ($hook == Entity\CreateHook::class && isset($element->active[$property])) {
+						continue;
+					}
+
 					$results[$property] = $element->active[$property] = $value;
 				}
 			}

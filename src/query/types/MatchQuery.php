@@ -137,8 +137,13 @@ class MatchQuery extends FluidGraph\Query
 	{
 		$this->append('MATCH %s', $this->pattern);
 
-		if (isset($this->terms) && $conditions = call_user_func($this->terms)) {
-			$this->append('WHERE %s', $conditions);
+		if (isset($this->terms)) {
+			$scope = $this->where->scope(Scope::concern->value, $this->terms);
+			$terms = call_user_func($scope);
+
+			if ($terms) {
+				$this->append('WHERE %s', $terms);
+			};
 		}
 
 		$this->append('RETURN DISTINCT %s', Scope::concern->value);

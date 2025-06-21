@@ -77,7 +77,7 @@ trait DoesMatch
 				$terms = fn($all, $eq) => $all(...$eq($terms));
 			}
 
-			$this->terms = $this->where->scope(Scope::concern->value, $terms);
+			$this->terms = $terms;
 		}
 
 		return $this;

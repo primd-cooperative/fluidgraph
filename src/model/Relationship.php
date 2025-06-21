@@ -77,7 +77,7 @@ abstract class Relationship implements Countable
 	 * @param class-string<T> $kind
 	 * @return static<T>
 	 */
-	static public function having(Node $subject, string $kind, Reference $type, Matching $rule = Matching::all,	array|string $concerns = [], Mode $mode = Mode::lazy): static
+	static public function having(Node $subject, string $kind, Reference $type, Matching $rule = Matching::all, array|string $concerns = [], Mode $mode = Mode::lazy): static
 	{
 		settype($concerns, 'array');
 
@@ -278,7 +278,7 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function findForAny(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = []): EdgeResults|Edge|null
+	public function findFor(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = []): EdgeResults|Edge|null
 	{
 		settype($concerns, 'array');
 
@@ -286,9 +286,23 @@ abstract class Relationship implements Countable
 
 		$clone->load();
 
-		return $clone->get();
+		return $clone->all();
 	}
 
+
+	/**
+	 *
+	 */
+	public function findForAny(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = []): EdgeResults|Edge|null
+	{
+		settype($concerns, 'array');
+
+		$clone = $this->matchAny(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
+
+		$clone->load();
+
+		return $clone->all();
+	}
 
 
 	/**
@@ -358,6 +372,10 @@ abstract class Relationship implements Countable
 	{
 		if (empty($concerns)) {
 			$concerns = $this->concerns;
+
+			if (isset($this->apex)) {
+				$concerns = array_merge($concerns, $this->apex->concerns);
+			}
 		}
 
 		return $this->all()->get(...$concerns);
@@ -412,7 +430,13 @@ abstract class Relationship implements Countable
 				$query = $this->getGraphQuery();
 
 				if ($this->terms) {
-					$query->add('AND (%s)', $this->terms);
+					$query->add(
+						'AND (%s)',
+						new Where()->uses($query)->scope(
+							Scope::concern->value,
+							$this->terms
+						)
+					);
 				}
 
 				$query->add(

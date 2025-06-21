@@ -162,8 +162,12 @@ class Where
 	/**
 	 *
 	 */
-	public function scope(string $alias, ?callable $callback): callable
+	public function scope(Scope|string $alias, ?callable $callback): callable
 	{
+		if ($alias instanceof Scope) {
+			$alias = $alias->value;
+		}
+
 		if (!count(static::$methods)) {
 			$methods = new ReflectionClass($this)->getMethods();
 
@@ -202,13 +206,9 @@ class Where
 
 			$result = $callback(...$arguments);
 
-			if (!is_callable($result)) {
-				throw new InvalidArgumentException(sprintf(
-					'Scoped where conditions did not provide callable return value'
-				));
+			while (is_callable($result)) {
+				$result = $result();
 			}
-
-			$result = $result();
 
 			if ($ref) {
 				$this->alias = $ref;
