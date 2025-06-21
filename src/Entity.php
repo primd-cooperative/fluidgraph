@@ -2,13 +2,13 @@
 
 namespace FluidGraph;
 
-use Closure;
+use Countable;
 use InvalidArgumentException;
 
 /**
  *
  */
-abstract class Entity
+abstract class Entity implements Countable
 {
 	use DoesWith;
 	use DoesMake;
@@ -188,6 +188,21 @@ abstract class Entity
 		$this->__element__->assign($data);
 
 		return $this;
+	}
+
+
+	/**
+	 * Enable entities to be counted as if they were collections/results
+	 *
+	 * This allows people to use PHP's built in `count()` function to determine if the object
+	 * they are dealing with contains more than one item.  For fluid APIs, this is useful because
+	 * neither a collection nor an entity/element can have any further actions performed that are
+	 * meaningful if the count is 0.  That is, it's a simple way to check and break on common
+	 * calls like `of()`.
+	 */
+	public function count(): int
+	{
+		return 0;
 	}
 
 

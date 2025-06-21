@@ -14,12 +14,19 @@ use function PHPUnit\Framework\assertEmpty;
 use function PHPUnit\Framework\assertEquals;
 use function PHPUnit\Framework\assertInstanceOf;
 use function PHPUnit\Framework\assertNotEmpty;
+use function PHPUnit\Framework\assertNotNull;
 use function PHPUnit\Framework\assertNull;
 use function PHPUnit\Framework\assertSame;
 use function PHPUnit\Framework\assertTrue;
 
 class C01_SimpleTest extends AbstractTest
 {
+	public function testConnection()
+	{
+		assertInstanceOf(V5_2::class, static::$graph->protocol);
+
+	}
+
 	public function testBaseResults()
 	{
 		$results = new Results([0, 1, 2, 3, 4, 5]);
@@ -70,12 +77,6 @@ class C01_SimpleTest extends AbstractTest
 		);
 	}
 
-	public function testConnection()
-	{
-		assertInstanceOf(V5_2::class, static::$graph->protocol);
-
-	}
-
 	public function testQueryResults()
 	{
 		$results = static::$graph
@@ -123,7 +124,7 @@ class C01_SimpleTest extends AbstractTest
 		assertEmpty($results->at(20, 33, 40));
 	}
 
-	public function testMatchQuery()
+	public function testEmptyFinds()
 	{
 		$node_results = static::$graph->findNodes();
 		$edge_results = static::$graph->findEdges();
@@ -131,7 +132,6 @@ class C01_SimpleTest extends AbstractTest
 		assertCount(0, $node_results);
 		assertCount(0, $edge_results);
 	}
-
 
 	public function testNodeCreation()
 	{
@@ -172,13 +172,11 @@ class C01_SimpleTest extends AbstractTest
 		assertNotEmpty($person->id);
 	}
 
-	public function testMatch()
+	public function testGenericMatch()
 	{
-		$results = static::$graph
-			->match([Node::class], 1, 0, [
-				'name' => 'Cynthia Bullwork'
-			])
-		;
+		$results = static::$graph->match(Node::class, 1, 0, [
+			'name' => 'Cynthia Bullwork'
+		]);
 
 		$node = $results->at(0);
 
@@ -188,11 +186,26 @@ class C01_SimpleTest extends AbstractTest
 		assertEquals(Person::class, $node->as(NULL)::class);
 	}
 
+
+	public function testSpecificMatch()
+	{
+		$results = static::$graph->match(Person::class, 1, 0, [
+			'name' => 'Cynthia Bullwork'
+		]);
+
+		$node = $results->as([])->at(0);
+
+		assertEquals(0, count($node));
+		assertEquals(Person::class, $node::class);
+		assertEquals(TRUE, $node->is(Person::class));
+	}
+
+
 	public function testFindOne()
 	{
 		$person = static::$graph->findNode(Person::class, ['name' => 'Cynthia Bullwork']);
 
-		assertNotEmpty($person);
+		assertNotNull($person);
 		assertSame($person, static::$data->person);
 	}
 

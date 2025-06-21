@@ -37,14 +37,16 @@ class Node extends FluidGraph\Element
 		if (is_string($class)) {
 			if (!class_exists($class)) {
 				throw new InvalidArgumentException(sprintf(
-					'Cannot make "%s," no such class exists',
+					'Element of type "%s" cannot be used as("%s") (Missing Class)',
+					static::class,
 					$class
 				));
 			}
 
 			if (!is_subclass_of($class, FluidGraph\Node::class, TRUE)) {
 				throw new InvalidArgumentException(sprintf(
-					'Cannot make "%s" from non-Node result',
+					'Element of "%s" cannot be used as("%s") (Edge Type)',
+					static::class,
 					$class
 				));
 			}

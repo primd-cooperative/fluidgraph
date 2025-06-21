@@ -317,6 +317,8 @@ class Graph
 	 */
 	public function match(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): Element\Results
 	{
+		settype($concerns, 'array');
+
 		return new Query\MatchQuery(Matching::all, ...$concerns)
 			->on($this)
 			->where($terms)
@@ -333,6 +335,8 @@ class Graph
 	 */
 	public function matchAny(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): Element\Results
 	{
+		settype($concerns, 'array');
+
 		return new Query\MatchQuery(Matching::any, ...$concerns)
 			->on($this)
 			->where($terms)
