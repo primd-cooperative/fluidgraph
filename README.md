@@ -170,9 +170,7 @@ When you `unset()` on a relationship the corresponding Edge is Released (and if 
 $matt->friendships->unset($jill);
 ```
 
-If the Relationship is a `FluidGraph\Relationship\One` the Entity argument can be excluded, if not it only unsets if the entity matches.
-
-> NOTE: It's possible to have multiple Edges to/from the same nodes.  While not yet supported, there would be additional methods for releasing individual edges. Which leads us to our next subject...
+Calling `unset()` without an argument will remove all related Edges, and in the case of owning relationships, the related Nodes.  You **SHOULD** be careful.  It's good practice to pass the related Entity you want to remove from the relationship explicitly unless you're specifically trying to clear the entire relationship.
 
 ### Persisting Changes
 
@@ -183,6 +181,12 @@ $graph->attach($matt)->save();
 ```
 
 The corresponding Edge Entities and related Node Entities will have their persistence cascaded automatically.  If there is no relationship between `$matt` and `$jill`, then `$jill` would need to be attached separately in order to be persisted.
+
+You can remove Entities using the `detach()` method, although due to cascading this is much rarer.
+
+```php
+$graph->detach($jill)->save();
+```
 
 ### Simple Querying
 
@@ -202,12 +206,12 @@ $matt = $graph->findNode(Person::class, [
 use FluidGraph\Order;
 use FluidGraph\Direction;
 
-$people = $graph->findAll(Person::class, [
+$people = $graph->findNodes(Person::class, NULL, 0, [], [
 	Order::by(Direction::asc, 'lastName')
 ]);
 ```
 
-### Working with Entities and Elements
+### Element and Entity Introspection
 
 #### Identity
 
@@ -222,20 +226,6 @@ More often than not, `identity()` is a quick way to check if an Entity or Elemen
 foreach ($notifications->findByPerson($person->identity()) as $notification) {
 	// Do things with notifications
 }
-```
-
-#### Assign
-
-You can bulk assign data to Entities and Elements using the `assign()` method.  Assigning to Elements in this fashion is not recommended, as there is no way to validate the properties being set.  By contrast, when assigning to an Entity, the keys of the array are validated against the Entity's known properties:
-
-```php
-$entity_or_element->assign([
-	// Will work on both
-	'validProperty' => 10,
-
-	// Only works on Elements
-	'invalidProperty' => 10
-])
 ```
 
 #### Status
@@ -312,9 +302,62 @@ if ($person->is(Author::class)) {
 }
 ```
 
+### Element and Entity Mutation
+
+#### Assign
+
+You can bulk assign data to Entities and Elements using the `assign()` method.  Assigning to Elements in this fashion is not recommended, as there is no way to validate the properties being set.  By contrast, when assigning to an Entity, the keys of the array are validated against the Entity's known properties:
+
+```php
+$entity_or_element->assign([
+	// Will work on both
+	'validProperty' => 10,
+
+	// Only works on Elements
+	'invalidProperty' => 10
+])
+```
+
+Generally speaking `assign()` doesn't need to be used directly if you're working with Edge and Node Entities, as you can just use the properties and/or setter methods.  It's primarily used to support other methods provided by FluidGraph.  Earlier, we saw an example where we added a Node Entity to relationship using `set()`, the second argument in that example was used for providing data for the corresponding Edge, which used `assign()`.  Similarly, it's also used when transforming elements and entities.
+
+### As
+
+Because Nodes can carry multiple distinct labels, this effectively means that you can transform one Node into another (adding properties and relationships) in a dynamic an horizontal fashion.
+
+The `as()` method is used internally when Elements are retrieved from the graph and expressed as specific Entity classes.  In addition to using `as()` on elements, you can use it directly on an existing Node or Edge Entity.
+
+In this example, a person becomes an author:
+
+```php
+$author = $person->as(Author::class, [
+    'penName' => 'Hairy Poster'
+]);
+
+$author->is(Person::class); // TRUE
+$person->is(Author::class); // TRUE
+```
+
+The `Person` object is not changed, rather, in this example a new `Author` object is created and the person/author share the same graph Node, the same Element (in FluidGraph).  When working with a `Person` you only have access to the properties and relationships of a `Person`.  The `as()` method allows you to gracefully cast the Entity type to access other properties and relationships.
+
+The only required key/values for the second argument is what is necessary to `__construct()` the Entity as the new type.  If no properties are required, this can be excluded. If the `Author` object is already fastened to the underlying Node Element, then you can use `as()` to simply switch between them.
+
+> NOTE: At present `as()` exists on Edges as well, however, edges cannot have more than one Label, so the behavior is not particularly defined.  One approach that may be taken is to allow an `$edge->as()` call to create a new type of Edge between the same source and target Nodes.  Another would be to change the type/label entirely.
+
+### Concerns and Matches
+
+The concept of "concerns" is probably the most important thing to understand when using FluidNode.  Concerns correspond to labels and are used to indicate the types of Nodes and Edges you're looking for or working with.  We've glossed over examples with complex concerns, however, in many places where you see classes being used, these are actually lists of concerns.  Depending on the method, they either support variadic arguments or arrays.  For example when finding nodes:
+
+```php
+$author_people = $graph->findNodes([Person::class, Author::class]);
+```
+
+Concerns are also used when creating relationships.  You may recall earlier a few arguments to the `having()` method that instantiated our relationships, specifically `Matching::any` and an array like `[Person::class]`.  This more accurately exposes the nature of concerns in that lists of concerns, generally speaking, come in two forms ("all" and "any").
+
+Matches are effectively a superset of concerns, which includes entities and elements themselves, not just labels.  To exemplify these concepts further, let's take a look at another method that can be used for Element or Entity introspection.
+
 #### Of and OfAny
 
-Similar and related to `is()` the `of()` and `ofAny()` methods check whether or not an Entity or Element is the same as a number of arguments.
+Similar and related to `is()`, the `of()` and `ofAny()` methods check whether or not an Entity or Element is the same as a number of arguments.
 
 Using `of()` will return `TRUE` if the Entity or Element `is()` **ALL** of the arguments passed:
 
@@ -322,36 +365,13 @@ Using `of()` will return `TRUE` if the Entity or Element `is()` **ALL** of the a
 $entity_or_element->of(Author::class, Archivable::Archived)
 ```
 
-Using `ofAny()` will return `TRUE` if the Entity or Element `is()` **ANY** of the arguments passed.  In this example, we check, essentially, if it is in an array of other Nodes:
+Using `ofAny()` will return `TRUE` if the Entity or Element `is()` **ANY** of the arguments passed.  
 
 ```php
 $entity_or_element->ofAny(...$nodes)
 ```
 
-### As
-
-As mentioned earlier, different Entities can express the same Element.  Because Nodes can carry multiple distinct labels, this effectively means that you can transform one Node into another (adding properties and relationships) in a dynamic an horizontal fashion.
-
-A person becomes an author:
-
-```php
-$author = $person->as(Author::class, ['penName' => 'Hairy Poster']);
-
-$author->is(Person::class); // TRUE
-$person->is(Author::class); // TRUE
-```
-
-> NOTE: The `Person` object is not changed, rather, in this example a new `Author` object is created and the person/author share the same graph Node, the same Element (in FluidGraph).  When working with a `Person` you only have access to the properties and relationships of a `Person`.  The `as()` method allows you to gracefully cast the Entity type to access other properties and relationships.
-
-When using `as()` to create a new instance of an existing Node Element, you need to pass any required arguments for instantiation (required by it's `__construct()` method) as the second parameter.  If no properties are required, this can be excluded. If the `Author` object is already fastened to the underlying Node Element, then you can simply switch between them.
-
-A subsequent save of the graph will persist the `Author` Label as well as the related properties to the database.
-
-```php
-$graph->save();
-```
-
-> NOTE: At present `as()` exists on Edges as well, however, edges cannot have more than one Label, so the behavior is not particularly defined.  One approach that may be taken is to allow an `$edge->as()` call to create a new type of Edge between the same source and target Nodes.  Another would be to change the type/label entirely.
+In the above example, we check, essentially, if it is in an array of other Nodes.
 
 ### Advanced Relationships
 
@@ -359,7 +379,7 @@ We already covered the most basic use and working with relationships.  However, 
 
 Different relationship classes can have slightly different methods and variations depending on their nature.  For example, using the aforementioned `get()` method on a `Many` relationship will, as noted, provide an iterable result set.  On a `One` relationship, however, the `get()` method returns a Node directly, or `NULL` if no matching Node is related.
 
-Similar to this is working with the Edges themselves.  If you need to get all Edge Entities from a `Many` relationships you can use the `all()` method:
+Similar to this is working with the Edges themselves.  If you need to get all Edge Entities from a relationships you can use the `all()` method:
 
 ```php
 foreach($author->writings->all() as $wrote) {
@@ -367,7 +387,7 @@ foreach($author->writings->all() as $wrote) {
 }
 ```
 
-To get the Edge Entity from a `One` relationship you can use the `any()` method which will return either the Edge Entity or `NULL` if there is no related Node and, therefore, corresponding Edge:
+To get the singular Edge Entity from a `One` or `OwnedOne` relationship you can use the `any()` method which will return either the Edge Entity or `NULL` if there is no related Node and, therefore, corresponding Edge:
 
 ```php
 if ($edge = $entity->relationship->any()) {
@@ -443,7 +463,7 @@ The above conditions translate to:
 WHERE c.email = 'mattsah' OR (c.firstName = 'Matthew' AND c.lastName = 'Sahagian')
 ```
 
-Using `findNode` will automatically use no ordering, limit the results to `2`, skip `0`and throw an exception if more than one result is returned, hence, you should be ensuring that your queries when using it provide for uniqueness.
+Using `findNode` will automatically limit the results to `2`, skip `0`, and use no ordering.  If more than one result is returned it will throw an exception, hence, you should be ensuring that your queries when using it provide for uniqueness.
 
 #### Matching Multiple Entities
 
@@ -484,7 +504,8 @@ $people = $graph->query
 	->sort(
 		Order::by(Direction::asc, 'lastName')
 	])
-	->get()
+	->results()
+    ->as(Person::class)
 ;
 ```
 
@@ -502,15 +523,30 @@ The above will load only the first `10` relationships.  From there, you can work
 
 Manual relationships are commonly used for very large relationship sets that may be revealed on something like an infinite scrolling page with subsequent requests getting a limited number at different offsets.  Because of this, it's also very common that you want consistent types of related nodes.
 
-If your relationship allows uses `Matching::any` with a number of different Node Entity classes as concerns, you may want to limit the loading to only a specific type:
+If your relationship uses `Matching::any` with a number of different Node Entity classes as concerns, you may want to limit the loading to only a specific type:
 
 ```php
 $person->friendships->take(10)->skip($offset)->load(Person::class)
 ```
 
+
+
 ##### Forking Relationships
 
-An alternative approach is the fork the relationship.  A forked relationship basically enables you to create an isolated clone of the relationship with its own records.  To do this you can use the `find()` method just as you would on the Graph to get specific nodes instead:
+An alternative approach is the fork the relationship.  A forked relationship basically enables you to create an isolated clone of the relationship with its own records.  Methods that fork the relationship begin with `find`, though it's possible to use the underlying `match()` and `matchAny()` calls
+
+| Method       | Description                                              |
+| ------------ | -------------------------------------------------------- |
+| find()       | Matches all concerns and returns Nodes directly          |
+| findAny()    | Matches any concerns and returns Nodes directly          |
+| findFor()    | Matches all concerns and returns Edges directly          |
+| findForAny() | Matches any concerns and returns Edges directly          |
+| match()      | Match all concerns, return the relationship for chaining |
+| matchAny()   | Match any concerns, return the relationship for chaining |
+
+
+
+To do this you can use the `find()` method just as you would on the Graph to get specific nodes instead:
 
 ```php
 $friends = $person->friendships->find(Person::class, 10);
