@@ -5,6 +5,9 @@ namespace FluidGraph;
 use Bolt\enum\Signature;
 use Bolt\protocol\Response;
 use Bolt\protocol\v5\structures\DateTimeZoneId;
+use Bolt\protocol\v5\structures\Node;
+use Bolt\protocol\v5\structures\Relationship;
+use Psr\Cache\CacheItemInterface;
 
 use InvalidArgumentException;
 use RuntimeException;
@@ -21,6 +24,16 @@ abstract class Query
 	const REGEX_EXPANSION = '#@([a-zA-Z][a-zA-Z0-9]*)(?:\(([a-zA-Z][a-zA-Z0-9]*)\))?#';
 
 	/**
+	 *
+	 */
+	protected private(set) ?CacheItemInterface $cacheItem = NULL;
+
+	/**
+	 *
+	 */
+	protected private(set) ?string $cacheKey = NULL;
+
+	/**
 	 * @var array<string, mixed>
 	 */
 	public private(set) array $meta = [];
@@ -34,7 +47,6 @@ abstract class Query
 	 *
 	 */
 	public protected(set) Where $where;
-
 
 	/**
 	 * @param array<string> $statements
@@ -110,8 +122,21 @@ abstract class Query
 	 */
 	public function run(): static
 	{
-		$cypher_code   = $this->compile();
-		$responses     = iterator_to_array(
+		$cypher_code = $this->compile();
+
+		if (isset($this->graph->cache)) {
+			$this->cacheKey  = hash('sha256', print_r([$cypher_code, $this->parameters], TRUE));
+			$this->cacheItem = $this->graph->cache->getItem($this->cacheKey);
+
+			if ($this->cacheItem->isHit()) {
+				$this->records = $this->cacheItem->get()['records'];
+				$this->meta    = $this->cacheItem->get()['meta'];
+
+				return $this;
+			}
+		}
+
+		$responses = iterator_to_array(
 			$this->graph->protocol->run($cypher_code, $this->parameters)->pull()->getResponses()
 		);
 
@@ -137,6 +162,17 @@ abstract class Query
 				fn($response) => $response->signature == Signature::RECORD
 			)
 		);
+
+		if ($this->cacheItem) {
+			$this->graph->cache->save(
+				$this->cacheItem
+					->expiresAfter(60 * 60)
+					->set([
+						'records' => $this->records,
+						'meta'    => $this->meta
+					])
+			);
+		}
 
 		return $this;
 	}
@@ -290,6 +326,10 @@ abstract class Query
 			if ($item instanceof Response) {
 				array_push($records, ...$this->unpack($item->content));
 			} else {
+				if (!$item instanceof Node && !$item instanceof Relationship) {
+					$this->cacheItem = NULL;
+				}
+
 				array_push($records, $item);
 			}
 		}

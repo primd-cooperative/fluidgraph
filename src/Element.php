@@ -56,6 +56,11 @@ abstract class Element implements Countable
 	 */
 	public array $entities = [];
 
+	/**
+	 *
+	 */
+	public array $keys = [];
+
 
 	/**
 	 * Get the changes to an element by comparing active to loaded values.
@@ -290,6 +295,20 @@ abstract class Element implements Countable
 
 
 	/**
+	 *
+	 */
+	public function __serialize(): array
+	{
+		return array_filter(
+			get_object_vars($this),
+			fn($key) => !in_array($key, ['graph', 'entities']),
+			ARRAY_FILTER_USE_KEY
+		);
+	}
+
+
+
+	/**
 	 * Instantiate an element as a specific type of entity or as a prefferred class
 	 *
 	 * If an existing entity expressing this element exists, it will be returned.  If not a new
@@ -448,6 +467,21 @@ abstract class Element implements Countable
 		}
 
 		return $this->status;
+	}
+
+
+	/**
+	 *
+	 */
+	public function track(?string $key): static
+	{
+		if (!$key) {
+			return $this;
+		}
+
+		$this->keys[$key] = TRUE;
+
+		return $this;
 	}
 
 

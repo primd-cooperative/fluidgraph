@@ -6,6 +6,7 @@ use Bolt\Bolt;
 use Bolt\protocol\IStructure;
 use Bolt\protocol\V5_2 as Protocol;
 use Bolt\protocol\v5\structures as Struct;
+use Psr\Cache\CacheItemPoolInterface;
 
 use ArrayObject;
 use RuntimeException;
@@ -19,6 +20,11 @@ use DateTime;
  */
 class Graph
 {
+	/**
+	 *
+	 */
+	public protected(set) CacheItemPoolInterface $cache;
+
 	/**
 	 * The underlying Bolt protocol acccess
 	 */
@@ -253,7 +259,7 @@ class Graph
 	{
 		settype($concerns, 'array');
 
-		$invalid = array_filter(
+		$invalid   = array_filter(
 			$concerns,
 			fn($concern) => is_subclass_of($concern, Edge::class, TRUE)
 		);
@@ -491,5 +497,14 @@ class Graph
 		$this->queue->merge()->run();
 
 		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function setCache(CacheItemPoolInterface $cache)
+	{
+		$this->cache = $cache;
 	}
 }
