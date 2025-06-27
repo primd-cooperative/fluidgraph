@@ -7,6 +7,9 @@ use Bolt\protocol\IStructure;
 use Bolt\protocol\V5_2 as Protocol;
 use Bolt\protocol\v5\structures as Struct;
 
+use Psr\Cache\CacheItemPoolInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
+
 use ArrayObject;
 use RuntimeException;
 use InvalidArgumentException;
@@ -19,6 +22,17 @@ use DateTime;
  */
 class Graph
 {
+	/**
+	 *
+	 */
+	public protected(set) CacheItemPoolInterface $cache;
+
+
+	/**
+	 *
+	 */
+	public protected(set) EventDispatcherInterface $emitter;
+
 	/**
 	 * The underlying Bolt protocol acccess
 	 */
@@ -313,6 +327,24 @@ class Graph
 
 
 	/**
+	 *
+	 */
+	public function getCacheItemPool(): ?CacheItemPoolInterface
+	{
+		return isset($this->cache) ? $this->cache : NULL;
+	}
+
+
+	/**
+	 *
+	 */
+	public function getEventsEmitter(): ?EventDispatcherInterface
+	{
+		return isset($this->emitter) ? $this->emitter : NULL;
+	}
+
+
+	/**
 	 * Initialize a new match query and get element results matching ALL `$concerns`
 	 */
 	public function match(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): Element\Results
@@ -489,6 +521,28 @@ class Graph
 	public function save(): static
 	{
 		$this->queue->merge()->run();
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function setCacheItemPool(CacheItemPoolInterface $cache): static
+	{
+		$this->cache = $cache;
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function setEventsEmitter(EventDispatcherInterface $emitter): static
+	{
+		$this->emitter = $emitter;
 
 		return $this;
 	}
