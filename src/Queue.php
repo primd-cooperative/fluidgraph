@@ -372,6 +372,10 @@ class Queue
 				$created = $class::onCreate($node);
 			}
 
+			if ($emitter = $this->graph->getEventsEmitter()) {
+				$emitter->dispatch(new Events\NodeCreate($node));
+			}
+
 			if ($key = Element::key($node)) {
 				$query
 					->add('MERGE (%s:%s {@%s})', "i$i", Element::signature($node, Status::fastened), "k$i")
@@ -433,9 +437,14 @@ class Queue
 		;
 
 		foreach ($identities as $identity) {
-			$this->nodes[$identity]->status = Status::detached;
+			$node         = $this->nodes[$identity];
+			$node->status = Status::detached;
 
 			unset($this->nodes[$identity]);
+
+			if ($emitter = $this->graph->getEventsEmitter()) {
+				$emitter->dispatch(new Events\NodeDelete($node));
+			}
 		}
 	}
 
@@ -456,6 +465,10 @@ class Queue
 
 		$i = 0; foreach ($identities as $identity) {
 			$node = $this->nodes[$identity];
+
+			if ($emitter = $this->graph->getEventsEmitter()) {
+				$emitter->dispatch(new Events\NodeUpdate($node));
+			}
 
 			$query
 				->add('SET @%s(%s)', "d$i", "i$i")
