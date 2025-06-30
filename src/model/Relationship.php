@@ -461,12 +461,12 @@ abstract class Relationship implements Countable
 					$query->add('ORDER BY %s', implode(',', $orders));
 				}
 
-				if ($this->limit >= 0) {
-					$query->add('LIMIT %s', $this->limit);
-				}
-
 				if ($this->offset > 0) {
 					$query->add('SKIP %s', $this->offset);
+				}
+
+				if ($this->limit >= 0) {
+					$query->add('LIMIT %s', $this->limit);
 				}
 
 				$this->loaded = [];

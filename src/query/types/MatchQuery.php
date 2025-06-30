@@ -163,12 +163,12 @@ class MatchQuery extends FluidGraph\Query
 			$this->append('ORDER BY %s', implode(',', $orders));
 		}
 
-		if ($this->limit >= 0) {
-			$this->append('LIMIT %s', $this->limit);
-		}
-
 		if ($this->offset > 0) {
 			$this->append('SKIP %s', $this->offset);
+		}
+
+		if ($this->limit >= 0) {
+			$this->append('LIMIT %s', $this->limit);
 		}
 
 		return parent::compile();
