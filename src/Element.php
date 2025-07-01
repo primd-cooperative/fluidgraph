@@ -383,11 +383,26 @@ abstract class Element implements Countable
 	 */
 	public function is(Element|Entity|string $match): bool
 	{
-		return match(TRUE) {
-			$match instanceof Element => $this === $match,
-			$match instanceof Entity  => $this === $match->__element__,
-			default => in_array($match, self::labels($this))
-		};
+		if ($match instanceof Entity) {
+			$match = $match->__element__;
+		}
+
+		if ($match instanceof Element) {
+			if ($this === $match) {
+				return TRUE;
+			}
+
+			$key = array_filter(self::key($match));
+
+			if (count($key) && $key == self::key($this)) {
+				return TRUE;
+			}
+
+			return FALSE;
+
+		} else {
+			return in_array($match, self::labels($this));
+		}
 	}
 
 
