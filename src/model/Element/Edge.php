@@ -81,18 +81,22 @@ class Edge extends FluidGraph\Element
 			default           => [$type]
 		};
 
-		foreach ($types as $type) {
-			/**
-			 * @var Node
-			 */
+		if ($type == Reference::either) {
+			if ($this->target->is($this)) {
+				$element = $this->source;
+			} else {
+				$element = $this->target;
+			}
+
+		} else {
 			$element = match(TRUE) {
 				$type == Reference::to   => $this->target,
 				$type == Reference::from => $this->source
 			};
+		}
 
-			if (!$element->of(...$matches)) {
-				return FALSE;
-			}
+		if (!$element->of(...$matches)) {
+			return FALSE;
 		}
 
 		return TRUE;
@@ -111,18 +115,22 @@ class Edge extends FluidGraph\Element
 			default           => [$type]
 		};
 
-		foreach ($types as $type) {
-			/**
-			 * @var Node
-			 */
+		if ($type == Reference::either) {
+			if ($this->target->is($this)) {
+				$element = $this->source;
+			} else {
+				$element = $this->target;
+			}
+
+		} else {
 			$element = match(TRUE) {
 				$type == Reference::to   => $this->target,
 				$type == Reference::from => $this->source
 			};
+		}
 
-			if (!$element->ofAny(...$matches)) {
-				return FALSE;
-			}
+		if (!$element->ofAny(...$matches)) {
+			return FALSE;
 		}
 
 		return TRUE;

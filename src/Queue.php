@@ -244,11 +244,15 @@ class Queue
 				$query
 					->add('MERGE (%s)-[%s:%s {@%s}]->(%s)', "f$i", "i$i", Element::signature($edge, Status::fastened), "k$i", "t$i")
 					->set("k$i", $key)
-					->add('ON CREATE SET @%s(%s)', "c$i", "i$i")
-					->add('ON MATCH SET @%s(%s)', "m$i", "i$i")
-					->set("c$i", array_diff_key(Element::properties($edge), $key))
-					->set("m$i", array_diff_key(Element::properties($edge), $key, $created))
 				;
+
+				if ($creates = array_diff_key(Element::properties($edge, TRUE), $key)) {
+					$query->add('ON CREATE SET @%s(%s)', "c$i", "i$i")->set("c$i", $creates);
+				}
+
+				if ($updates = array_diff_key(Element::properties($edge, TRUE), $key, $created)) {
+					$query->add('ON MATCH SET @%s(%s)', "m$i", "i$i")->set("m$i", $updates);
+				}
 
 			} else {
 				$query
@@ -380,11 +384,16 @@ class Queue
 				$query
 					->add('MERGE (%s:%s {@%s})', "i$i", Element::signature($node, Status::fastened), "k$i")
 					->set("k$i", $key)
-					->add('ON CREATE SET @%s(%s)', "c$i", "i$i")
-					->add('ON MATCH SET @%s(%s)', "m$i", "i$i")
-					->set("c$i", array_diff_key(Element::properties($node), $key))
-					->set("m$i", array_diff_key(Element::properties($node), $key, $created))
 				;
+
+				if ($creates = array_diff_key(Element::properties($node, TRUE), $key)) {
+					$query->add('ON CREATE SET @%s(%s)', "c$i", "i$i")->set("c$i", $creates);
+				}
+
+				if ($updates = array_diff_key(Element::properties($node, TRUE), $key, $created)) {
+					$query->add('ON MATCH SET @%s(%s)', "m$i", "i$i")->set("m$i", $updates);
+				}
+
 			} else {
 				$query
 					->add('CREATE (%s:%s {@%s})', "i$i", Element::signature($node, Status::fastened), "d$i")

@@ -239,12 +239,18 @@ abstract class Element implements Countable
 	 *
 	 * @return array<string, mixed>
 	 */
-	static public function properties(self $element): array
+	static public function properties(self $element, bool $exclude_null = FALSE): array
 	{
-		return array_filter(
+		$properties = array_filter(
 			$element->active,
 			fn($value) => !$value instanceof Relationship
 		);
+
+		if ($exclude_null) {
+			$properties = array_filter($properties, fn($value) => !is_null($value));
+		}
+
+		return $properties;
 	}
 
 
