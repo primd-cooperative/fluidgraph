@@ -76,11 +76,6 @@ class Edge extends FluidGraph\Element
 	{
 		array_unshift($matches, $match);
 
-		$types = match ($type) {
-			Reference::either => [Reference::from, Reference::to],
-			default           => [$type]
-		};
-
 		if ($type == Reference::either) {
 			if ($this->target->is($this)) {
 				$element = $this->source;
@@ -109,11 +104,6 @@ class Edge extends FluidGraph\Element
 	public function forAny(Reference $type, FluidGraph\Node|Node|string $match, FluidGraph\Node|Node|string ...$matches): bool
 	{
 		array_unshift($matches, $match);
-
-		$types = match ($type) {
-			Reference::either => [Reference::from, Reference::to],
-			default           => [$type]
-		};
 
 		if ($type == Reference::either) {
 			if ($this->target->is($this)) {
