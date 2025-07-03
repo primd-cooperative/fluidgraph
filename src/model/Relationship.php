@@ -731,7 +731,7 @@ abstract class Relationship implements Countable
 				match ($this->type) {
 					Reference::to     => 'MATCH (s:%s)-[r:%s]->(c)',
 					Reference::from   => 'MATCH (s:%s)<-[r:%s]-(c)',
-					Reference::either => 'MATCH (s:%s)-[r:%s]-(c)'
+					Reference::either => 'MATCH (s:%s)<-[r:%s]->(c)'
 				},
 				$this->subject::class,
 				$this->kind,

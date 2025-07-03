@@ -77,10 +77,8 @@ class Edge extends FluidGraph\Element
 		array_unshift($matches, $match);
 
 		if ($type == Reference::either) {
-			if ($this->target->is($this)) {
-				$element = $this->source;
-			} else {
-				$element = $this->target;
+			if (!$this->target->of(...$matches) && !$this->source->of(...$matches)) {
+				return FALSE;
 			}
 
 		} else {
@@ -88,11 +86,12 @@ class Edge extends FluidGraph\Element
 				$type == Reference::to   => $this->target,
 				$type == Reference::from => $this->source
 			};
+
+			if (!$element->of(...$matches)) {
+				return FALSE;
+			}
 		}
 
-		if (!$element->of(...$matches)) {
-			return FALSE;
-		}
 
 		return TRUE;
 	}
@@ -106,10 +105,8 @@ class Edge extends FluidGraph\Element
 		array_unshift($matches, $match);
 
 		if ($type == Reference::either) {
-			if ($this->target->is($this)) {
-				$element = $this->source;
-			} else {
-				$element = $this->target;
+			if (!$this->target->ofAny(...$matches) && !$this->source->ofAny(...$matches)) {
+				return FALSE;
 			}
 
 		} else {
@@ -117,10 +114,10 @@ class Edge extends FluidGraph\Element
 				$type == Reference::to   => $this->target,
 				$type == Reference::from => $this->source
 			};
-		}
 
-		if (!$element->ofAny(...$matches)) {
-			return FALSE;
+			if (!$element->ofAny(...$matches)) {
+				return FALSE;
+			}
 		}
 
 		return TRUE;

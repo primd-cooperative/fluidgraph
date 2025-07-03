@@ -192,15 +192,21 @@ abstract class Element implements Countable
 	/**
 	 * Get the key properties for an element based on its classes.
 	 *
+	 * @param array<class-string> &
 	 * @return array<string, mixed>
 	 */
-	static public function key(self $element): array
+	static public function key(self $element, array &$classes = []): array
 	{
 		$key        = [];
 		$properties = [];
 
 		foreach (self::classes($element) as $class) {
+			$class_key  = $class::key();
 			$properties = array_merge($properties, $class::key());
+
+			if (count($class_key)) {
+				$classes[] = $class;
+			}
 		}
 
 		foreach (array_unique($properties) as $property) {
@@ -210,6 +216,8 @@ abstract class Element implements Countable
 				$key[$property] = NULL;
 			}
 		}
+
+		sort($classes);
 
 		return $key;
 	}
@@ -398,13 +406,32 @@ abstract class Element implements Countable
 				return TRUE;
 			}
 
-			$key = array_filter(self::key($match));
+			$local_classes = [];
+			$match_classes = [];
+			$required_key  = self::key($match, $match_classes);
+			$available_key = array_filter($required_key, fn($v) => !is_null($v));
 
-			if (count($key) && $key == self::key($this)) {
-				return TRUE;
+			// If there's no available key, we do not consider them the same
+			if (!$available_key) {
+				return FALSE;
 			}
 
-			return FALSE;
+			// If the key is not complete, we do not consider them the same
+			if (count($required_key) != count($available_key)) {
+				return FALSE;
+			}
+
+			// If the keys do not match, they are not the same
+			if ($required_key != self::key($this, $local_classes)) {
+				return FALSE;
+			}
+
+			// If there is not overlap in contributing classes, we don't consider them the same
+			if ($match_classes != $local_classes) {
+				return FALSE;
+			}
+
+			return TRUE;
 
 		} else {
 			return in_array($match, self::labels($this));
