@@ -75,6 +75,7 @@ abstract class Relationship implements Countable
 	 *
 	 * @template T of Edge
 	 * @param class-string<T> $kind
+	 * @param class-string|array<class-string> $concerns
 	 * @return static<T>
 	 */
 	static public function having(Node $subject, string $kind, Reference $type, Matching $rule = Matching::all, array|string $concerns = [], Mode $mode = Mode::lazy): static
@@ -249,9 +250,13 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function find(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = []): NodeResults|Node|null
+	public function find(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = NULL): NodeResults|Node|null
 	{
 		settype($concerns, 'array');
+
+		if (is_null($orders)) {
+			$orders = $this->orders;
+		}
 
 		$clone = $this->match(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
 
@@ -263,9 +268,13 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function findAny(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = []): NodeResults|Node|null
+	public function findAny(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = NULL): NodeResults|Node|null
 	{
 		settype($concerns, 'array');
+
+		if (is_null($orders)) {
+			$orders = $this->orders;
+		}
 
 		$clone = $this->matchAny(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
 
