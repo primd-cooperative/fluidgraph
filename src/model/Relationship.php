@@ -26,7 +26,7 @@ abstract class Relationship implements Countable
 	protected array $active = [] {
 		&get {
 			if (isset($this->loader)) {
-				$this->loadTime = call_user_func($this->loader);
+				call_user_func($this->loader);
 			}
 
 			return $this->active;
@@ -39,7 +39,7 @@ abstract class Relationship implements Countable
 	protected array $loaded = [] {
 		&get {
 			if (isset($this->loader)) {
-				$this->loadTime = call_user_func($this->loader);
+				call_user_func($this->loader);
 			}
 
 			return $this->loaded;
@@ -392,7 +392,7 @@ abstract class Relationship implements Countable
 
 
 	/**
-	 * Get the related node entitities of() the specified concerns.
+	 * Get the related node entitities ofAny() of the specified concerns.
 	 *
 	 * @template N of Node
 	 * @param class-string<N>|string ...$concerns
@@ -402,6 +402,10 @@ abstract class Relationship implements Countable
 	{
 		if (empty($concerns)) {
 			$concerns = $this->concerns;
+
+			if (isset($this->apex)) {
+				$concerns = array_merge($concerns, $this->apex->concerns);
+			}
 		}
 
 		return $this->all()->getAny(...$concerns);
@@ -490,24 +494,17 @@ abstract class Relationship implements Countable
 
 					$this->loaded[$hash] = $edge;
 					$this->active[$hash] = $edge;
-
-					if ($this->mode == Mode::manual) {
-						$this->offset++;
-					}
 				}
 
-				return new DateTime();
+				$this->loadTime = new DateTime();
 			};
+		}
 
-			switch ($this->mode) {
-				case Mode::eager:
-					$this->loadTime = call_user_func($this->loader);
-					break;
-
-				case Mode::manual:
-					call_user_func($this->loader);
-					break;
-			}
+		switch ($this->mode) {
+			case Mode::eager:
+			case Mode::manual:
+				call_user_func($this->loader);
+				break;
 		}
 
 		return $this;
@@ -860,7 +857,8 @@ abstract class Relationship implements Countable
 		}
 
 		if (count($this->concerns)) {
-			$intersect = array_intersect(Element::labels($target->__element__), $this->concerns);
+			$labels    = Element::labels($target->__element__);
+			$intersect = array_intersect($labels, $this->concerns);
 			$valid     = match ($this->rule) {
 				Matching::all => count($intersect) == count($this->concerns),
 				Matching::any => count($intersect) >= 1
@@ -872,8 +870,9 @@ abstract class Relationship implements Countable
 
 			if (!$valid) {
 				throw new InvalidArgumentException(sprintf(
-					'Relationship does not concern Node with insufficient concerns: %s',
-					implode(', ', $intersect)
+					'Relationship using "%s" does not concern Node with insufficient concerns: %s',
+					$this->kind,
+					join(', ', $labels)
 				));
 			}
 		}

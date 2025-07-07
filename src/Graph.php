@@ -9,6 +9,7 @@ use Bolt\protocol\v5\structures as Struct;
 
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\Log\LoggerInterface;
 
 use ArrayObject;
 use RuntimeException;
@@ -27,11 +28,15 @@ class Graph
 	 */
 	public protected(set) CacheItemPoolInterface $cache;
 
-
 	/**
 	 *
 	 */
 	public protected(set) EventDispatcherInterface $emitter;
+
+	/**
+	 *
+	 */
+	public protected(set) LoggerInterface $logger;
 
 	/**
 	 * The underlying Bolt protocol acccess
@@ -258,10 +263,10 @@ class Graph
 	/**
 	 * Get a single node
 	 *
-	 * @template E of Node
-	 * @param array<class-string<E>|string>|class-string<E>|string $concerns
+	 * @template N of Node
+	 * @param array<class-string<N>|string>|class-string<N>|string $concerns
 	 * @param array<string, mixed>|callable|int $terms
-	 * @return ?E
+	 * @return ?N
 	 */
 	public function findNode(array|string $concerns = [], array|callable|int $terms = []): ?Node
 	{
@@ -543,6 +548,17 @@ class Graph
 	public function setEventsEmitter(EventDispatcherInterface $emitter): static
 	{
 		$this->emitter = $emitter;
+
+		return $this;
+	}
+
+
+	/**
+	 *
+	 */
+	public function setLogger(LoggerInterface $logger): static
+	{
+		$this->logger = $logger;
 
 		return $this;
 	}

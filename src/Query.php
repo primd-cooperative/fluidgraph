@@ -10,6 +10,7 @@ use InvalidArgumentException;
 use RuntimeException;
 use DateTime;
 use Closure;
+use Psr\Log\LogLevel;
 
 /**
  *
@@ -110,8 +111,13 @@ abstract class Query
 	 */
 	public function run(): static
 	{
-		$cypher_code   = $this->compile();
-		$responses     = iterator_to_array(
+		$cypher_code = $this->compile();
+
+		if (isset($this->graph->logger)) {
+			$this->graph->logger->log(LogLevel::DEBUG, sprintf('Query: %s', $cypher_code), $this->parameters);
+		}
+
+		$responses = iterator_to_array(
 			$this->graph->protocol->run($cypher_code, $this->parameters)->pull()->getResponses()
 		);
 
@@ -137,6 +143,10 @@ abstract class Query
 				fn($response) => $response->signature == Signature::RECORD
 			)
 		);
+
+		if (isset($this->graph->logger)) {
+			$this->graph->logger->log(LogLevel::DEBUG, sprintf('Results: %s', count($this->records)));
+		}
 
 		return $this;
 	}
