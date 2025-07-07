@@ -498,13 +498,13 @@ abstract class Relationship implements Countable
 
 				$this->loadTime = new DateTime();
 			};
-		}
 
-		switch ($this->mode) {
-			case Mode::eager:
-			case Mode::manual:
-				call_user_func($this->loader);
-				break;
+			switch ($this->mode) {
+				case Mode::eager:
+				case Mode::manual:
+					call_user_func($this->loader);
+					break;
+			}
 		}
 
 		return $this;
