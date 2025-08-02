@@ -451,13 +451,13 @@ class Graph
 					if (isset($this->nodes[$structure->startNodeId])) {
 						$source = $this->nodes[$structure->startNodeId];
 					} else {
-						$source = $this->nodes[$structure->startNodeId] = new Element\Node();
+						$source = $this->findNode([], $structure->startNodeId)->__element__;
 					}
 
 					if (isset($this->nodes[$structure->endNodeId])) {
 						$target = $this->nodes[$structure->endNodeId];
 					} else {
-						$target = $this->nodes[$structure->endNodeId] = new Element\Node();
+						$target = $this->findNode([], $structure->endNodeId)->__element__;
 					}
 
 					$this->edges[$identity]->with(
