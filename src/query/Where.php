@@ -124,40 +124,19 @@ class Where
 	/**
 	 *
 	 */
-	public function source(Node|Element\Node|int $node): callable
+	public function neq(array|string|callable $condition, mixed $value = NULL): callable|array
 	{
-		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node));
+		return $this->expand(__FUNCTION__, '!=', $condition, $value);
 	}
 
 
 	/**
 	 *
 	 */
-	public function target(Node|Element\Node|int $node): callable
+	public function null(array|string|callable $condition): callable|array
 	{
-		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node));
+		return $this->expand(__FUNCTION__, 'IS', $condition, fn() => 'NULL');
 	}
-
-
-	/**
-	 *
-	 */
-	public function upper(string|callable $term): callable
-	{
-		return $this->wrap('toupper', $term);
-	}
-
-
-	/**
-	 *
-	 */
-	public function uses(Query $query): static
-	{
-		$this->query = $query;
-
-		return $this;
-	}
-
 
 	/**
 	 *
@@ -218,6 +197,45 @@ class Where
 
 			return $result;
 		};
+	}
+
+
+
+	/**
+	 *
+	 */
+	public function source(Node|Element\Node|int $node): callable
+	{
+		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node));
+	}
+
+
+	/**
+	 *
+	 */
+	public function target(Node|Element\Node|int $node): callable
+	{
+		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node));
+	}
+
+
+	/**
+	 *
+	 */
+	public function upper(string|callable $term): callable
+	{
+		return $this->wrap('toupper', $term);
+	}
+
+
+	/**
+	 *
+	 */
+	public function uses(Query $query): static
+	{
+		$this->query = $query;
+
+		return $this;
 	}
 
 
