@@ -64,18 +64,12 @@ abstract class Element implements Countable
 	 */
 	static public function changes(self $element): array
 	{
-		$changes = self::properties($element);
+		$changes = [];
 
-		foreach ($changes as $property => $value) {
-			if (!array_key_exists($property, $element->loaded)) {
-				continue;
+		foreach (self::properties($element) as $property => $value) {
+			if ($value != ($element->loaded[$property] ?? NULL)) {
+				$changes[$property] = $value;
 			}
-
-			if ($value != $element->loaded[$property]) {
-				continue;
-			}
-
-			unset($changes[$property]);
 		}
 
 		return $changes;
