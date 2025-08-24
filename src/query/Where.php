@@ -76,7 +76,7 @@ class Where
 	/**
 	 *
 	 */
-	public function dateTime(DateTime|string $term)
+	public function dateTime(DateTime|string $term): callable
 	{
 		if ($term instanceof DateTime) {
 			$term = $term->format('c');
@@ -92,6 +92,15 @@ class Where
 	public function eq(array|string|callable $condition, mixed $value = NULL): callable|array
 	{
 		return $this->expand(__FUNCTION__, '=', $condition, $value);
+	}
+
+
+	/**
+	 *
+	 */
+	public function gt(array|string|callable $condition, mixed $value = NULL): callable|array
+	{
+		return $this->expand(__FUNCTION__, '>', $condition, $value);
 	}
 
 
@@ -125,6 +134,33 @@ class Where
 	/**
 	 *
 	 */
+	public function lower(string|callable $term): callable
+	{
+		return $this->wrap('toLower', $term);
+	}
+
+
+	/**
+	 *
+	 */
+	public function lt(array|string|callable $condition, mixed $value = NULL): callable|array
+	{
+		return $this->expand(__FUNCTION__, '<', $condition, $value);
+	}
+
+
+	/**
+	 *
+	 */
+	public function lte(array|string|callable $condition, mixed $value = NULL): callable|array
+	{
+		return $this->expand(__FUNCTION__, '<=', $condition, $value);
+	}
+
+
+	/**
+	 *
+	 */
 	public function md5(string|callable $term): callable
 	{
 		return $this->wrap('util_module.md5', $term);
@@ -147,6 +183,34 @@ class Where
 	{
 		return $this->expand(__FUNCTION__, 'IS', $condition, fn() => 'NULL');
 	}
+
+
+	/**
+	 *
+	 */
+	public function source(Node|Element\Node|int $node): callable
+	{
+		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node));
+	}
+
+
+	/**
+	 *
+	 */
+	public function target(Node|Element\Node|int $node): callable
+	{
+		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node));
+	}
+
+
+	/**
+	 *
+	 */
+	public function upper(string|callable $term): callable
+	{
+		return $this->wrap('toUpper', $term);
+	}
+
 
 	/**
 	 *
@@ -212,34 +276,6 @@ class Where
 	}
 
 
-
-	/**
-	 *
-	 */
-	public function source(Node|Element\Node|int $node): callable
-	{
-		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node));
-	}
-
-
-	/**
-	 *
-	 */
-	public function target(Node|Element\Node|int $node): callable
-	{
-		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node));
-	}
-
-
-	/**
-	 *
-	 */
-	public function upper(string|callable $term): callable
-	{
-		return $this->wrap('toupper', $term);
-	}
-
-
 	/**
 	 *
 	 */
@@ -276,6 +312,27 @@ class Where
 	/**
 	 *
 	 */
+	protected function param(mixed $value = NULL): string
+	{
+		if (!func_num_args()) {
+			return '$p' . $this->index;
+
+		} else {
+			if ($value instanceof Node || $value instanceof Element\Node) {
+				$value = $value->identity();
+			}
+
+			$this->index++;
+			$this->query->set('p' . $this->index, $value);
+
+			return '$p' . $this->index;
+		}
+	}
+
+
+	/**
+	 *
+	 */
 	protected function reduce(callable $condition): string
 	{
 		while (is_callable($condition)) {
@@ -302,26 +359,5 @@ class Where
 				}
 			}
 		};
-	}
-
-
-	/**
-	 *
-	 */
-	protected function param(mixed $value = NULL): string
-	{
-		if (!func_num_args()) {
-			return '$p' . $this->index;
-
-		} else {
-			if ($value instanceof Node || $value instanceof Element\Node) {
-				$value = $value->identity();
-			}
-
-			$this->index++;
-			$this->query->set('p' . $this->index, $value);
-
-			return '$p' . $this->index;
-		}
 	}
 }
