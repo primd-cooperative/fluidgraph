@@ -2,7 +2,6 @@
 
 namespace FluidGraph;
 
-use Closure;
 use DateTime;
 use InvalidArgumentException;
 use ReflectionClass;
@@ -43,7 +42,7 @@ class Where
 			return NULL;
 		}
 
-		return fn() => '(' . implode(' AND ', array_map(fn($part) => $this->reduce($part), $parts)) . ')';
+		return fn() => '(' . implode(' AND ', array_map(fn($part) => $this->reduce($part, ' AND '), $parts)) . ')';
 	}
 
 
@@ -56,20 +55,7 @@ class Where
 			return NULL;
 		}
 
-		return fn() => '(' . implode(' OR ', array_map(fn($part) => $this->reduce($part), $parts)) . ')';
-	}
-
-
-	/**
-	 *
-	 */
-	public function count(?string $term = NULL): callable
-	{
-		if (!func_num_args()) {
-			return fn() => sprintf('count(%s)', $this->alias);
-		}
-
-		return $this->wrap(__FUNCTION__, $term);
+		return fn() => '(' . implode(' OR ', array_map(fn($part) => $this->reduce($part, ' OR '), $parts)) . ')';
 	}
 
 
@@ -116,7 +102,7 @@ class Where
 	/**
 	 *
 	 */
-	public function id(Node|Element\Node|int $node): callable|string
+	public function id(Node|Element\Node|int $node): callable
 	{
 		return fn() => sprintf('id(%s) = %s', $this->alias, $this->param($node));
 	}
@@ -181,6 +167,13 @@ class Where
 	 */
 	public function null(array|string|callable $condition): callable|array
 	{
+		if (is_array($condition)) {
+			$condition = array_combine(
+				$condition,
+				array_pad([], count($condition), fn() => 'NULL')
+			);
+		}
+
 		return $this->expand(__FUNCTION__, 'IS', $condition, fn() => 'NULL');
 	}
 
@@ -200,6 +193,19 @@ class Where
 	public function target(Node|Element\Node|int $node): callable
 	{
 		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node));
+	}
+
+
+	/**
+	 *
+	 */
+	public function total(?string $term = NULL): callable
+	{
+		if (is_null($term)) {
+			$term = $this->alias;
+		}
+
+		return $this->wrap('count', $term);
 	}
 
 
@@ -333,10 +339,14 @@ class Where
 	/**
 	 *
 	 */
-	protected function reduce(callable $condition): string
+	protected function reduce(callable $condition, string $join = ','): string
 	{
 		while (is_callable($condition)) {
 			$condition = $condition($this);
+
+			if (is_array($condition)) {
+				return implode($join, array_map($this->reduce(...), $condition));
+			}
 		}
 
 		return $condition;

@@ -26,14 +26,6 @@ function any(callable ...$parts): callable
 /**
  * @return callable:callable
  */
-function count(?string $term = NULL): callable
-{
-	return fn($where) => $where->count($term);
-}
-
-/**
- * @return callable:callable
- */
 function dateTime(DateTime|string $term): callable
 {
 	return fn($where) => $where->dateTime($term);
@@ -141,6 +133,14 @@ function source(Node|Element\Node|int $node): callable
 function target(Node|Element\Node|int $node): callable
 {
 	return fn($where) => $where->target($node);
+}
+
+/**
+ * @return callable:callable
+ */
+function total(?string $term = NULL): callable
+{
+	return fn($where) => $where->total($term);
 }
 
 /**

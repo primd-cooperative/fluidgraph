@@ -6,11 +6,14 @@ use FluidGraph\Relationship\Mode;
 use FluidGraph\Relationship\Index;
 use FluidGraph\Relationship\Order;
 
+use function FluidGraph\Where\{any, eq, gte, id, total};
+
 use InvalidArgumentException;
 use RuntimeException;
 use Countable;
 use DateTime;
 use Closure;
+
 
 /**
  * @template T of Edge
@@ -180,12 +183,12 @@ abstract class Relationship implements Countable
 
 			if (count($nodes)) {
 				$query
-					->add('AND %s', $where->with($alias, fn($any, $id) => $any(...array_map($id, $nodes))))
-					->add('RETURN %s', $where->with($alias, fn($count, $eq) => $eq($count, count($nodes))))
+					->add('AND %s', $where->with($alias, fn() => any(...array_map(id(...), $nodes))))
+					->add('RETURN %s', $where->with($alias, fn() => eq(total(), count($nodes))))
 				;
 
 			} else {
-				$query->add('RETURN %s', $where->with($alias, fn($gte, $count) => $gte($count, 1)));
+				$query->add('RETURN %s', $where->with($alias, fn() => gte(total(), 1)));
 
 			}
 
@@ -223,12 +226,12 @@ abstract class Relationship implements Countable
 
 			if (count($nodes)) {
 				$query
-					->add('AND %s', $where->with($alias, fn($any, $id) => $any(...array_map($id, $nodes))))
-					->add('RETURN %s', $where->with($alias, fn($count, $gte) => $gte($count, 1)))
+					->add('AND %s', $where->with($alias, fn() => any(...array_map(id(...), $nodes))))
+					->add('RETURN %s', $where->with($alias, fn() => gte(total(), 1)))
 				;
 
 			} else {
-				$query->add('RETURN %s', $where->with($alias, fn($gte, $count) => $gte($count, 1)));
+				$query->add('RETURN %s', $where->with($alias, fn() => gte(total(), 1)));
 
 			}
 

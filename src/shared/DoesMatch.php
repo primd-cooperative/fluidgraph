@@ -4,6 +4,9 @@ namespace FluidGraph;
 
 use Closure;
 
+use function FluidGraph\Where\all;
+use function FluidGraph\Where\eq;
+
 trait DoesMatch
 {
 	/**
@@ -74,7 +77,7 @@ trait DoesMatch
 	{
 		if (!empty($terms)) {
 			if (is_array($terms)) {
-				$terms = fn($all, $eq) => $all(...$eq($terms));
+				$terms = fn() => all(eq($terms));
 			}
 
 			$this->terms = $terms;
