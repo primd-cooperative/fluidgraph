@@ -306,7 +306,7 @@ class Queue
 		$query
 			->add(
 				'MATCH (n1)-[e]->(n2) WHERE %s DELETE e',
-				$query->where->scope('e', fn($any, $id) => $any(...array_map($id, $identities)))
+				$query->where->with('e', fn($any, $id) => $any(...array_map($id, $identities)))
 			)
 			->run()
 		;
@@ -440,7 +440,7 @@ class Queue
 		$query
 			->add(
 				'MATCH (n) WHERE %s DETACH DELETE n',
-				$query->where->scope('n', fn($any, $id) => $any(...array_map($id, $identities)))
+				$query->where->with('n', fn($any, $id) => $any(...array_map($id, $identities)))
 			)
 			->run()
 		;

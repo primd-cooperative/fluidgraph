@@ -45,7 +45,7 @@ abstract class Query
 		protected array $statements = [],
 		protected array $parameters = [],
 	) {
-		$this->where = new Where()->uses($this);
+		$this->where = new Where($this);
 	}
 
 

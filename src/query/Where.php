@@ -2,6 +2,7 @@
 
 namespace FluidGraph;
 
+use Closure;
 use DateTime;
 use InvalidArgumentException;
 use ReflectionClass;
@@ -31,7 +32,7 @@ class Where
 	/**
 	 *
 	 */
-	protected Query $query;
+	public function __construct(protected Query $query) {}
 
 	/**
 	 *
@@ -42,7 +43,7 @@ class Where
 			return NULL;
 		}
 
-		return fn() => '(' . implode(' AND ', array_map(fn($part) => $part(), $parts)) . ')';
+		return fn() => '(' . implode(' AND ', array_map(fn($part) => $this->reduce($part), $parts)) . ')';
 	}
 
 
@@ -55,7 +56,7 @@ class Where
 			return NULL;
 		}
 
-		return fn() => '(' . implode(' OR ', array_map(fn($part) => $part(), $parts)) . ')';
+		return fn() => '(' . implode(' OR ', array_map(fn($part) => $this->reduce($part), $parts)) . ')';
 	}
 
 
@@ -115,6 +116,15 @@ class Where
 	/**
 	 *
 	 */
+	public function like(array|string|callable $condition, mixed $value = NULL): callable|array
+	{
+		return $this->expand(__FUNCTION__, '=~', $value);
+	}
+
+
+	/**
+	 *
+	 */
 	public function md5(string|callable $term): callable
 	{
 		return $this->wrap('util_module.md5', $term);
@@ -141,7 +151,7 @@ class Where
 	/**
 	 *
 	 */
-	public function scope(Scope|string $alias, ?callable $callback): callable
+	public function with(Scope|string $alias, ?callable $callback): callable
 	{
 		if ($alias instanceof Scope) {
 			$alias = $alias->value;
@@ -171,23 +181,25 @@ class Where
 
 			foreach ($parameters as $parameter) {
 				$param  = $parameter->getName();
-				$method = strtolower($param);
 
-				if (!isset(static::$methods[$method])) {
-					throw new InvalidArgumentException(sprintf(
-						'Cannot scope closure with method "%s", not available',
-						$param
-					));
+				if ($parameter->getType() == $this::class) {
+					$arguments[$param] = $this;
+
+				} else {
+					$method = strtolower($param);
+
+					if (!isset(static::$methods[$method])) {
+						throw new InvalidArgumentException(sprintf(
+							'Cannot scope closure with method "%s", not available',
+							$param
+						));
+					}
+
+					$arguments[$param] = static::$methods[$method]->getClosure($this);
 				}
-
-				$arguments[$param] = static::$methods[$method]->getClosure($this);
 			}
 
-			$result = $callback(...$arguments);
-
-			while (is_callable($result)) {
-				$result = $result();
-			}
+			$result = $this->reduce($callback(...$arguments));
 
 			if ($ref) {
 				$this->alias = $ref;
@@ -231,17 +243,6 @@ class Where
 	/**
 	 *
 	 */
-	public function uses(Query $query): static
-	{
-		$this->query = $query;
-
-		return $this;
-	}
-
-
-	/**
-	 *
-	 */
 	protected function expand(string $function, string $operator, array|string|callable $condition, mixed $value = NULL): callable|array
 	{
 		if (is_array($condition)) {
@@ -254,7 +255,7 @@ class Where
 			return $parts;
 
 		} else {
-			return function() use ($function, $operator, $condition, $value) {
+			return function() use ($operator, $condition, $value) {
 				if (is_callable($value)) {
 					$value = $value(TRUE);
 				} else {
@@ -262,12 +263,7 @@ class Where
 				}
 
 				if (is_callable($condition)) {
-					while (is_callable($condition)) {
-						$condition = $condition();
-					}
-
-					return sprintf('%s %s %s', $condition, $operator, $value);
-
+					return sprintf('%s %s %s', $this->reduce($condition), $operator, $value);
 				} else {
 					return sprintf('%s.%s %s %s', $this->alias, $condition, $operator, $value);
 
@@ -275,6 +271,20 @@ class Where
 			};
 		}
 	}
+
+
+	/**
+	 *
+	 */
+	protected function reduce(callable $condition): string
+	{
+		while (is_callable($condition)) {
+			$condition = $condition($this);
+		}
+
+		return $condition;
+	}
+
 
 	/**
 	 *
@@ -315,4 +325,3 @@ class Where
 		}
 	}
 }
-

@@ -180,12 +180,12 @@ abstract class Relationship implements Countable
 
 			if (count($nodes)) {
 				$query
-					->add('AND %s', $where->scope($alias, fn($any, $id) => $any(...array_map($id, $nodes))))
-					->add('RETURN %s', $where->scope($alias, fn($count, $eq) => $eq($count, count($nodes))))
+					->add('AND %s', $where->with($alias, fn($any, $id) => $any(...array_map($id, $nodes))))
+					->add('RETURN %s', $where->with($alias, fn($count, $eq) => $eq($count, count($nodes))))
 				;
 
 			} else {
-				$query->add('RETURN %s', $where->scope($alias, fn($gte, $count) => $gte($count, 1)));
+				$query->add('RETURN %s', $where->with($alias, fn($gte, $count) => $gte($count, 1)));
 
 			}
 
@@ -223,12 +223,12 @@ abstract class Relationship implements Countable
 
 			if (count($nodes)) {
 				$query
-					->add('AND %s', $where->scope($alias, fn($any, $id) => $any(...array_map($id, $nodes))))
-					->add('RETURN %s', $where->scope($alias, fn($count, $gte) => $gte($count, 1)))
+					->add('AND %s', $where->with($alias, fn($any, $id) => $any(...array_map($id, $nodes))))
+					->add('RETURN %s', $where->with($alias, fn($count, $gte) => $gte($count, 1)))
 				;
 
 			} else {
-				$query->add('RETURN %s', $where->scope($alias, fn($gte, $count) => $gte($count, 1)));
+				$query->add('RETURN %s', $where->with($alias, fn($gte, $count) => $gte($count, 1)));
 
 			}
 
@@ -445,7 +445,7 @@ abstract class Relationship implements Countable
 				if ($this->terms) {
 					$query->add(
 						'AND (%s)',
-						new Where()->uses($query)->scope(
+						new Where($query)->with(
 							Scope::concern->value,
 							$this->terms
 						)
