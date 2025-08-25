@@ -26,7 +26,7 @@ function any(callable ...$parts): callable
 /**
  * @return callable:callable
  */
-function dateTime(DateTime|string $term): callable
+function dateTime(DateTime|string|callable $term): callable
 {
 	return fn($where) => $where->dateTime($term);
 }
@@ -34,25 +34,25 @@ function dateTime(DateTime|string $term): callable
 /**
  * @return callable:callable|array
  */
-function eq(array|string|callable $condition, mixed $value = NULL): callable
+function eq(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->eq($condition, $value);
+	return fn($where) => $where->eq($term, $value);
 }
 
 /**
  * @return callable:callable|array
  */
-function gt(array|string|callable $condition, mixed $value = NULL): callable
+function gt(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->gt($condition, $value);
+	return fn($where) => $where->gt($term, $value);
 }
 
 /**
  * @return callable:callable|array
  */
-function gte(array|string|callable $condition, mixed $value = NULL): callable
+function gte(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->gte($condition, $value);
+	return fn($where) => $where->gte($term, $value);
 }
 
 /**
@@ -66,9 +66,9 @@ function id(Node|Element\Node|int $node): callable
 /**
  * @return callable:callable|array
  */
-function like(array|string|callable $condition, mixed $value = NULL): callable
+function like(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->like($condition, $value);
+	return fn($where) => $where->like($term, $value);
 }
 
 /**
@@ -82,17 +82,17 @@ function lower(string|callable $term): callable
 /**
  * @return callable:callable|array
  */
-function lt(array|string|callable $condition, mixed $value = NULL): callable
+function lt(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->gt($condition, $value);
+	return fn($where) => $where->gt($term, $value);
 }
 
 /**
  * @return callable:callable|array
  */
-function lte(array|string|callable $condition, mixed $value = NULL): callable
+function lte(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->gte($condition, $value);
+	return fn($where) => $where->gte($term, $value);
 }
 
 /**
@@ -106,18 +106,28 @@ function md5(string|callable $term): callable
 /**
  * @return callable:callable|array
  */
-function neq(array|string|callable $condition, mixed $value = NULL): callable
+function neq(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->neq($condition, $value);
+	return fn($where) => $where->neq($term, $value);
 }
 
 /**
  * @return callable:callable|array
  */
-function null(array|string|callable $condition): callable
+function null(array|string|callable $term): callable
 {
-	return fn($where) => $where->null($condition);
+	return fn($where) => $where->null($term);
 }
+
+
+/**
+ * @return callable:string
+ */
+function param(mixed $value = NULL): callable
+{
+	return fn($where) => $where->param($value);
+}
+
 
 /**
  * @return callable:callable

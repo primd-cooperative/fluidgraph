@@ -28,6 +28,12 @@ class Where
 	 */
 	protected int $index = 0;
 
+
+	/**
+	 *
+	 */
+	protected array $mode = [];
+
 	/**
 	 *
 	 */
@@ -62,7 +68,7 @@ class Where
 	/**
 	 *
 	 */
-	public function dateTime(DateTime|string $term): callable
+	public function dateTime(DateTime|string|callable $term): callable
 	{
 		if ($term instanceof DateTime) {
 			$term = $term->format('c');
@@ -75,27 +81,27 @@ class Where
 	/**
 	 *
 	 */
-	public function eq(array|string|callable $condition, mixed $value = NULL): callable|array
+	public function eq(array|string|callable $term, mixed $value = NULL): callable|array
 	{
-		return $this->expand(__FUNCTION__, '=', $condition, $value);
+		return $this->expand(__FUNCTION__, '=', $term, $value);
 	}
 
 
 	/**
 	 *
 	 */
-	public function gt(array|string|callable $condition, mixed $value = NULL): callable|array
+	public function gt(array|string|callable $term, mixed $value = NULL): callable|array
 	{
-		return $this->expand(__FUNCTION__, '>', $condition, $value);
+		return $this->expand(__FUNCTION__, '>', $term, $value);
 	}
 
 
 	/**
 	 *
 	 */
-	public function gte(array|string|callable $condition, mixed $value = NULL): callable|array
+	public function gte(array|string|callable $term, mixed $value = NULL): callable|array
 	{
-		return $this->expand(__FUNCTION__, '>=', $condition, $value);
+		return $this->expand(__FUNCTION__, '>=', $term, $value);
 	}
 
 
@@ -104,16 +110,20 @@ class Where
 	 */
 	public function id(Node|Element\Node|int $node): callable
 	{
-		return fn() => sprintf('id(%s) = %s', $this->alias, $this->param($node));
+		if ($node instanceof Node || $node instanceof Element\Node) {
+			$node = $node->identity();
+		}
+
+		return fn() => sprintf('id(%s) = %s', $this->alias, $this->param($node)());
 	}
 
 
 	/**
 	 *
 	 */
-	public function like(array|string|callable $condition, mixed $value = NULL): callable|array
+	public function like(array|string|callable $term, mixed $value = NULL): callable|array
 	{
-		return $this->expand(__FUNCTION__, '=~', $value);
+		return $this->expand(__FUNCTION__, '=~', $term, $value);
 	}
 
 
@@ -129,18 +139,18 @@ class Where
 	/**
 	 *
 	 */
-	public function lt(array|string|callable $condition, mixed $value = NULL): callable|array
+	public function lt(array|string|callable $term, mixed $value = NULL): callable|array
 	{
-		return $this->expand(__FUNCTION__, '<', $condition, $value);
+		return $this->expand(__FUNCTION__, '<', $term, $value);
 	}
 
 
 	/**
 	 *
 	 */
-	public function lte(array|string|callable $condition, mixed $value = NULL): callable|array
+	public function lte(array|string|callable $term, mixed $value = NULL): callable|array
 	{
-		return $this->expand(__FUNCTION__, '<=', $condition, $value);
+		return $this->expand(__FUNCTION__, '<=', $term, $value);
 	}
 
 
@@ -156,25 +166,22 @@ class Where
 	/**
 	 *
 	 */
-	public function neq(array|string|callable $condition, mixed $value = NULL): callable|array
+	public function neq(array|string|callable $term, mixed $value = NULL): callable|array
 	{
-		return $this->expand(__FUNCTION__, '!=', $condition, $value);
+		return $this->expand(__FUNCTION__, '!=', $term, $value);
 	}
 
 
 	/**
 	 *
 	 */
-	public function null(array|string|callable $condition): callable|array
+	public function null(array|string|callable $term): callable|array
 	{
-		if (is_array($condition)) {
-			$condition = array_combine(
-				$condition,
-				array_pad([], count($condition), fn() => 'NULL')
-			);
+		if (is_array($term)) {
+			$term = array_combine($term, array_pad([], count($term), $this->literal('NULL')));
 		}
 
-		return $this->expand(__FUNCTION__, 'IS', $condition, fn() => 'NULL');
+		return $this->expand(__FUNCTION__, 'IS', $term, $this->literal('NULL'));
 	}
 
 
@@ -183,7 +190,11 @@ class Where
 	 */
 	public function source(Node|Element\Node|int $node): callable
 	{
-		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node));
+		if ($node instanceof Node || $node instanceof Element\Node) {
+			$node = $node->identity();
+		}
+
+		return fn() => sprintf('id(startNode(%s)) = %s', $this->alias, $this->param($node)());
 	}
 
 
@@ -192,17 +203,21 @@ class Where
 	 */
 	public function target(Node|Element\Node|int $node): callable
 	{
-		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node));
+		if ($node instanceof Node || $node instanceof Element\Node) {
+			$node = $node->identity();
+		}
+
+		return fn() => sprintf('id(endNode(%s)) = %s', $this->alias, $this->param($node)());
 	}
 
 
 	/**
 	 *
 	 */
-	public function total(?string $term = NULL): callable
+	public function total(string|callable|null $term = NULL): callable
 	{
 		if (is_null($term)) {
-			$term = $this->alias;
+			$term = $this->literal($this->alias);
 		}
 
 		return $this->wrap('count', $term);
@@ -298,18 +313,7 @@ class Where
 
 		} else {
 			return function() use ($operator, $condition, $value) {
-				if (is_callable($value)) {
-					$value = $value(TRUE);
-				} else {
-					$value = $this->param($value);
-				}
-
-				if (is_callable($condition)) {
-					return sprintf('%s %s %s', $this->reduce($condition), $operator, $value);
-				} else {
-					return sprintf('%s.%s %s %s', $this->alias, $condition, $operator, $value);
-
-				}
+				return sprintf('%s %s %s', $this->field($condition)(), $operator, $this->param($value)());
 			};
 		}
 	}
@@ -318,21 +322,39 @@ class Where
 	/**
 	 *
 	 */
-	protected function param(mixed $value = NULL): string
+	public function literal(string $argument): callable
 	{
-		if (!func_num_args()) {
-			return '$p' . $this->index;
+		return function() use ($argument) {
+			$this->mode[] = 'literal';
 
-		} else {
-			if ($value instanceof Node || $value instanceof Element\Node) {
-				$value = $value->identity();
-			}
+			return $this->resolve($argument);
+		};
+	}
 
-			$this->index++;
-			$this->query->set('p' . $this->index, $value);
 
-			return '$p' . $this->index;
-		}
+	/**
+	 *
+	 */
+	public function param(mixed $value): callable
+	{
+		return function() use ($value) {
+			$this->mode[] = 'param';
+
+			return $this->resolve($value);
+		};
+	}
+
+
+	/**
+	 *
+	 */
+	public function field(string|callable $name): callable
+	{
+		return function() use ($name) {
+			$this->mode[] = 'field';
+
+			return $this->resolve($name);
+		};
 	}
 
 
@@ -356,18 +378,35 @@ class Where
 	/**
 	 *
 	 */
-	protected function wrap(string $function, string|callable $property): callable
+	protected function resolve(mixed $argument): string
 	{
-		return function($is_param = FALSE) use ($function, $property) {
-			if (is_callable($property)) {
-				return sprintf($function . '(%s)', $property($is_param));
-			} else {
-				if ($is_param) {
-					return sprintf($function . '(%s)', $this->param($property));
-				} else {
-					return sprintf($function . '(%s.%s)', $this->alias, $property);
-				}
-			}
+		if (is_callable($argument)) {
+			return $this->reduce($argument);
+		}
+
+		switch (array_pop($this->mode)) {
+			case 'field':
+				return sprintf('%s.%s', $this->alias, $argument);
+
+			case 'param':
+				$this->index++;
+				$this->query->set('p' . $this->index, $argument);
+
+				return '$p' . $this->index;
+
+			default:
+				return $argument;
+		}
+	}
+
+
+	/**
+	 *
+	 */
+	protected function wrap(string $function, mixed $argument): callable
+	{
+		return function() use ($function, $argument) {
+			return sprintf('%s(%s)', $function, $this->resolve($argument));
 		};
 	}
 }
