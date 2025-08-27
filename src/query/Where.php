@@ -361,7 +361,7 @@ class Where
 	/**
 	 *
 	 */
-	protected function reduce(callable $condition, string $join = ','): string
+	protected function reduce(string|callable $condition, string $join = ','): string
 	{
 		while (is_callable($condition)) {
 			$condition = $condition($this);

@@ -5,6 +5,7 @@ namespace FluidGraph\Where;
 use FluidGraph\Node;
 use FluidGraph\Scope;
 use FluidGraph\Element;
+use FluidGraph\Where;
 use DateTime;
 
 /**
@@ -12,7 +13,7 @@ use DateTime;
  */
 function all(callable ...$parts): callable
 {
-	return fn($where) => $where->all(...$parts);
+	return fn(Where $where) => $where->all(...$parts);
 }
 
 /**
@@ -20,7 +21,7 @@ function all(callable ...$parts): callable
  */
 function any(callable ...$parts): callable
 {
-	return fn($where) => $where->any(...$parts);
+	return fn(Where $where) => $where->any(...$parts);
 }
 
 /**
@@ -28,7 +29,7 @@ function any(callable ...$parts): callable
  */
 function dateTime(DateTime|string|callable $term): callable
 {
-	return fn($where) => $where->dateTime($term);
+	return fn(Where $where) => $where->dateTime($term);
 }
 
 /**
@@ -36,7 +37,7 @@ function dateTime(DateTime|string|callable $term): callable
  */
 function eq(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->eq($term, $value);
+	return fn(Where $where) => $where->eq($term, $value);
 }
 
 /**
@@ -44,7 +45,7 @@ function eq(array|string|callable $term, mixed $value = NULL): callable
  */
 function gt(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->gt($term, $value);
+	return fn(Where $where) => $where->gt($term, $value);
 }
 
 /**
@@ -52,7 +53,7 @@ function gt(array|string|callable $term, mixed $value = NULL): callable
  */
 function gte(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->gte($term, $value);
+	return fn(Where $where) => $where->gte($term, $value);
 }
 
 /**
@@ -60,7 +61,7 @@ function gte(array|string|callable $term, mixed $value = NULL): callable
  */
 function id(Node|Element\Node|int $node): callable
 {
-	return fn($where) => $where->id($node);
+	return fn(Where $where) => $where->id($node);
 }
 
 /**
@@ -68,7 +69,7 @@ function id(Node|Element\Node|int $node): callable
  */
 function like(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->like($term, $value);
+	return fn(Where $where) => $where->like($term, $value);
 }
 
 /**
@@ -76,7 +77,7 @@ function like(array|string|callable $term, mixed $value = NULL): callable
  */
 function lower(string|callable $term): callable
 {
-	return fn($where) => $where->lower($term);
+	return fn(Where $where) => $where->lower($term);
 }
 
 /**
@@ -84,7 +85,7 @@ function lower(string|callable $term): callable
  */
 function lt(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->gt($term, $value);
+	return fn(Where $where) => $where->gt($term, $value);
 }
 
 /**
@@ -92,7 +93,7 @@ function lt(array|string|callable $term, mixed $value = NULL): callable
  */
 function lte(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->gte($term, $value);
+	return fn(Where $where) => $where->gte($term, $value);
 }
 
 /**
@@ -100,7 +101,7 @@ function lte(array|string|callable $term, mixed $value = NULL): callable
  */
 function md5(string|callable $term): callable
 {
-	return fn($where) => $where->md5($term);
+	return fn(Where $where) => $where->md5($term);
 }
 
 /**
@@ -108,7 +109,7 @@ function md5(string|callable $term): callable
  */
 function neq(array|string|callable $term, mixed $value = NULL): callable
 {
-	return fn($where) => $where->neq($term, $value);
+	return fn(Where $where) => $where->neq($term, $value);
 }
 
 /**
@@ -116,7 +117,7 @@ function neq(array|string|callable $term, mixed $value = NULL): callable
  */
 function null(array|string|callable $term): callable
 {
-	return fn($where) => $where->null($term);
+	return fn(Where $where) => $where->null($term);
 }
 
 
@@ -125,7 +126,7 @@ function null(array|string|callable $term): callable
  */
 function param(mixed $value = NULL): callable
 {
-	return fn($where) => $where->param($value);
+	return fn(Where $where) => $where->param($value);
 }
 
 
@@ -134,7 +135,7 @@ function param(mixed $value = NULL): callable
  */
 function source(Node|Element\Node|int $node): callable
 {
-	return fn($where) => $where->source($node);
+	return fn(Where $where) => $where->source($node);
 }
 
 /**
@@ -142,7 +143,7 @@ function source(Node|Element\Node|int $node): callable
  */
 function target(Node|Element\Node|int $node): callable
 {
-	return fn($where) => $where->target($node);
+	return fn(Where $where) => $where->target($node);
 }
 
 /**
@@ -150,7 +151,7 @@ function target(Node|Element\Node|int $node): callable
  */
 function total(?string $term = NULL): callable
 {
-	return fn($where) => $where->total($term);
+	return fn(Where $where) => $where->total($term);
 }
 
 /**
@@ -158,7 +159,7 @@ function total(?string $term = NULL): callable
  */
 function upper(string|callable $term): callable
 {
-	return fn($where) => $where->upper($term);
+	return fn(Where $where) => $where->upper($term);
 }
 
 /**
@@ -166,5 +167,5 @@ function upper(string|callable $term): callable
  */
 function with(Scope|string $alias, ?callable $callback): callable
 {
-	return fn($where) => $where->with($alias, $callback);
+	return fn(Where $where) => $where->with($alias, $callback);
 }
