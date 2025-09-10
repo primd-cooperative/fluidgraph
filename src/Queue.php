@@ -218,6 +218,7 @@ class Queue
 	protected function doEdgeCreates(): void
 	{
 		$query      = new RawQuery()->on($this->graph);
+		$emitter    = $this->graph->getEventsEmitter();
 		$identities = $this->edgeOperations[static::CREATE];
 
 		foreach ($identities as $i => $identity) {
@@ -293,9 +294,13 @@ class Queue
 				$this->edges[$record->element_id] = $this->edges[$identities[$i]];
 			}
 
-			$element = $this->graph->resolve($record);
+			$edge = $this->graph->resolve($record);
 
 			unset($this->edges[$identities[$i]]);
+
+			if ($emitter) {
+				$emitter->dispatch(new Events\EdgeCreate($edge));
+			}
 		}
 	}
 
@@ -303,6 +308,7 @@ class Queue
 	protected function doEdgeDeletes(): void
 	{
 		$query      = new RawQuery()->on($this->graph);
+		$emitter    = $this->graph->getEventsEmitter();
 		$identities = $this->edgeOperations[static::DELETE];
 
 		$query
@@ -314,9 +320,14 @@ class Queue
 		;
 
 		foreach ($identities as $identity) {
-			$this->edges[$identity]->status = Status::detached;
+			$edge         = $this->edges[$identity];
+			$edge->status = Status::detached;
 
 			unset($this->edges[$identity]);
+
+			if ($emitter) {
+				$emitter->dispatch(new Events\EdgeDelete($edge));
+			}
 		}
 	}
 
@@ -325,6 +336,7 @@ class Queue
 	protected function doEdgeUpdates(): void
 	{
 		$query      = new RawQuery()->on($this->graph);
+		$emitter    = $this->graph->getEventsEmitter();
 		$identities = $this->edgeOperations[static::UPDATE];
 
 		$i = 0; foreach ($identities as $identity) {
@@ -357,7 +369,11 @@ class Queue
 		);
 
 		foreach ($query->records() as $record) {
-			$element = $this->graph->resolve($record);
+			$edge = $this->graph->resolve($record);
+
+			if ($emitter) {
+				$emitter->dispatch(new Events\EdgeUpdate($edge));
+			}
 		}
 	}
 
@@ -368,6 +384,7 @@ class Queue
 	protected function doNodeCreates(): void
 	{
 		$query      = new RawQuery()->on($this->graph);
+		$emitter    = $this->graph->getEventsEmitter();
 		$identities = $this->nodeOperations[static::CREATE];
 
 		$i = 0; foreach ($identities as $identity) {
@@ -376,10 +393,6 @@ class Queue
 
 			foreach (Element::classes($node) as $class) {
 				$created = $class::onCreate($node);
-			}
-
-			if ($emitter = $this->graph->getEventsEmitter()) {
-				$emitter->dispatch(new Events\NodeCreate($node));
 			}
 
 			if ($key = Element::key($node)) {
@@ -427,9 +440,13 @@ class Queue
 
 			}
 
-			$element = $this->graph->resolve($record);
+			$node = $this->graph->resolve($record);
 
 			unset($this->nodes[$identities[$i]]);
+
+			if ($emitter) {
+				$emitter->dispatch(new Events\NodeCreate($node));
+			}
 		}
 	}
 
@@ -437,6 +454,7 @@ class Queue
 	protected function doNodeDeletes(): void
 	{
 		$query      = new RawQuery()->on($this->graph);
+		$emitter    = $this->graph->getEventsEmitter();
 		$identities = $this->nodeOperations[static::DELETE];
 
 		$query
@@ -453,7 +471,7 @@ class Queue
 
 			unset($this->nodes[$identity]);
 
-			if ($emitter = $this->graph->getEventsEmitter()) {
+			if ($emitter) {
 				$emitter->dispatch(new Events\NodeDelete($node));
 			}
 		}
@@ -463,6 +481,7 @@ class Queue
 	protected function doNodeUpdates(): void
 	{
 		$query      = new RawQuery()->on($this->graph);
+		$emitter    = $this->graph->getEventsEmitter();
 		$identities = $this->nodeOperations[static::UPDATE];
 
 		$i = 0; foreach ($identities as $identity) {
@@ -476,10 +495,6 @@ class Queue
 
 		$i = 0; foreach ($identities as $identity) {
 			$node = $this->nodes[$identity];
-
-			if ($emitter = $this->graph->getEventsEmitter()) {
-				$emitter->dispatch(new Events\NodeUpdate($node));
-			}
 
 			$query
 				->add('SET @%s(%s)', "d$i", "i$i")
@@ -503,12 +518,16 @@ class Queue
 		);
 
 		foreach ($query->records() as $record) {
-			$element = $this->graph->resolve($record);
+			$node = $this->graph->resolve($record);
 
-			foreach ($element->labels as $label => $status) {
+			foreach ($node->labels as $label => $status) {
 				if ($status != Status::attached) {
-					unset($element->labels[$label]);
+					unset($node->labels[$label]);
 				}
+			}
+
+			if ($emitter) {
+				$emitter->dispatch(new Events\NodeUpdate($node));
 			}
 		}
 	}
