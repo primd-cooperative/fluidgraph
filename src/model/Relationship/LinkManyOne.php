@@ -65,10 +65,8 @@ abstract class LinkManyOne extends Relationship
 	public function set(Node $node, array|Edge $data = []): static
 	{
 		$this->validateNode($node);
+		$this->resolveEdge($node, $data);
 
-		$hash = $this->resolveEdge($node, $data);
-
-		$this->active[$hash]->assign($data);
 
 		return $this;
 	}

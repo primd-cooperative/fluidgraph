@@ -22,9 +22,13 @@ abstract class LinkOneMany extends Relationship
 
 		if (!$hash) {
 			$hash = $this->resolveEdge($node, $data);
+		} else {
+			if (is_array($data)) {
+				$this->active[$hash]->assign($data);
+			}
 		}
 
-		$this->active[$hash]->assign($data);
+
 
 		return $this;
 	}

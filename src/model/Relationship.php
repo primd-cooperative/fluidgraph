@@ -791,39 +791,53 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	protected function resolveEdge(Node $node, array $data = []): string
+	protected function resolveEdge(Node $node, array|Edge $data = []): string
 	{
-		$hash = $this->getIndex(Index::loaded, $node);
-
-		if ($hash) {
-			$this->active[$hash] = $this->loaded[$hash];
-
+		if ($data instanceof Edge) {
+			$edge = $data;
 		} else {
 			$edge = $this->kind::make($data, Entity::MAKE_ASSIGN);
-			$hash = spl_object_hash($edge);
-
-			if ($this->type == Reference::from) {
-				$source = $node;
-				$target = $this->subject;
-			} else {
-				$source = $this->subject;
-				$target = $node;
-			}
-
-			$edge->with(
-				function(Node $source, Node $target): void {
-					/**
-					 * @var Edge $this
-					 */
-					$this->__element__->source = $source;
-					$this->__element__->target = $target;
-				},
-				$source,
-				$target
-			);
-
-			$this->active[$hash] = $edge;
 		}
+
+		if ($this->type == Reference::from) {
+			$source = $node;
+			$target = $this->subject;
+		} else {
+			$source = $this->subject;
+			$target = $node;
+		}
+
+		$edge->with(
+			function(Node $source, Node $target): void {
+				/**
+				 * @var Edge $this
+				 */
+				if ($this->identity()) {
+					if ($this->__element__->source->identity() != $source->identity()) {
+						throw new InvalidArgumentException(sprintf(
+							'Cannot move existing edge (ID: %s) to source (ID: %s)',
+							$this->identity(),
+							$source->identity()
+						));
+					}
+
+					if ($this->__element__->target->identity() != $target->identity()) {
+						throw new InvalidArgumentException(sprintf(
+							'Cannot move existing edge (ID: %s) to target (ID: %s)',
+							$this->identity(),
+							$target->identity()
+						));
+					}
+				}
+
+				$this->__element__->source = $source;
+				$this->__element__->target = $target;
+			},
+			$source,
+			$target
+		);
+
+		$this->active[$hash = spl_object_hash($edge)] = $edge;
 
 		return $hash;
 	}

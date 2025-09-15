@@ -17,10 +17,7 @@ abstract class LinkManyMany extends Relationship
 	public function set(Node $node, array|Edge $data = []): static
 	{
 		$this->validateNode($node);
-
-		$hash = $this->resolveEdge($node, $data);
-
-		$this->active[$hash]->assign($data);
+		$this->resolveEdge($node, $data);
 
 		return $this;
 	}

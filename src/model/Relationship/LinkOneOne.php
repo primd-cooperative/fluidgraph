@@ -125,9 +125,12 @@ abstract class LinkOneOne extends FluidGraph\Relationship
 			$this->unset();
 
 			$hash = $this->resolveEdge($node, $data);
-		}
 
-		$this->active[$hash]->assign($data);
+		} else {
+			if (is_array($data)) {
+				$this->active[$hash]->assign($data);
+			}
+		}
 
 		return $this;
 	}
