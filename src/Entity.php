@@ -178,17 +178,24 @@ abstract class Entity implements Countable
 	 *
 	 * @param array<string, mixed> $data
 	 */
-	public function assign(array $data): static
+	public function assign(array $data, bool $ignore_inaccessible = FALSE): static
 	{
 		$keys         = array_keys($data);
 		$properties   = array_keys((array) $this);
 		$inaccessible = array_diff($keys, $properties);
 
 		if (count($inaccessible)) {
-			throw new InvalidArgumentException(sprintf(
-				'Cannot update inaccessible properties: %s',
-				implode(', ', $inaccessible)
-			));
+			if ($ignore_inaccessible) {
+				foreach ($inaccessible as $key) {
+					unset($data[$key]);
+				}
+
+			} else {
+				throw new InvalidArgumentException(sprintf(
+					'Cannot update inaccessible properties: %s',
+					implode(', ', $inaccessible)
+				));
+			}
 		}
 
 		$this->__element__->assign($data);
