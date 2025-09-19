@@ -188,6 +188,15 @@ class Where
 	/**
 	 *
 	 */
+	public function of(string $label): callable
+	{
+		return fn() => sprintf('%s:%s', $this->alias, $label);
+	}
+
+
+	/**
+	 *
+	 */
 	public function source(Node|Element\Node|int $node): callable
 	{
 		if ($node instanceof Node || $node instanceof Element\Node) {
@@ -322,7 +331,20 @@ class Where
 	/**
 	 *
 	 */
-	public function literal(string $argument): callable
+	protected function field(string|callable $name): callable
+	{
+		return function() use ($name) {
+			$this->mode[] = 'field';
+
+			return $this->resolve($name);
+		};
+	}
+
+
+	/**
+	 *
+	 */
+	protected function literal(string $argument): callable
 	{
 		return function() use ($argument) {
 			$this->mode[] = 'literal';
@@ -335,25 +357,12 @@ class Where
 	/**
 	 *
 	 */
-	public function param(mixed $value): callable
+	protected function param(mixed $value): callable
 	{
 		return function() use ($value) {
 			$this->mode[] = 'param';
 
 			return $this->resolve($value);
-		};
-	}
-
-
-	/**
-	 *
-	 */
-	public function field(string|callable $name): callable
-	{
-		return function() use ($name) {
-			$this->mode[] = 'field';
-
-			return $this->resolve($name);
 		};
 	}
 

@@ -120,15 +120,13 @@ function null(array|string|callable $term): callable
 	return fn(Where $where) => $where->null($term);
 }
 
-
 /**
- * @return callable:string
+ * @return callable:callable
  */
-function param(mixed $value = NULL): callable
+function of(string $label): callable
 {
-	return fn(Where $where) => $where->param($value);
+	return fn(Where $where) => $where->of($label);
 }
-
 
 /**
  * @return callable:callable

@@ -13,8 +13,12 @@ trait Hash
 	/**
 	 *
 	 */
-	static public function createHash(Element $element): array
+	static public function createHash(Element|Entity $element): array
 	{
+		if ($element instanceof Entity) {
+			$element = $element->__element__;
+		}
+
 		$results = [];
 
 		foreach (static::getHashKeys() as $field => $transforms) {
