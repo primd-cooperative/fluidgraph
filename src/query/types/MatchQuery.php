@@ -47,7 +47,7 @@ class MatchQuery extends FluidGraph\Query
 	 *
 	 * @param array<class-string<T>|string> $concerns
 	 */
-	public function __construct(Scope|string $scope = Scope::concern, Matching $rule, array $concerns, Reference $type = Reference::either)
+	public function __construct(Scope|string $scope = Scope::concern, Matching $rule = Matching::all, array $concerns = [], Reference $type = Reference::either)
 	{
 		parent::__construct();
 
