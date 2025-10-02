@@ -6,7 +6,7 @@ use FluidGraph\Scope;
 use FluidGraph\Matching;
 use FluidGraph\Reference;
 
-function edge(Scope|string $scope, array|string $concerns, Reference $type): string
+function edge(Scope|string $scope, array|string $concerns, Reference $type = Reference::either): string
 {
 	settype($concerns, 'array');
 
@@ -30,7 +30,7 @@ function edge(Scope|string $scope, array|string $concerns, Reference $type): str
 }
 
 
-function node(Scope|string $scope, array|string $concerns, Matching $rule): string
+function node(Scope|string $scope, array|string $concerns, Matching $rule = Matching::all): string
 {
 	settype($concerns, 'array');
 
