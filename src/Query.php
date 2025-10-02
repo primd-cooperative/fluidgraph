@@ -113,9 +113,7 @@ abstract class Query
 	{
 		$cypher_code = $this->compile();
 
-		if (isset($this->graph->logger)) {
-			$this->graph->logger->log(LogLevel::DEBUG, sprintf('Query: %s', $cypher_code), $this->parameters);
-		}
+		$this->graph->logger->log(LogLevel::DEBUG, sprintf('Query: %s', $cypher_code), $this->parameters);
 
 		$responses = iterator_to_array(
 			$this->graph->protocol->run($cypher_code, $this->parameters)->pull()->getResponses()
@@ -144,9 +142,7 @@ abstract class Query
 			)
 		);
 
-		if (isset($this->graph->logger)) {
-			$this->graph->logger->log(LogLevel::DEBUG, sprintf('Results: %s', count($this->records)));
-		}
+		$this->graph->logger->log(LogLevel::DEBUG, sprintf('Results: %s', count($this->records)));
 
 		return $this;
 	}

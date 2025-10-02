@@ -11,6 +11,11 @@ trait Hash
 	use Entity\CreateHook;
 
 	/**
+	 * @return array<string, array<callable>>
+	 */
+	abstract static public function getHashKeys(): array;
+
+	/**
 	 *
 	 */
 	static public function createHash(Element|Entity $element): array
@@ -37,14 +42,5 @@ trait Hash
 		return [
 			'id' => md5(implode(':', $results))
 		];
-	}
-
-
-	/**
-	 * @return array<string, array<callable>>
-	 */
-	static public function getHashKeys(): array
-	{
-		return [];
 	}
 }

@@ -17,6 +17,7 @@ use InvalidArgumentException;
 use UnexpectedValueException;
 use DateTimeZone;
 use DateTime;
+use Stringable;
 
 /**
  *
@@ -217,7 +218,13 @@ class Graph
 			$terms = fn($id) => $id($terms);
 		}
 
-		$results = $this->matchAny([Edge::class, ...$concerns], 2, 0, $terms, []);
+		$results = $this
+			->matchAny([Edge::class, ...$concerns])
+			->where($terms)
+			->take(2)
+			->skip(0)
+			->results()
+		;
 
 		if (count($results) > 1) {
 			throw new UnexpectedValueException(sprintf(
@@ -254,7 +261,14 @@ class Graph
 			));
 		}
 
-		$results = $this->matchAny([Edge::class, ...$concerns], $limit, $offset, $terms, $orders);
+		$results = $this
+			->matchAny([Edge::class, ...$concerns])
+			->where($terms)
+			->take($limit)
+			->skip($offset)
+			->sort(...$orders)
+			->results()
+		;
 
 		return new EdgeResults($results->as($concerns)->unwrap());
 	}
@@ -288,7 +302,13 @@ class Graph
 			$terms = fn($id) => $id($terms);
 		}
 
-		$results = $this->matchAny([Node::class, ...$concerns], 2, 0, $terms, []);
+		$results = $this
+			->matchAny([Node::class, ...$concerns])
+			->where($terms)
+			->take(2)
+			->skip(0)
+			->results()
+		;
 
 		if (count($results) > 1) {
 			throw new UnexpectedValueException(sprintf(
@@ -325,9 +345,27 @@ class Graph
 			));
 		}
 
-		$results = $this->matchAny([Node::class, ...$concerns], $limit, $offset, $terms, $orders);
+		$results = $this
+			->matchAny([Node::class, ...$concerns])
+			->where($terms)
+			->take($limit)
+			->skip($offset)
+			->sort(...$orders)
+			->results()
+		;
 
 		return new NodeResults($results->as($concerns)->unwrap());
+	}
+
+
+	/**
+	 * Output log messages if the logger is set
+	 */
+	public function log(mixed $level, string|Stringable $message, array $context = []): void
+	{
+		if ($this->logger) {
+			$this->logger->log($level, $message, $context);
+		}
 	}
 
 
@@ -350,38 +388,33 @@ class Graph
 
 
 	/**
-	 * Initialize a new match query and get element results matching ALL `$concerns`
+	 *
 	 */
-	public function match(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): Element\Results
+	public function getLogger(): ?LoggerInterface
 	{
-		settype($concerns, 'array');
-
-		return new Query\MatchQuery(Matching::all, ...$concerns)
-			->on($this)
-			->where($terms)
-			->skip($offset)
-			->take($limit)
-			->sort(...$orders)
-			->results()
-		;
+		return isset($this->logger) ? $this->logger : NULL;
 	}
 
 
 	/**
-	 * Initialize a new match query and get element results matching ANY `$concerns`
+	 * Initialize a new match query for ALL `$concerns`
 	 */
-	public function matchAny(array|string $concerns = [], ?int $limit = NULL, int $offset = 0, array|callable $terms = [], array $orders = []): Element\Results
+	public function match(string|array $concerns, Reference $type = Reference::either): Query\MatchQuery
 	{
 		settype($concerns, 'array');
 
-		return new Query\MatchQuery(Matching::any, ...$concerns)
-			->on($this)
-			->where($terms)
-			->skip($offset)
-			->take($limit)
-			->sort(...$orders)
-			->results()
-		;
+		return new Query\MatchQuery(Scope::concern, Matching::all, $concerns, $type)->on($this);
+	}
+
+
+	/**
+	 * Initialize a new match query for ANY `$concerns`
+	 */
+	public function matchAny(string|array $concerns, Reference $type = Reference::either): Query\MatchQuery
+	{
+		settype($concerns, 'array');
+
+		return new Query\MatchQuery(Scope::concern, Matching::any, $concerns, $type)->on($this);
 	}
 
 
@@ -393,10 +426,7 @@ class Graph
 	 */
 	public function query(string $statement, mixed ...$values): Query\RawQuery
 	{
-		return new Query\RawQuery()
-			->on($this)
-			->add($statement, ...$values)
-		;
+		return new Query\RawQuery()->on($this)->add($statement, ...$values);
 	}
 
 

@@ -19,7 +19,8 @@
     "autoload": {
         "classmap": ["src/"],
         "files": [
-            "src/utilities/where.php"
+            "src/utilities/where.php",
+            "src/utilities/having.php"
         ]
     },
     "autoload-dev": {

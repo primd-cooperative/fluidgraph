@@ -255,13 +255,11 @@ abstract class Relationship implements Countable
 	 */
 	public function find(string|array $concerns, ?int $limit = NULL, int $offset = 0, callable|array $terms = [], ?array $orders = NULL): NodeResults|Node|null
 	{
-		settype($concerns, 'array');
-
 		if (is_null($orders)) {
 			$orders = $this->orders;
 		}
 
-		$clone = $this->match(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
+		$clone = $this->match($concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
 
 		$clone->load();
 
@@ -279,7 +277,7 @@ abstract class Relationship implements Countable
 			$orders = $this->orders;
 		}
 
-		$clone = $this->matchAny(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
+		$clone = $this->matchAny($concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
 
 		$clone->load();
 
@@ -294,7 +292,7 @@ abstract class Relationship implements Countable
 	{
 		settype($concerns, 'array');
 
-		$clone = $this->match(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
+		$clone = $this->match($concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
 
 		$clone->load();
 
@@ -309,7 +307,7 @@ abstract class Relationship implements Countable
 	{
 		settype($concerns, 'array');
 
-		$clone = $this->matchAny(...$concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
+		$clone = $this->matchAny($concerns)->take($limit)->skip($offset)->where($terms)->sort(...$orders);
 
 		$clone->load();
 
@@ -517,8 +515,10 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function match(string ...$concerns): static
+	public function match(string|array $concerns): static
 	{
+		settype($concerns, 'array');
+
 		$clone = $this->getClone(__FUNCTION__, $concerns);
 
 		$clone->rule = Matching::all;
@@ -530,8 +530,10 @@ abstract class Relationship implements Countable
 	/**
 	 *
 	 */
-	public function matchAny(string ...$concerns): static
+	public function matchAny(string|array $concerns): static
 	{
+		settype($concerns, 'array');
+
 		$clone = $this->getClone(__FUNCTION__, $concerns);
 
 		$clone->rule = Matching::any;
@@ -887,8 +889,8 @@ abstract class Relationship implements Countable
 
 			if (!$valid) {
 				throw new InvalidArgumentException(sprintf(
-					'Relationship using "%s" does not concern Node with insufficient concerns: %s',
-					$this->kind,
+					'Relationship cannot use node of type "%s", not in concerns: %s',
+					get_class($target),
 					join(', ', $labels)
 				));
 			}

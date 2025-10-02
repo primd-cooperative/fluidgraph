@@ -9,6 +9,8 @@ use FluidGraph\Scope;
 use FluidGraph\Entity;
 use FluidGraph\Element;
 use FluidGraph\Matching;
+use FluidGraph\Reference;
+use InvalidArgumentException;
 
 /**
  * @template T of Entity
@@ -25,14 +27,17 @@ class MatchQuery extends FluidGraph\Query
 	/**
 	 *
 	 */
-	public protected(set) string $pattern;
-
+	protected string $pattern;
 
 	/**
 	 * @var Element\Results<T>
 	 */
 	protected Element\Results $results;
 
+	/**
+	 *
+	 */
+	protected string $scope;
 
 	/**
 	 * Initialize a match query (for element selection).
@@ -40,71 +45,81 @@ class MatchQuery extends FluidGraph\Query
 	 * This is used by match() and matchAny() in order to select elements, based on concerns we'll
 	 * determine what the match pattern looks like for our cypher query.
 	 *
-	 * @param class-string<T>|string ...$concerns
+	 * @param array<class-string<T>|string> $concerns
 	 */
-	public function __construct(Matching $method, string ...$concerns)
+	public function __construct(Scope|string $scope = Scope::concern, Matching $rule, array $concerns, Reference $type = Reference::either)
 	{
 		parent::__construct();
 
-		$match_nodes   = !count($concerns);
-		$match_edges   = !count($concerns);
-		$node_concerns = [];
-		$edge_concerns = [];
+		$edge_matches   = 0;
+		$node_matches   = 0;
+		$this->concerns = $concerns;
+
+		if ($scope instanceof Scope) {
+			$this->scope = $scope->value;
+		}
 
 		foreach ($concerns as $i => $concern) {
 			if (is_a($concern, Edge::class, TRUE)) {
-				$match_edges = TRUE;
+				$edge_matches++;
 
-				if ($concern != Edge::class) {
-					$edge_concerns[] = $concern;
-				} else {
-					unset($concerns[$i]);
+				if ($concern == Edge::class) {
+					unset($this->concerns[$i]);
 				}
 
 			} else {
-				$match_nodes = TRUE;
+				$node_matches++;
 
-				if ($concern != Node::class) {
-					$node_concerns[] = $concern;
-				} else {
-					unset($concerns[$i]);
+				if ($concern == Node::class) {
+					unset($this->concerns[$i]);
 				}
 			}
 		}
 
-		if ($match_edges && $match_nodes) {
-			$this->pattern = sprintf(
-				'(%1$s1%2$s),()-[%1$s2%3$s]-() UNWIND [%1$s1,%1$s2] AS %1$s WITH %1$s',
-				Scope::concern->value,
-				count($node_concerns)
-					? ':' . implode($method->value, $node_concerns)
-					: '',
-				count($edge_concerns)
-					? ':' . implode('|', $edge_concerns)
-					: ''
-			);
+		if ($edge_matches && $node_matches) {
+			throw new InvalidArgumentException(sprintf(
+				'Cannot match on mixed node/edge types: %s',
+				implode(', ', $this->concerns)
+			));
 
-		} elseif ($match_edges) {
-			$this->pattern = sprintf(
-				'()-[%s%s]-()',
-				Scope::concern->value,
-				count($edge_concerns)
-					? ':' . implode('|', $edge_concerns)
-					: ''
-			);
+		} elseif ($edge_matches) {
+			$this->pattern = edge($this->scope, $this->concerns, $type);
 
 		} else {
-			$this->pattern = sprintf(
-				'(%s%s)',
-				Scope::concern->value,
-				count($node_concerns)
-					? ':' . implode($method->value, $node_concerns)
-					: ''
-			);
+			$this->pattern = node($this->scope, $this->concerns, $rule);
 
 		}
+	}
 
-		$this->concerns = $concerns;
+
+	/**
+	 *
+	 */
+	public function having(array|string $left = [], array|string $right = []): static
+	{
+		settype($left, 'array');
+		settype($right, 'array');
+
+		$left = implode('', array_map(
+			function(string $stop): string {
+				if (str_starts_with($stop, '<')) {
+					return substr($stop, 1) . '>';
+				}
+
+				if (str_ends_with($stop, '>')) {
+					return '<' . substr($stop, 0, -1);
+				}
+
+				return $stop;
+			},
+			array_reverse($left)
+		));
+
+		$right = implode('', $right);
+
+		$this->pattern = $left . $this->pattern. $right;
+
+		return $this;
 	}
 
 
@@ -135,10 +150,18 @@ class MatchQuery extends FluidGraph\Query
 	 */
 	protected function compile(): string
 	{
+		if (in_array(substr($this->pattern, 0, 1), ['-', '<'])) {
+			$this->pattern = '()' . $this->pattern;
+		}
+
+		if (in_array(substr($this->pattern, -1, 1), ['-', '>'])) {
+			$this->pattern = $this->pattern . '()';
+		}
+
 		$this->append('MATCH %s', $this->pattern);
 
 		if (isset($this->terms)) {
-			$scope = $this->where->with(Scope::concern->value, $this->terms);
+			$scope = $this->where->with($this->scope, $this->terms);
 			$terms = call_user_func($scope);
 
 			if ($terms) {
@@ -146,7 +169,7 @@ class MatchQuery extends FluidGraph\Query
 			};
 		}
 
-		$this->append('RETURN DISTINCT %s', Scope::concern->value);
+		$this->append('RETURN DISTINCT %s', $this->scope);
 
 		if ($this->orders) {
 			$orders = [];

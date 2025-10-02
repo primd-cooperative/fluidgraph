@@ -315,7 +315,11 @@ class Where
 			$parts = [];
 
 			foreach ($condition as $condition => $value) {
-				$parts[] = $this->$function($condition, $value);
+				if (is_numeric($condition) && is_callable($value)) {
+					$parts[] = $this->reduce($value);
+				} else {
+					$parts[] = $this->$function($condition, $value);
+				}
 			}
 
 			return $parts;
