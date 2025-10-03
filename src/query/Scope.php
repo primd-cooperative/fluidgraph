@@ -7,6 +7,7 @@ namespace FluidGraph;
  */
 enum Scope: string
 {
+	case none     = '';
 	case subject  = 's';
 	case concern  = 'c';
 	case relation = 'r';
