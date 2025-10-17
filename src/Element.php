@@ -464,7 +464,7 @@ abstract class Element implements Countable
 		array_unshift($matches, $match);
 
 		foreach ($matches as $match) {
-			if (!$this->is($match)) {
+			if ($this->is($match)) {
 				return TRUE;
 			}
 		}

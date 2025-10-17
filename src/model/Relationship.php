@@ -697,15 +697,17 @@ abstract class Relationship implements Countable
 	 */
 	protected function getGraphQuery(Matching|string $rule_or_concern = '', string ...$concerns): Query\RawQuery
 	{
-		if (!$rule_or_concern instanceof Matching) {
-			$rule = $this->rule;
+		$rule = $this->rule;
 
+		if (!$rule_or_concern instanceof Matching) {
 			if ($rule_or_concern) {
 				array_unshift($concerns, $rule_or_concern);
 			}
 
 		} else {
-			$rule = $rule_or_concern;
+			if (count($concerns)) {
+				$rule = $rule_or_concern;
+			}
 		}
 
 		$concern_query = implode(
@@ -891,7 +893,7 @@ abstract class Relationship implements Countable
 				throw new InvalidArgumentException(sprintf(
 					'Relationship cannot use node of type "%s", not in concerns: %s',
 					get_class($target),
-					join(', ', $labels)
+					join(', ', $this->concerns)
 				));
 			}
 		}
