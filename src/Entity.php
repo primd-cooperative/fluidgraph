@@ -76,22 +76,23 @@ abstract class Entity implements Countable
 			foreach (class_uses($class) ?: [] as $trait) {
 				$results = array_replace($results, self::doHooks($trait, $hook, $element));
 
-				if (!in_array($hook, class_uses($trait))) {
+				if (!in_array($hook, [$trait, ...class_uses($trait)])) {
 					continue;
 				}
 
-				$parts  = explode('\\', $trait);
+				$parts  = explode('\\', $hook == $trait ? $class : $trait);
 				$method = match($hook) {
 					Entity\CreateHook::class => 'create' . end($parts),
 					Entity\UpdateHook::class => 'update' . end($parts),
 					default => FALSE
 				};
 
-				if (!$method || !method_exists($trait, $method)) {
+				if (!$method || !method_exists($class, $method)) {
 					throw new InvalidArgumentException(sprintf(
-						'Invalid hook "%s" specified, method "%s" does not exist',
+						'Invalid hook "%s" specified, method "%s" does not exist on "%s"',
 						$trait,
-						$method
+						$method,
+						$class
 					));
 				}
 
