@@ -383,7 +383,7 @@ abstract class Relationship implements Countable
 		if (empty($concerns)) {
 			$concerns = $this->concerns;
 
-			if (isset($this->apex) and $this->apex->rule == Matching::all) { # We only add apex concerns if the rule matches our pattern
+			if (isset($this->apex) && (empty($concerns) || $this->apex->rule == Matching::all)) { # We only add apex concerns if the rule matches our pattern
 				$concerns = array_merge($concerns, $this->apex->concerns);
 			}
 		}
@@ -404,7 +404,7 @@ abstract class Relationship implements Countable
 		if (empty($concerns)) {
 			$concerns = $this->concerns;
 
-			if (isset($this->apex)) {
+			if (isset($this->apex) && (empty($concerns) || $this->apex->rule == Matching::any)) {
 				$concerns = array_merge($concerns, $this->apex->concerns);
 			}
 		}
