@@ -28,8 +28,6 @@ abstract class LinkOneMany extends Relationship
 			}
 		}
 
-
-
 		return $this;
 	}
 }

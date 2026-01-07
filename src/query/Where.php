@@ -2,6 +2,7 @@
 
 namespace FluidGraph;
 
+use Closure;
 use DateTime;
 use InvalidArgumentException;
 use ReflectionClass;
@@ -315,7 +316,7 @@ class Where
 			$parts = [];
 
 			foreach ($condition as $condition => $value) {
-				if (is_numeric($condition) && is_callable($value)) {
+				if (is_numeric($condition) && $value instanceof Closure) {
 					$parts[] = $this->reduce($value);
 				} else {
 					$parts[] = $this->$function($condition, $value);
@@ -326,7 +327,10 @@ class Where
 
 		} else {
 			return function() use ($operator, $condition, $value) {
-				return sprintf('%s %s %s', $this->field($condition)(), $operator, $this->param($value)());
+				return sprintf(
+					'%s %s %s',
+					$this->field($condition)(), $operator, $this->param($value)()
+				);
 			};
 		}
 	}
@@ -376,7 +380,7 @@ class Where
 	 */
 	protected function reduce(string|callable $condition, string $join = ','): string
 	{
-		while (is_callable($condition)) {
+		while ($condition instanceof Closure) {
 			$condition = $condition($this);
 
 			if (is_array($condition)) {
@@ -393,7 +397,7 @@ class Where
 	 */
 	protected function resolve(mixed $argument): string
 	{
-		if (is_callable($argument)) {
+		if ($argument instanceof Closure) {
 			return $this->reduce($argument);
 		}
 
