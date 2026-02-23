@@ -194,8 +194,8 @@ class Graph
 	 * Get a single edge
 	 *
 	 * @template E of Edge
-	 * @param array<class-string<E>|string>|class-string<E>|string $concerns
-	 * @param array<string, mixed>|callable|int $terms
+	 * @param array<class-string<E>>|class-string<E> $concerns
+	 * @param array<string,mixed>|callable|int $terms
 	 * @return ?E
 	 */
 	public function findEdge(array|string $concerns = [], array|callable|int $terms = []): ?Edge
@@ -209,7 +209,7 @@ class Graph
 
 		if (count($invalid)) {
 			throw new InvalidArgumentException(sprintf(
-				'Cannot call edge() with invalid concerns: %s',
+				'Cannot call with invalid concerns: %s',
 				implode(',', $invalid)
 			));
 		}
@@ -228,7 +228,7 @@ class Graph
 
 		if (count($results) > 1) {
 			throw new UnexpectedValueException(sprintf(
-				'Call for edge() returned more than one result'
+				'Call unexpectedly returned more than one result'
 			));
 		}
 
@@ -256,7 +256,7 @@ class Graph
 
 		if (count($invalid)) {
 			throw new InvalidArgumentException(sprintf(
-				'Cannot call edges() with invalid concerns: %s',
+				'Cannot call with invalid concerns: %s',
 				implode(',', $invalid)
 			));
 		}
@@ -278,8 +278,8 @@ class Graph
 	 * Get a single node
 	 *
 	 * @template N of Node
-	 * @param array<class-string<N>|string>|class-string<N>|string $concerns
-	 * @param array<string, mixed>|callable|int $terms
+	 * @param array<class-string<N>>|class-string<N> $concerns
+	 * @param array<string,mixed>|callable|int $terms
 	 * @return ?N
 	 */
 	public function findNode(array|string $concerns = [], array|callable|int $terms = []): ?Node
@@ -288,12 +288,12 @@ class Graph
 
 		$invalid = array_filter(
 			$concerns,
-			fn($concern) => is_subclass_of($concern, Edge::class, TRUE)
+			fn($concern) => !is_subclass_of($concern, Node::class, TRUE)
 		);
 
 		if (count($invalid)) {
 			throw new InvalidArgumentException(sprintf(
-				'Cannot call node() with invalid concerns: %s',
+				'Cannot call with invalid concerns: %s',
 				implode(',', $invalid)
 			));
 		}
@@ -312,7 +312,7 @@ class Graph
 
 		if (count($results) > 1) {
 			throw new UnexpectedValueException(sprintf(
-				'Call for node() returned more than one result'
+				'Call unexpectedly returned more than one result'
 			));
 		}
 
@@ -335,12 +335,12 @@ class Graph
 
 		$invalid = array_filter(
 			$concerns,
-			fn($concern) => is_subclass_of($concern, Edge::class, TRUE)
+			fn($concern) => !is_subclass_of($concern, Node::class, TRUE)
 		);
 
 		if (count($invalid)) {
 			throw new InvalidArgumentException(sprintf(
-				'Cannot call nodes() with invalid concerns: %s',
+				'Cannot call with invalid concerns: %s',
 				implode(',', $invalid)
 			));
 		}

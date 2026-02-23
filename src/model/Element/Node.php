@@ -27,12 +27,12 @@ class Node extends FluidGraph\Element
 
 
 	/**
-	 * @template T of FluidGraph\Node
-	 * @param null|array|class-string<T> $class
-	 * @param array<string, mixed> $defaults
-	 * @return T
+	 * @template N of FluidGraph\Node
+	 * @param array<class-string<N>>|class-string<N>|null $class
+	 * @param array<string,mixed> $defaults
+	 * @return N
 	 */
-	public function as(null|array|string $class = NULL, array $defaults = []): FluidGraph\Node
+	public function as(array|string|null $class = NULL, array $defaults = []): FluidGraph\Node
 	{
 		if (is_string($class)) {
 			if (!class_exists($class)) {

@@ -5,7 +5,6 @@ namespace FluidGraph\Relationship;
 use FluidGraph\Node;
 use FluidGraph\Edge;
 use FluidGraph\Relationship;
-
 use UnexpectedValueException;
 
 /**

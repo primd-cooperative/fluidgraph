@@ -24,7 +24,7 @@ abstract class Relationship implements Countable
 	use DoesMatch;
 
 	/**
-	 * @var array<E>
+	 * @var array<T>
 	 */
 	protected array $active = [] {
 		&get {
@@ -37,7 +37,7 @@ abstract class Relationship implements Countable
 	}
 
 	/**
-	 * @var array<E>
+	 * @var array<T>
 	 */
 	protected array $loaded = [] {
 		&get {
@@ -74,12 +74,12 @@ abstract class Relationship implements Countable
 
 
 	/**
-	 * Createa a new relationship
+	 * Create a new relationship
 	 *
-	 * @template T of Edge
-	 * @param class-string<T> $kind
+	 * @template E of Edge
+	 * @param class-string<E> $kind
 	 * @param class-string|array<class-string> $concerns
-	 * @return static<T>
+	 * @return static<E>
 	 */
 	static public function having(Node $subject, string $kind, Reference $type, Matching $rule = Matching::all, array|string $concerns = [], Mode $mode = Mode::lazy): static
 	{

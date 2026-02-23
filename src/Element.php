@@ -305,11 +305,11 @@ abstract class Element implements Countable
 	 * to defaults provided.
 	 *
 	 * @template E of Entity
-	 * @param null|array<class-string<E>|string>|class-string<E>|string $concerns
-	 * @param array<string, mixed> $defaults Default values for entity construction (if necessary)
+	 * @param array<class-string<E>>|class-string<E>|null $concerns
+	 * @param array<string,mixed> $defaults Default values for entity construction (if necessary)
 	 * @return E
 	 */
-	public function as(null|array|string $concerns = NULL, array $defaults = []): Entity
+	public function as(array|string|null $concerns = NULL, array $defaults = []): Entity
 	{
 		if (!is_string($concerns)) {
 			$class = $this->getPreferredClass($concerns);
@@ -345,7 +345,7 @@ abstract class Element implements Countable
 	/**
 	 * Assign data to the element in a bulk manner
 	 *
-	 * @param array<string, mixed> $data
+	 * @param array<string,mixed> $data
 	 */
 	public function assign(array $data): static
 	{

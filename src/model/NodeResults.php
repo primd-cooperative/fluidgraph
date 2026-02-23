@@ -16,7 +16,7 @@ class NodeResults extends Entity\Results
 	 * @param class-string<N>|string ...$concerns
 	 * @return NodeResults<N>
 	 */
-	public function get(string $concern, string ...$concerns): NodeResults
+	public function get(string $concern, string ...$concerns): static
 	{
 		$nodes = [];
 		$index = [];
@@ -50,7 +50,7 @@ class NodeResults extends Entity\Results
 	 * @param class-string<N>|string ...$concerns
 	 * @return NodeResults<N>
 	 */
-	public function getAny(string $concern, string ...$concerns): NodeResults
+	public function getAny(string $concern, string ...$concerns): static
 	{
 		$nodes = [];
 		$index = [];

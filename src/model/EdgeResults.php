@@ -17,7 +17,7 @@ class EdgeResults extends Entity\Results
 	 * @param Element\Node|Node|class-string $matches
 	 * @return static<T>
 	 */
-	public function for(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): EdgeResults
+	public function for(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): static
 	{
 		$edges = [];
 
@@ -43,7 +43,7 @@ class EdgeResults extends Entity\Results
 	 * @param Element\Node|Node|class-string $matches
 	 * @return static<T>
 	 */
-	public function forAny(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): EdgeResults
+	public function forAny(Element\Node|Node|string $match, Element\Node|Node|string ...$matches): static
 	{
 		$edges = [];
 

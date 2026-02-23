@@ -40,10 +40,10 @@ class Edge extends FluidGraph\Element
 
 
 	/**
-	 * @type T of FluidGraph\Edge
-	 * @param null|array|class-string<T>
-	 * @param array<string, mixed> $data
-	 * @return T
+	 * @template E of FluidGraph\Edge
+	 * @param array<class-string<E>>|class-string<E>|null $class
+	 * @param array<string,mixed> $data
+	 * @return E
 	 */
 	public function as(null|array|string $class = NULL, array $data = []): FluidGraph\Edge
 	{

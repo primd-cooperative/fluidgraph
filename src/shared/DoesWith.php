@@ -8,6 +8,7 @@ trait DoesWith
 {
 	/**
 	 * @param-closure-this static $callback
+	 * @param-closure-scope static $callback
 	 */
 	public function with(Closure $callback, mixed ...$args): static
 	{

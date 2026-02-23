@@ -8,6 +8,9 @@ use FluidGraph\Relationship;
 
 /**
  * A type of relationship that links to/from many nodes with one edge per node.
+ *
+ * @template T of Edge
+ * @extends Relationship<T>
  */
 abstract class LinkOneMany extends Relationship
 {

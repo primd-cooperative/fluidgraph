@@ -2,18 +2,19 @@
 
 namespace FluidGraph\Relationship;
 
-use FluidGraph;
-use FluidGraph\Edge;
 use FluidGraph\Node;
+use FluidGraph\Edge;
 use FluidGraph\Element;
-use FluidGraph\Reference;
-use LogicException;
+use FluidGraph\Relationship;
 use UnexpectedValueException;
 
 /**
  * A type of relationship that links to/from one node with one edge.
+ *
+ * @template T of Edge
+ * @extends Relationship<T>
  */
-abstract class LinkOneOne extends FluidGraph\Relationship
+abstract class LinkOneOne extends Relationship
 {
 	/**
 	 * Get the edge entity for this relationship, regardless what it corresponds to.
